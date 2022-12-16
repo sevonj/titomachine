@@ -1,0 +1,3 @@
+[submodule "titolib"]
+	path = titolib
+	url = https://github.com/sevonj/MiniTito.git
