@@ -3,13 +3,21 @@ name = "minitito-gui"
 version = "0.1.0"
 edition = "2021"
 
+
 [dependencies]
 
-egui = "0.20.1"         # GUI
+egui = { version = "0.20.1", default-features = false }
 egui_extras = "0.20.0"  # GUI
-eframe = "0.20.1"       # GUI
+eframe = { version = "0.20.1", default-features = false, features = ["glow", "default_fonts"] }
 
 open = "3.2.0"          # web links
 
 [build-dependencies]
 cc = "1.0"              # Compile C
+
+[profile.release] # Optimize for binary size
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
