@@ -9,4 +9,6 @@ Because [this](https://gist.github.com/sevonj/9e10a2ff824b5348ae5d32048b7fb38d) 
 - Only working syscall is =halt.
 - Bit operations are not implemented: AND, OR, XOR, SHL, SHR, NOT, SHRA.
 - The actual emulator code can be found at [Titolib](https://github.com/sevonj/titolib).
+
+
 ![image](https://user-images.githubusercontent.com/100710152/208188638-4024ce86-79b6-468e-9210-18852bad342c.png)
