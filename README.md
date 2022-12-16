@@ -11,4 +11,5 @@ Because [this](https://gist.github.com/sevonj/9e10a2ff824b5348ae5d32048b7fb38d) 
 - The actual emulator code can be found at [Titolib](https://github.com/sevonj/titolib).
 
 
-![image](https://user-images.githubusercontent.com/100710152/208188638-4024ce86-79b6-468e-9210-18852bad342c.png)
+![image](https://user-images.githubusercontent.com/100710152/208198927-f6c6b0a2-239c-4557-932d-5e40e4f7748d.png)
+
