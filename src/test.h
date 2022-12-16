@@ -1,0 +1,1 @@
+int cool_function();
