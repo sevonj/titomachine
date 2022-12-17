@@ -129,11 +129,11 @@ impl eframe::App for TitoApp {
                     }
 
                     ui.menu_button("Help", |ui| {
-                        if ui.button("TTK-91 Instructions").clicked() {
-                            open::that(
-                                "https://www.cs.helsinki.fi/group/titokone/ttk91_ref_fi.html",
-                            );
-                        }
+                        if ui.button("↗TTK-91 Instructions").clicked() {
+                            ui.output().open_url("https://www.cs.helsinki.fi/group/titokone/ttk91_ref_fi.html");
+                                
+                            
+                }
                         ui.label("Nothing below works yet.");
 
                         ui.button("View Hotkeys");

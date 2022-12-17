@@ -10,8 +10,6 @@ egui = { version = "0.20.1", default-features = false }
 egui_extras = "0.20.0"  # GUI
 eframe = { version = "0.20.1", default-features = false, features = ["glow", "default_fonts"] }
 
-open = "3.2.0"          # web links
-
 [build-dependencies]
 cc = "1.0"              # Compile C
 
