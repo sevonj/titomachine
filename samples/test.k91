@@ -1,10 +1,10 @@
 ; Sample program:
 ; Fill a table with 5 input values and output their sum.
 
-Numero      DC 57   ;
+Num         DC 57   ;
 Taulu       DS 5    ;
 TaulunKoko  EQU 5   ;
-Numero2     DC 73   ;
+Num2        DC 73   ;
 
 Sum         DC 0                    ;
             load r3, =0             ;
@@ -18,6 +18,6 @@ LOOP        comp  r1, =TaulunKoko   ;
             jump  LOOP              ;
 END         store r3, Sum           ;
             out r3, =crt            ;
-            load r3, =Numero        ;
+            load r3, =Num           ;
             out r3, =crt            ;
             svc sp, =halt           ;

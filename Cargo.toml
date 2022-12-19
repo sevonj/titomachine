@@ -5,10 +5,10 @@ edition = "2021"
 
 
 [dependencies]
-
 egui = { version = "0.20.1", default-features = false }
-egui_extras = "0.20.0"  # GUI
+egui_extras = "0.20.0"
 eframe = { version = "0.20.1", default-features = false, features = ["glow", "default_fonts"] }
+tinyfiledialogs = "3.9.1"
 
 [build-dependencies]
 cc = "1.0"              # Compile C
