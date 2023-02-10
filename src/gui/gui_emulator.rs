@@ -25,6 +25,7 @@ impl TitoApp {
         if ui.add(Button::new(text_onoff)).clicked() {
             self.emu_playing = false;
             self.emu_tx.send(CtrlMSG::PlayPause(false));
+            self.send_settings();
             if self.emu_running {
                 self.emu_running = false;
                 self.emu_tx.send(CtrlMSG::Stop);

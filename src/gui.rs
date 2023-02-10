@@ -151,12 +151,7 @@ impl TitoApp {
                     )
                     .changed()
                 {
-                    if self.emu_use_khz {
-                        self.emu_tx
-                            .send(CtrlMSG::SetRate(self.emu_play_speed * 1000.));
-                    } else {
-                        self.emu_tx.send(CtrlMSG::SetRate(self.emu_play_speed));
-                    }
+                    self.send_settings()
                 }
                 if self.emu_use_khz {
                     ui.label("KHz");

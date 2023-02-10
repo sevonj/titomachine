@@ -187,6 +187,15 @@ impl TitoApp {
             }
         }
     }
+
+    pub fn send_settings(&mut self) {
+        if self.emu_use_khz {
+            self.emu_tx
+                .send(CtrlMSG::SetRate(self.emu_play_speed * 1000.));
+        } else {
+            self.emu_tx.send(CtrlMSG::SetRate(self.emu_play_speed));
+        }
+    }
 }
 
 impl eframe::App for TitoApp {
