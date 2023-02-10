@@ -1,0 +1,33 @@
+
+screen equ 8192;
+
+; color_r dc 0x0f00
+; color_g dc 0x00f0
+; color_b dc 0x000f
+; color_c dc 0x00ff
+; color_m dc 0x0f0f
+; color_y dc 0x0ff0
+; color_bl dc 0x0000
+; color_w dc 0x0fff
+
+color_r dc 3840
+color_g dc 240
+color_b dc 15
+color_c dc 255
+color_m dc 3855
+color_y dc 4080
+color_bl dc 0
+color_w dc 4095
+
+
+load sp, =screen
+push sp, color_r
+push sp, color_g
+push sp, color_b
+push sp, color_c
+push sp, color_m
+push sp, color_y
+push sp, color_bl
+push sp, color_w
+
+SVC SP, =HALT   ; Service call for halt.
