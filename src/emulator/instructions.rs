@@ -154,10 +154,6 @@ impl Emu {
                 self.instance.pc += 1;
             }
             Some(Opcode::LOAD) => {
-                if self.instance.tr as usize >= self.instance.memory.len() {
-                    self.instance.sr |= SR_M;
-                    return;
-                }
                 self.instance.gpr[instruction.rj as usize] = self.instance.tr;
                 self.instance.pc += 1;
             }
