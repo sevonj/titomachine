@@ -1,4 +1,4 @@
-# Titomachine
+# TiToMchine
 TTK-91 Compiler and emulator
 
 Because my programs were too much for the original.
