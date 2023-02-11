@@ -62,7 +62,7 @@ pub struct TitoApp {
     emu_halted: bool,
     emu_playing: bool,
     emu_use_khz: bool,
-    emu_play_speed: f32,
+    emu_speed: f32,
     #[serde(skip)]
     emu_achieved_speed: f32,
     #[serde(skip)]
@@ -88,9 +88,9 @@ pub struct TitoApp {
     #[serde(skip)]
     guimode: GuiMode,
     emugui_display: bool,
-    memview_adr_base: Base,
-    memview_val_base: Base,
-    register_val_base: Base,
+    mem_adr_base: Base,
+    mem_val_base: Base,
+    regs_base: Base,
 }
 
 impl Default for TitoApp {
@@ -116,7 +116,7 @@ impl Default for TitoApp {
             emu_running: false,
             emu_halted: false,
             emu_playing: false,
-            emu_play_speed: 10.,
+            emu_speed: 10.,
             emu_achieved_speed: 0.,
             emu_use_khz: false,
             emu_turbo: false,
@@ -132,9 +132,9 @@ impl Default for TitoApp {
             // GUI
             guimode: GuiMode::Editor,
             emugui_display: false,
-            memview_adr_base: Base::Dec,
-            memview_val_base: Base::Dec,
-            register_val_base: Base::Dec,
+            mem_adr_base: Base::Dec,
+            mem_val_base: Base::Dec,
+            regs_base: Base::Dec,
         }
     }
 }
@@ -148,7 +148,7 @@ impl TitoApp {
         // Restore app state using cc.storage (requires the "persistence" feature).
         // Use the cc.gl (a glow::Context) to create graphics shaders and buffers that you can use
         // for e.g. egui::PaintCallback.
-        
+
         if let Some(storage) = cc.storage {
             return eframe::get_value(storage, eframe::APP_KEY).unwrap_or_default();
         }
@@ -167,7 +167,7 @@ impl TitoApp {
                 }
                 ReplyMSG::Regs(vec) => self.emu_registers = vec,
                 ReplyMSG::Mem(vec) => self.emu_memory = vec,
-                ReplyMSG::display(vec) => {
+                ReplyMSG::Display(vec) => {
                     self.emu_dispvec = vec;
                 }
                 // IO
@@ -190,10 +190,9 @@ impl TitoApp {
 
     pub fn send_settings(&mut self) {
         if self.emu_use_khz {
-            self.emu_tx
-                .send(CtrlMSG::SetRate(self.emu_play_speed * 1000.));
+            self.emu_tx.send(CtrlMSG::SetRate(self.emu_speed * 1000.));
         } else {
-            self.emu_tx.send(CtrlMSG::SetRate(self.emu_play_speed));
+            self.emu_tx.send(CtrlMSG::SetRate(self.emu_speed));
         }
     }
 }
@@ -204,6 +203,10 @@ impl eframe::App for TitoApp {
     }
 
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        // 60fps gui update when emulator is running
+        if self.emu_running && self.emu_playing {
+            ctx.request_repaint_after(std::time::Duration::from_secs(1 / 60))
+        }
         self.msg_handler();
         self.gui_main(ctx);
     }
@@ -239,7 +242,7 @@ fn main() {
     };
 
     eframe::run_native(
-        "TiToMachine",
+        "Tito",
         native_options,
         Box::new(|cc| Box::new(TitoApp::new(cc))),
     );

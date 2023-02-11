@@ -1,7 +1,5 @@
-use egui::TextBuffer;
-use num_traits::FromPrimitive;
-
 use crate::emulator::instructions::{Opcode, TTK91Instruction};
+use num_traits::FromPrimitive;
 
 fn sec_operand(ins: TTK91Instruction) -> String {
     let mut str = String::new();
@@ -240,7 +238,6 @@ pub fn instruction_to_string(input_instr: i32) -> String {
             retstr += rj(ins.rj).as_str();
             retstr += mode(ins.mode).as_str();
             retstr += sec_operand(ins).as_str();
-            
         }
         Some(Opcode::EXIT) => {
             retstr += "EXIT  ";

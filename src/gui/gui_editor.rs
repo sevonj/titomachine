@@ -1,10 +1,9 @@
-use crate::{TitoApp, emulator::CtrlMSG};
+use crate::{emulator::CtrlMSG, TitoApp};
 
 impl TitoApp {
     pub fn editor_toolbar(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
         if ui.button("Compile").clicked() {
-            self.current_prog = self.editor.compile();
-            self.emu_tx.send(CtrlMSG::LoadProg(self.current_prog.clone()));
+            self.file_compile();
         }
     }
 

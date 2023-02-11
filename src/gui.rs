@@ -1,15 +1,11 @@
 use super::emulator::CtrlMSG;
-use crate::{emulator::ReplyMSG, TitoApp};
+use crate::TitoApp;
 use serde;
-use std::{
-    env::{self, current_dir},
-    path::PathBuf,
-    time::Duration,
-};
+pub mod file_actions;
 pub mod gui_editor;
 pub mod gui_emulator;
 
-use egui::{Button, Color32, Modifiers};
+use egui::{Align, Button, DragValue, Layout, Modifiers};
 use rfd;
 
 #[derive(PartialEq)]
@@ -25,49 +21,58 @@ pub enum Base {
     Hex,
 }
 
+pub const SHORTCUT_NEW: egui::KeyboardShortcut =
+    egui::KeyboardShortcut::new(Modifiers::COMMAND, egui::Key::N);
 pub const SHORTCUT_OPEN: egui::KeyboardShortcut =
     egui::KeyboardShortcut::new(Modifiers::COMMAND, egui::Key::O);
 pub const SHORTCUT_SAVE: egui::KeyboardShortcut =
     egui::KeyboardShortcut::new(Modifiers::COMMAND, egui::Key::S);
 pub const SHORTCUT_SAVEAS: egui::KeyboardShortcut =
     egui::KeyboardShortcut::new(Modifiers::COMMAND.plus(Modifiers::SHIFT), egui::Key::S);
-pub const SHORTCUT_CLEAR: egui::KeyboardShortcut =
+
+pub const SHORTCUT_GUI_EDIT: egui::KeyboardShortcut =
     egui::KeyboardShortcut::new(Modifiers::COMMAND, egui::Key::E);
-pub const SHORTCUT_COMPILE: egui::KeyboardShortcut =
-    egui::KeyboardShortcut::new(Modifiers::COMMAND, egui::Key::K);
-pub const SHORTCUT_START: egui::KeyboardShortcut =
+pub const SHORTCUT_GUI_RUN: egui::KeyboardShortcut =
     egui::KeyboardShortcut::new(Modifiers::COMMAND, egui::Key::R);
+pub const SHORTCUT_GUI_EMUGRAPHICS: egui::KeyboardShortcut =
+    egui::KeyboardShortcut::new(Modifiers::COMMAND, egui::Key::G);
+//pub const SHORTCUT_CLEAR: egui::KeyboardShortcut =
+//    egui::KeyboardShortcut::new(Modifiers::COMMAND, egui::Key::E);
+pub const SHORTCUT_COMPILE: egui::KeyboardShortcut =
+    egui::KeyboardShortcut::new(Modifiers::COMMAND, egui::Key::B);
+
+//pub const SHORTCUT_START: egui::KeyboardShortcut =
+//    egui::KeyboardShortcut::new(Modifiers::NONE, egui::Key::Escape);
 pub const SHORTCUT_STOP: egui::KeyboardShortcut =
     egui::KeyboardShortcut::new(Modifiers::NONE, egui::Key::Escape);
-pub const SHORTCUT_TICK: egui::KeyboardShortcut =
-    egui::KeyboardShortcut::new(Modifiers::NONE, egui::Key::Enter);
+pub const SHORTCUT_TOGGLEPOWER: egui::KeyboardShortcut =
+    egui::KeyboardShortcut::new(Modifiers::NONE, egui::Key::T);
 pub const SHORTCUT_PLAY: egui::KeyboardShortcut =
     egui::KeyboardShortcut::new(Modifiers::NONE, egui::Key::Space);
+pub const SHORTCUT_TICK: egui::KeyboardShortcut =
+    egui::KeyboardShortcut::new(Modifiers::NONE, egui::Key::Enter);
 
 impl TitoApp {
     pub fn gui_main(&mut self, ctx: &egui::Context) {
-        // 60fps gui update when emulator is running
-        if self.emu_running && self.emu_playing {
-            ctx.request_repaint_after(Duration::from_secs(1 / 60))
-        }
         egui::CentralPanel::default().show(ctx, |ui| {
+            self.consume_shortcuts(ctx, ui);
+
             // Toolbar
             egui::TopBottomPanel::top("toolbar")
                 .exact_height(32.0)
                 .show(ctx, |ui| {
-                    ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
+                    ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
                         // File, Options, Help
                         self.gui_menubar_entries(ctx, ui);
                         ui.separator();
-                        // Run, Edit
+                        // Edit <-> Run
                         ui.selectable_value(&mut self.guimode, GuiMode::Editor, "Edit");
                         ui.selectable_value(&mut self.guimode, GuiMode::Emulator, "Run");
                         ui.separator();
                         // Context toolbar
-                        if self.guimode == GuiMode::Emulator {
-                            self.emulator_toolbar(ctx, ui);
-                        } else {
-                            self.editor_toolbar(ctx, ui);
+                        match self.guimode == GuiMode::Emulator {
+                            true => self.emulator_toolbar(ctx, ui),
+                            false => self.editor_toolbar(ctx, ui),
                         }
                     });
                 });
@@ -84,20 +89,21 @@ impl TitoApp {
             });
         });
     }
+
     fn gui_menubar_entries(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
         ui.menu_button("File", |ui| {
             if ui
-                .add(Button::new("Open File").shortcut_text(ctx.format_shortcut(&SHORTCUT_OPEN)))
+                .add(Button::new("New").shortcut_text(ctx.format_shortcut(&SHORTCUT_NEW)))
                 .clicked()
             {
-                self.editor.open_file(
-                    rfd::FileDialog::new()
-                        .add_filter("TTK Source files", &["k91"])
-                        .set_directory(&self.working_dir)
-                        .pick_file(),
-                );
-                self.guimode = GuiMode::Editor;
-                self.working_dir = current_dir().unwrap();
+                self.file_new();
+                ui.close_menu();
+            }
+            if ui
+                .add(Button::new("Open").shortcut_text(ctx.format_shortcut(&SHORTCUT_OPEN)))
+                .clicked()
+            {
+                self.file_open();
                 ui.close_menu();
             }
             if ui
@@ -107,45 +113,40 @@ impl TitoApp {
                 )
                 .clicked()
             {
-                self.editor.save_file(None);
+                self.file_save();
                 ui.close_menu();
             }
             if ui
                 .add(Button::new("Save As").shortcut_text(ctx.format_shortcut(&SHORTCUT_SAVEAS)))
                 .clicked()
             {
-                self.editor.save_file(
-                    rfd::FileDialog::new()
-                        .add_filter("TTK Source files", &["k91"])
-                        .set_directory(&self.working_dir)
-                        .save_file(),
-                );
-                self.working_dir = current_dir().unwrap();
+                self.file_saveas();
                 ui.close_menu();
             }
         });
+
         ui.menu_button("Options", |ui| {
             ui.menu_button("Memory View", |ui| {
                 ui.label("Memview Address base");
-                ui.radio_value(&mut self.memview_adr_base, Base::Bin, "Binary");
-                ui.radio_value(&mut self.memview_adr_base, Base::Dec, "Decimal");
-                ui.radio_value(&mut self.memview_adr_base, Base::Hex, "Hex");
+                ui.radio_value(&mut self.mem_adr_base, Base::Bin, "Binary");
+                ui.radio_value(&mut self.mem_adr_base, Base::Dec, "Decimal");
+                ui.radio_value(&mut self.mem_adr_base, Base::Hex, "Hex");
                 ui.label("Memview Value base");
-                ui.radio_value(&mut self.memview_val_base, Base::Bin, "Binary");
-                ui.radio_value(&mut self.memview_val_base, Base::Dec, "Decimal");
-                ui.radio_value(&mut self.memview_val_base, Base::Hex, "Hex");
+                ui.radio_value(&mut self.mem_val_base, Base::Bin, "Binary");
+                ui.radio_value(&mut self.mem_val_base, Base::Dec, "Decimal");
+                ui.radio_value(&mut self.mem_val_base, Base::Hex, "Hex");
                 ui.label("Register Value base");
-                ui.radio_value(&mut self.register_val_base, Base::Bin, "Binary");
-                ui.radio_value(&mut self.register_val_base, Base::Dec, "Decimal");
-                ui.radio_value(&mut self.register_val_base, Base::Hex, "Hex");
+                ui.radio_value(&mut self.regs_base, Base::Bin, "Binary");
+                ui.radio_value(&mut self.regs_base, Base::Dec, "Decimal");
+                ui.radio_value(&mut self.regs_base, Base::Hex, "Hex");
             });
 
-            ui.with_layout(egui::Layout::left_to_right(egui::Align::TOP), |ui| {
+            ui.with_layout(Layout::left_to_right(Align::TOP), |ui| {
                 ui.label("CPU Speed: ");
                 if ui
                     .add_enabled(
                         !self.emu_turbo,
-                        egui::DragValue::new(&mut self.emu_play_speed)
+                        DragValue::new(&mut self.emu_speed)
                             .speed(0.1)
                             .clamp_range(1..=9999),
                     )
@@ -153,26 +154,25 @@ impl TitoApp {
                 {
                     self.send_settings()
                 }
-                if self.emu_use_khz {
-                    ui.label("KHz");
-                } else {
-                    ui.label("Hz");
+                match self.emu_use_khz {
+                    true => ui.label("KHz"),
+                    false => ui.label("Hz"),
                 }
             });
-            ui.with_layout(egui::Layout::left_to_right(egui::Align::TOP), |ui| {
+            ui.with_layout(Layout::left_to_right(Align::TOP), |ui| {
                 ui.radio_value(&mut self.emu_use_khz, false, "Hz");
                 if ui.radio_value(&mut self.emu_use_khz, true, "KHz").changed() {
                     if self.emu_use_khz {
-                        self.emu_tx
-                            .send(CtrlMSG::SetRate(self.emu_play_speed * 1000.));
+                        self.emu_tx.send(CtrlMSG::SetRate(self.emu_speed * 1000.));
                     } else {
-                        self.emu_tx.send(CtrlMSG::SetRate(self.emu_play_speed));
+                        self.emu_tx.send(CtrlMSG::SetRate(self.emu_speed));
                     }
                 };
             });
             if ui.checkbox(&mut self.emu_turbo, "Turbo Mode").changed() {
                 self.emu_tx.send(CtrlMSG::SetTurbo(self.emu_turbo));
             };
+
             ui.menu_button("Language", |ui| {
                 ui.add_enabled_ui(false, |ui| {
                     ui.label("no language support")
@@ -181,11 +181,68 @@ impl TitoApp {
                 });
             });
         });
+
         ui.menu_button("Help", |ui| {
             if ui.button("↗TTK-91 Reference").clicked() {
                 ui.output()
                     .open_url("https://www.cs.helsinki.fi/group/titokone/ttk91_ref_fi.html");
             }
         });
+    }
+
+    fn consume_shortcuts(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+        // General
+        if ui.input_mut().consume_shortcut(&SHORTCUT_NEW) {
+            self.file_new()
+        }
+        if ui.input_mut().consume_shortcut(&SHORTCUT_OPEN) {
+            self.file_open()
+        }
+        if ui.input_mut().consume_shortcut(&SHORTCUT_SAVE) && self.editor.source_path != None {
+            self.file_save()
+        }
+        if ui.input_mut().consume_shortcut(&SHORTCUT_SAVEAS) {
+            self.file_saveas()
+        }
+        if ui.input_mut().consume_shortcut(&SHORTCUT_GUI_EDIT) {
+            self.guimode = GuiMode::Editor
+        }
+        if ui.input_mut().consume_shortcut(&SHORTCUT_GUI_RUN) {
+            self.guimode = GuiMode::Emulator
+        }
+        // Editor specific
+        if self.guimode == GuiMode::Editor {
+            if ui.input_mut().consume_shortcut(&SHORTCUT_COMPILE) {
+                self.file_compile()
+            }
+        }
+        // Emulator specific
+        else {
+            if ui.input_mut().consume_shortcut(&SHORTCUT_GUI_EMUGRAPHICS) {
+                self.emugui_display = !self.emugui_display
+            }
+            if ui.input_mut().consume_shortcut(&SHORTCUT_TOGGLEPOWER) {
+                match self.emu_running {
+                    true => {
+                        self.emu_tx.send(CtrlMSG::Stop);
+                    }
+                    false => {
+                        self.emu_tx.send(CtrlMSG::Start);
+                    }
+                }
+            }
+            if ui.input_mut().consume_shortcut(&SHORTCUT_STOP) {
+                self.emu_tx.send(CtrlMSG::Stop);
+            }
+            if self.emu_running {
+                if ui.input_mut().consume_shortcut(&SHORTCUT_PLAY) {
+                    self.emu_tx.send(CtrlMSG::PlayPause(!self.emu_playing));
+                }
+                if ui.input_mut().consume_shortcut(&SHORTCUT_TICK) && !self.emu_playing {
+                    self.emu_tx.send(CtrlMSG::Tick);
+                    ctx.request_repaint_after(std::time::Duration::from_secs(1 / 60))
+                }
+            }
+        }
     }
 }

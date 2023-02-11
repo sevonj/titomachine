@@ -1,14 +1,13 @@
 mod compiler;
+use compiler::*;
 use std::{
-    env::current_dir,
+    env::set_current_dir,
     fs::{self, File},
     io::Write,
-    path::{self, PathBuf},
+    path::PathBuf,
 };
 
-use compiler::*;
-
-const default_program: &str =
+const DEFAULT_PROGRAM: &str =
     "; To run a program, press the Compile button and then change to Run view.
 
 ; This program calculates 2+2
@@ -21,7 +20,6 @@ OUT  R1, =CRT   ; Output the value of R1
 SVC SP, =HALT   ; Service call for halt.";
 
 pub struct Editor {
-    pub working_dir: String,
     pub source_path: Option<String>,
     pub source_code: String,
     pub line_no: String,
@@ -30,9 +28,8 @@ pub struct Editor {
 impl Default for Editor {
     fn default() -> Self {
         let mut ed = Editor {
-            working_dir: current_dir().unwrap().display().to_string(),
             source_path: None,
-            source_code: default_program.into(),
+            source_code: DEFAULT_PROGRAM.into(),
             line_no: "".into(),
         };
         ed.update_linecount();
@@ -42,10 +39,8 @@ impl Default for Editor {
 
 impl Editor {
     pub fn update_linecount(&mut self) {
-        let mut linecnt = self.source_code.matches("\n").count();
-        self.line_no = String::new();
+        let linecnt = self.source_code.matches("\n").count();
         self.line_no = "1".into();
-
         for i in 2..linecnt + 2 {
             self.line_no += "\n";
             self.line_no += i.to_string().as_str();
@@ -61,13 +56,11 @@ impl Editor {
             None => return,
             Some(filepath) => {
                 let file = fs::read_to_string(filepath.clone());
-                match file {
-                    Err(_) => return,
-                    Ok(s) => {
-                        self.source_code = s;
-                        std::env::set_current_dir(PathBuf::from(&filepath).parent().unwrap());
-                        self.source_path = Some(filepath.to_str().unwrap().into());
-                    }
+                if let Ok(s) = file {
+                    self.source_code = s;
+                    set_current_dir(PathBuf::from(&filepath).parent().unwrap());
+                    self.source_path = Some(filepath.to_str().unwrap().into());
+                    self.update_linecount();
                 }
             }
         }
@@ -76,24 +69,17 @@ impl Editor {
     pub fn save_file(&mut self, pathbuf: Option<PathBuf>) {
         let filepath: String;
         match pathbuf {
-            // Provided path
             Some(s) => filepath = s.to_str().unwrap().into(),
-            None => {
-                match self.source_path.clone() {
-                    // No path provided, use currently loaded
-                    Some(s) => filepath = s,
-                    None => panic!("editor.rs, save_file(): attempted to save, no filepath"),
-                }
-            }
+            None => match self.source_path.clone() {
+                Some(s) => filepath = s,
+                None => panic!("editor.rs, save_file(): attempted to save, no filepath"),
+            },
         }
         let file = File::create(&filepath);
-        match file {
-            Err(_) => return,
-            Ok(mut f) => {
-                f.write_all(self.source_code.as_bytes());
-            }
+        if let Ok(mut f) = file {
+            f.write_all(self.source_code.as_bytes());
+            set_current_dir(PathBuf::from(&filepath).parent().unwrap());
+            self.source_path = Some(filepath);
         }
-        std::env::set_current_dir(PathBuf::from(&filepath).parent().unwrap());
-        self.source_path = Some(filepath);
     }
 }

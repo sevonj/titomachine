@@ -1,20 +1,15 @@
-use std::error::Error;
-use std::fs;
-
-use std::ops::ControlFlow;
+use std::sync::mpsc::{Receiver, Sender};
+use std::thread;
 use std::{
     ops::Range,
-    sync::mpsc,
-    thread,
     time::{Duration, Instant},
 };
 pub mod instance;
-use eframe::glow::STENCIL_BACK_REF;
 use instance::*;
+
+use self::instance::TTKInstance;
 pub mod instructions;
-use instructions::*;
 pub mod loader;
-use loader::*;
 
 pub enum CtrlMSG {
     None, // this feels like a pretty dumb solution.
@@ -45,12 +40,10 @@ pub enum CtrlMSG {
 }
 pub enum ReplyMSG {
     None,
-
     State(EmuState),
     Regs(Vec<i32>),
     Mem(Vec<i32>),
-    display(Vec<i32>),
-
+    Display(Vec<i32>),
     In,
     Out(i32),
 }
@@ -63,50 +56,67 @@ pub struct EmuState {
 }
 
 pub struct Emu {
-    instance: instance::TTKInstance,
+    instance: TTKInstance,
 
-    tx: mpsc::Sender<ReplyMSG>,
-    rx: mpsc::Receiver<CtrlMSG>,
+    tx: Sender<ReplyMSG>,
+    rx: Receiver<CtrlMSG>,
 
     loaded_prog: String,
 
     playing: bool,
     tick_rate: f32,
     turbo: bool,
+
+    t_last: Option<Instant>,
+    since_last_tick: Duration,
+
     last_tick: Instant,
     last_tick_time: Duration,
 }
 impl Emu {
-    pub fn default(tx: mpsc::Sender<ReplyMSG>, rx: mpsc::Receiver<CtrlMSG>) -> Self {
-        let xx = 1..2;
+    pub fn default(tx: Sender<ReplyMSG>, rx: Receiver<CtrlMSG>) -> Self {
         Emu {
             tx,
             rx,
-
-            instance: instance::TTKInstance::default(),
-
+            instance: TTKInstance::default(),
             loaded_prog: String::new(),
-
             playing: false,
             tick_rate: 10.,
             turbo: false,
+
+            // Time
+            t_last: None,
+            since_last_tick: Duration::ZERO,
+
             last_tick: Instant::now(),
             last_tick_time: Duration::from_micros(0),
         }
     }
     pub fn run(&mut self) {
         loop {
+            // Time
+            let t_tick = Duration::from_secs_f32(1. / self.tick_rate);
+            let t_now = Instant::now();
+            let t_delta;
+            match self.t_last {
+                Some(last) => t_delta = t_now - last,
+                None => t_delta = Duration::ZERO,
+            }
+            self.t_last = Some(t_now);
+            if self.playing {
+                self.since_last_tick += t_delta;
+            }
+
+            // Messages
             loop {
                 let msg = self.rx.try_recv().unwrap_or(CtrlMSG::None);
                 match msg {
-                    CtrlMSG::None => {
-                        break;
-                    }
+                    CtrlMSG::None => break,
 
                     // Playback control
                     CtrlMSG::Start => self.start(),
                     CtrlMSG::Stop => self.stop(),
-                    CtrlMSG::PlayPause(p) => self.playing = p,
+                    CtrlMSG::PlayPause(p) => self.playpause(p),
                     CtrlMSG::Tick => self.tick(),
 
                     // Dev
@@ -130,36 +140,42 @@ impl Emu {
             }
 
             if self.playing {
-                if self.turbo
-                    || self.last_tick.elapsed() > Duration::from_secs_f32(1. / self.tick_rate)
-                {
+                if self.turbo {
+                    self.since_last_tick = Duration::ZERO;
+                    self.tick();
+                    continue;
+                } else if self.since_last_tick >= t_tick {
+                    self.since_last_tick -= t_tick;
                     self.tick();
                     continue;
                 }
             }
-            if self.instance.running && !self.instance.halted {
-                if self.turbo {
-                    thread::sleep(Duration::from_micros(1));
-                } else {
-                    thread::sleep(Duration::from_secs_f32(0.5 / self.tick_rate));
-                }
-                continue;
+            // Sleep longer if not running
+            match self.instance.running && !self.instance.halted {
+                true => thread::sleep(Duration::from_secs_f32(0.5 / self.tick_rate)),
+                false => thread::sleep(Duration::from_secs_f32(1. / 60.)),
             }
-            thread::sleep(Duration::from_millis(16));
         }
     }
 
     fn start(&mut self) {
-        self.instance.pc = 0;
-        self.instance.ir = 0;
-        self.instance.tr = 0;
-        self.instance.sr = SR_DEFAULT;
+        self.instance.cu_pc = 0;
+        self.instance.cu_ir = 0;
+        self.instance.cu_tr = 0;
+        self.instance.cu_sr = 0;
         self.instance.running = true;
         self.instance.halted = false;
+        self.t_last = None;
     }
 
     fn stop(&mut self) {
+        self.t_last = None;
         self.instance.running = false;
+    }
+
+    fn playpause(&mut self, p: bool) {
+        self.t_last = None;
+        self.playing = p;
     }
 
     fn loadprog(&mut self, prog: String) {
@@ -194,22 +210,22 @@ impl Emu {
 
     // Check for anomalies in state registers
     fn sr_handler(&mut self) {
-        if self.instance.sr & SR_S != 0 {
+        if self.instance.cu_sr & SR_S != 0 {
             self.svc_handler();
         }
-        if self.instance.sr & SR_M != 0 {
+        if self.instance.cu_sr & SR_M != 0 {
             println!("Program Error: Forbidden memory address!");
             self.instance.halted = true;
         }
-        if self.instance.sr & SR_U != 0 {
+        if self.instance.cu_sr & SR_U != 0 {
             println!("Program Error: Unknown Instruction!");
             self.instance.halted = true;
         }
-        if self.instance.sr & SR_Z != 0 {
+        if self.instance.cu_sr & SR_Z != 0 {
             println!("Program Error: Zero division!");
             self.instance.halted = true;
         }
-        if self.instance.sr & SR_O != 0 {
+        if self.instance.cu_sr & SR_O != 0 {
             println!("Program Error: Overflow!");
             self.instance.halted = true;
         }
@@ -238,10 +254,10 @@ impl Emu {
 
     fn sendregs(&mut self) {
         let mut retvec: Vec<i32> = Vec::with_capacity(12);
-        retvec.push(self.instance.pc);
-        retvec.push(self.instance.ir);
-        retvec.push(self.instance.tr);
-        retvec.push(self.instance.sr);
+        retvec.push(self.instance.cu_pc);
+        retvec.push(self.instance.cu_ir);
+        retvec.push(self.instance.cu_tr);
+        retvec.push(self.instance.cu_sr);
         for i in 0..8 {
             retvec.push(self.instance.gpr[i])
         }
@@ -250,6 +266,6 @@ impl Emu {
 
     fn senddisp(&mut self) {
         let retvec = self.instance.memory[8192..8192 + 120 * 160].to_vec();
-        self.tx.send(ReplyMSG::display(retvec));
+        self.tx.send(ReplyMSG::Display(retvec));
     }
 }

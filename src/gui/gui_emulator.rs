@@ -2,25 +2,23 @@ use super::{super::emulator::CtrlMSG, Base};
 use crate::TitoApp;
 pub mod instruction_parser;
 use eframe::emath::format_with_decimals_in_range;
-use instruction_parser::*;
-
-use egui::{Button, Color32, FontId, RichText};
+use egui::{Button, Color32, Context, FontId, Frame, RichText, TextEdit, Ui};
 use egui_extras::{Column, RetainedImage, TableBuilder};
-use num_traits::{ToPrimitive, clamp};
+use instruction_parser::*;
+use num_traits::clamp;
 
-const font_tbl: FontId = FontId::monospace(12.0);
-const font_tblh: FontId = FontId::proportional(12.5);
-const font_but: FontId = FontId::monospace(16.0);
-const col_text: Color32 = Color32::DARK_GRAY;
-const col_text_hi: Color32 = Color32::WHITE;
+const FONT_TBL: FontId = FontId::monospace(12.0);
+const FONT_TBLH: FontId = FontId::proportional(12.5);
+const FONT_BUT: FontId = FontId::monospace(16.0);
+const COL_TEXT: Color32 = Color32::DARK_GRAY;
+const COL_TEXT_HI: Color32 = Color32::WHITE;
 
 impl TitoApp {
-    pub fn emulator_toolbar(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+    pub fn emulator_toolbar(&mut self, ctx: &Context, ui: &mut Ui) {
         let text_onoff;
-        if self.emu_running {
-            text_onoff = RichText::new("⏼on/off").color(Color32::WHITE);
-        } else {
-            text_onoff = RichText::new("⏼on/off")
+        match self.emu_running {
+            true => text_onoff = RichText::new("⏼on/off").color(Color32::WHITE),
+            false => text_onoff = RichText::new("⏼on/off"),
         }
         if ui.add(Button::new(text_onoff)).clicked() {
             self.emu_playing = false;
@@ -37,10 +35,9 @@ impl TitoApp {
 
         ui.add_enabled_ui(self.emu_running, |ui| {
             let text_play;
-            if self.emu_playing {
-                text_play = RichText::new("⏸").color(Color32::WHITE)
-            } else {
-                text_play = RichText::new("▶")
+            match self.emu_playing {
+                true => text_play = RichText::new("⏸").color(Color32::WHITE),
+                false => text_play = RichText::new("▶"),
             }
             if ui
                 .add(Button::new(text_play).min_size(egui::vec2(24.0, 0.0)))
@@ -76,15 +73,15 @@ impl TitoApp {
         ui.separator();
     }
 
-    pub fn emulator_panel(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+    pub fn emulator_panel(&mut self, ctx: &Context, ui: &mut Ui) {
         self.refresh_emu_state();
 
         egui::CentralPanel::default().show(ctx, |ui| {
             egui::SidePanel::right("register_panel")
                 .resizable(false)
                 .show(ctx, |ui| {
-                    self.stateview(ctx, ui);
-                    self.regview(ctx, ui);
+                    self.stateview(ui);
+                    self.regview(ui);
                 });
             // IO Panel
             egui::SidePanel::right("io_panel")
@@ -104,12 +101,11 @@ impl TitoApp {
         });
     }
 
-    fn memview(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+    fn memview(&mut self, ctx: &Context, ui: &mut Ui) {
         let width_adr: f32 = 96.0;
-        let width_val: f32 = if self.memview_val_base == Base::Bin {
-            256.0
-        } else {
-            96.0
+        let width_val: f32 = match self.mem_val_base == Base::Bin {
+            true => 256.0,
+            false => 96.0,
         };
         let width_ins: f32 = 192.0;
 
@@ -121,16 +117,16 @@ impl TitoApp {
             .column(Column::remainder()) // Registers PC/SP/FP
             .header(20.0, |mut header| {
                 header.col(|ui| {
-                    ui.heading(RichText::new("Address").font(font_tblh.clone()));
+                    ui.heading(RichText::new("Address").font(FONT_TBLH.clone()));
                 });
                 header.col(|ui| {
-                    ui.heading(RichText::new("Value").font(font_tblh.clone()));
+                    ui.heading(RichText::new("Value").font(FONT_TBLH.clone()));
                 });
                 header.col(|ui| {
-                    ui.heading(RichText::new("Instruction").font(font_tblh.clone()));
+                    ui.heading(RichText::new("Instruction").font(FONT_TBLH.clone()));
                 });
                 header.col(|ui| {
-                    ui.heading(RichText::new("").font(font_tblh.clone()));
+                    ui.heading(RichText::new("").font(FONT_TBLH.clone()));
                 });
             })
             .body(|mut body| {
@@ -138,7 +134,6 @@ impl TitoApp {
                 for i in 0..rowcount {
                     let adr = self.emu_memory_off + i;
                     let val: i32 = self.emu_memory[i as usize];
-
                     let pc = self.emu_registers[0];
                     let ir = self.emu_registers[1];
                     let tr = self.emu_registers[2];
@@ -159,45 +154,44 @@ impl TitoApp {
                             reg_str.push_str("FP ")
                         }
                     }
-                    let adr_str = match self.memview_adr_base {
+                    let adr_str = match self.mem_adr_base {
                         Base::Bin => format!("{adr:#b}"),
                         Base::Dec => format!("{adr}"),
                         Base::Hex => format!("{adr:#x}"),
                     };
-                    let val_str = match self.memview_val_base {
+                    let val_str = match self.mem_val_base {
                         Base::Bin => format!("{val:#034b}"),
                         Base::Dec => format!("{val}"),
                         Base::Hex => format!("{val:#010x}"),
                     };
                     let ins_str = instruction_to_string(val);
                     // Decide style
-                    let col = if i == pc { col_text_hi } else { col_text };
+                    let col = if i == pc { COL_TEXT_HI } else { COL_TEXT };
                     body.row(20.0, |mut row| {
                         row.col(|ui| {
-                            ui.label(RichText::new(adr_str).font(font_tbl.clone()).color(col));
+                            ui.label(RichText::new(adr_str).font(FONT_TBL.clone()).color(col));
                         });
                         row.col(|ui| {
-                            ui.label(RichText::new(val_str).font(font_tbl.clone()).color(col));
+                            ui.label(RichText::new(val_str).font(FONT_TBL.clone()).color(col));
                         });
                         row.col(|ui| {
-                            ui.label(RichText::new(ins_str).font(font_tbl.clone()).color(col));
+                            ui.label(RichText::new(ins_str).font(FONT_TBL.clone()).color(col));
                         });
                         row.col(|ui| {
-                            ui.label(RichText::new(reg_str).font(font_tbl.clone()).color(col));
+                            ui.label(RichText::new(reg_str).font(FONT_TBL.clone()).color(col));
                         });
                     });
                 }
             });
     }
 
-    fn regview(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+    fn regview(&mut self, ui: &mut Ui) {
         // CPU Registers
         ui.label("CPU Registers");
         let reg_name_width: f32 = 16.0;
-        let reg_val_width: f32 = if self.register_val_base == Base::Bin {
-            256.0
-        } else {
-            72.0
+        let reg_val_width: f32 = match self.regs_base == Base::Bin {
+            true => 256.0,
+            false => 72.0,
         };
 
         let pc = self.emu_registers[0];
@@ -206,7 +200,7 @@ impl TitoApp {
             .column(Column::initial(reg_name_width))
             .column(Column::exact(reg_val_width))
             .body(|mut body| {
-                let pc_str = match self.memview_adr_base {
+                let pc_str = match self.mem_adr_base {
                     Base::Bin => format!("{pc:#b}"),
                     Base::Dec => format!("{pc}"),
                     Base::Hex => format!("{pc:#x}"),
@@ -221,7 +215,7 @@ impl TitoApp {
                 });
                 for i in 0..8 {
                     let val = self.emu_registers[4 + i];
-                    let val_str = match self.register_val_base {
+                    let val_str = match self.regs_base {
                         Base::Bin => format!("{val:#034b}"),
                         Base::Dec => format!("{val}"),
                         Base::Hex => format!("{val:#010x}"),
@@ -250,10 +244,10 @@ impl TitoApp {
         }
     }
 
-    fn ioview(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+    fn ioview(&mut self, ctx: &Context, ui: &mut Ui) {
         ui.label("=CRT");
         // =CRT
-        egui::Frame::side_top_panel(&ctx.style())
+        Frame::side_top_panel(&ctx.style())
             .fill(Color32::BLACK)
             .show(ui, |ui| {
                 ui.label(self.buf_out.as_str());
@@ -265,10 +259,10 @@ impl TitoApp {
         ui.add_enabled_ui(self.emu_waiting_for_in, |ui| {
             ui.label(
                 RichText::new("=KBD")
-                    .font(font_tbl.clone())
+                    .font(FONT_TBL.clone())
                     .color(Color32::WHITE),
             );
-            egui::TextEdit::singleline(&mut self.buf_in)
+            TextEdit::singleline(&mut self.buf_in)
                 .hint_text("Type a number")
                 .show(ui);
             if ui.button("Send").clicked() {
@@ -284,7 +278,7 @@ impl TitoApp {
         });
     }
 
-    fn display(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+    fn display(&mut self, ctx: &Context, ui: &mut Ui) {
         let target_w = clamp(ui.available_width(), 0., 800.);
 
         let w = target_w as u32;
@@ -331,11 +325,8 @@ impl TitoApp {
         self.emu_tx.send(CtrlMSG::GetMem(0..self.emu_memory_len));
     }
 
-    fn stateview(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+    fn stateview(&mut self, ui: &mut Ui) {
         ui.label("Emulation speed:");
-        ui.label(format_with_decimals_in_range(
-            self.emu_achieved_speed as f64,
-            1..=1,
-        ) + "%");
+        ui.label(format_with_decimals_in_range(self.emu_achieved_speed as f64, 1..=1) + "%");
     }
 }

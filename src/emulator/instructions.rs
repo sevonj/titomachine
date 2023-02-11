@@ -103,59 +103,63 @@ impl Emu {
             println!("Err: called exec() but the machine is halted! You shouldn't be here.");
             return;
         }
-        if self.instance.pc as usize >= self.instance.memory.len() {
-            self.instance.sr |= SR_M;
+        if self.instance.cu_pc as usize >= self.instance.memory.len() {
+            self.instance.cu_sr |= SR_M;
             return;
         }
-        self.instance.ir = self.instance.memory[self.instance.pc as usize];
-        let instruction = TTK91Instruction::from(self.instance.ir);
-        self.instance.tr = instruction.addr;
+        self.instance.cu_ir = self.instance.memory[self.instance.cu_pc as usize];
+        let instruction = TTK91Instruction::from(self.instance.cu_ir);
+        self.instance.cu_tr = instruction.addr;
 
-        // Second register
+        // Immediate operand
         if instruction.ri != 0 {
-            if instruction.ri as usize >= self.instance.memory.len() {
-                self.instance.sr |= SR_M;
-                return;
-            }
-            match self.instance.tr.checked_add(self.instance.gpr[instruction.ri as usize]){
-                Some(i) =>  self.instance.tr = i,
-                None => self.instance.sr |= SR_O,
+            // if instruction.ri as usize >= self.instance.memory.len() {
+            //     self.instance.sr |= SR_M;
+            //     return;
+            // }
+            match self
+                .instance
+                .cu_tr
+                .checked_add(self.instance.gpr[instruction.ri as usize])
+            {
+                Some(i) => self.instance.cu_tr = i,
+                None => self.instance.cu_sr |= SR_O,
             }
         }
         // Direct addressing: value is a pointer
         if instruction.mode == 1 {
-            if self.instance.tr as usize >= self.instance.memory.len() {
-                self.instance.sr |= SR_M;
+            if self.instance.cu_tr as usize >= self.instance.memory.len() {
+                self.instance.cu_sr |= SR_M;
                 return;
             }
-            self.instance.tr = self.instance.memory[self.instance.tr as usize];
+            self.instance.cu_tr = self.instance.memory[self.instance.cu_tr as usize];
         }
         // Indirect addressing: value is a pointer to a pointer
         else if instruction.mode == 2 {
-            if self.instance.tr as usize >= self.instance.memory.len() {
-                self.instance.sr |= SR_M;
+            if self.instance.cu_tr as usize >= self.instance.memory.len() {
+                self.instance.cu_sr |= SR_M;
                 return;
             }
-            self.instance.tr =
-                self.instance.memory[self.instance.memory[self.instance.tr as usize] as usize];
+            self.instance.cu_tr =
+                self.instance.memory[self.instance.memory[self.instance.cu_tr as usize] as usize];
         }
 
         match FromPrimitive::from_i32(instruction.opcode) {
             Some(Opcode::NOP) => {
-                self.instance.pc += 1;
+                self.instance.cu_pc += 1;
             }
             Some(Opcode::STORE) => {
-                if self.instance.tr as usize >= self.instance.memory.len() {
-                    self.instance.sr |= SR_M;
+                if self.instance.cu_tr as usize >= self.instance.memory.len() {
+                    self.instance.cu_sr |= SR_M;
                     return;
                 }
-                self.instance.memory[self.instance.tr as usize] =
+                self.instance.memory[self.instance.cu_tr as usize] =
                     self.instance.gpr[instruction.rj as usize];
-                self.instance.pc += 1;
+                self.instance.cu_pc += 1;
             }
             Some(Opcode::LOAD) => {
-                self.instance.gpr[instruction.rj as usize] = self.instance.tr;
-                self.instance.pc += 1;
+                self.instance.gpr[instruction.rj as usize] = self.instance.cu_tr;
+                self.instance.cu_pc += 1;
             }
             Some(Opcode::IN) => {
                 self.tx.send(ReplyMSG::In);
@@ -164,213 +168,213 @@ impl Emu {
             Some(Opcode::OUT) => {
                 self.tx
                     .send(ReplyMSG::Out(self.instance.gpr[instruction.rj as usize]));
-                self.instance.pc += 1;
+                self.instance.cu_pc += 1;
             }
             Some(Opcode::ADD) => {
-                match self.instance.gpr[instruction.rj as usize].checked_add(self.instance.tr) {
+                match self.instance.gpr[instruction.rj as usize].checked_add(self.instance.cu_tr) {
                     Some(i) => self.instance.gpr[instruction.rj as usize] = i,
-                    None => self.instance.sr |= SR_O,
+                    None => self.instance.cu_sr |= SR_O,
                 }
-                self.instance.pc += 1;
+                self.instance.cu_pc += 1;
             }
             Some(Opcode::SUB) => {
-                match self.instance.gpr[instruction.rj as usize].checked_sub(self.instance.tr) {
+                match self.instance.gpr[instruction.rj as usize].checked_sub(self.instance.cu_tr) {
                     Some(i) => self.instance.gpr[instruction.rj as usize] = i,
-                    None => self.instance.sr |= SR_O,
+                    None => self.instance.cu_sr |= SR_O,
                 }
-                self.instance.pc += 1;
+                self.instance.cu_pc += 1;
             }
             Some(Opcode::MUL) => {
-                match self.instance.gpr[instruction.rj as usize].checked_mul(self.instance.tr) {
+                match self.instance.gpr[instruction.rj as usize].checked_mul(self.instance.cu_tr) {
                     Some(i) => self.instance.gpr[instruction.rj as usize] = i,
-                    None => self.instance.sr |= SR_O,
+                    None => self.instance.cu_sr |= SR_O,
                 }
-                self.instance.pc += 1;
+                self.instance.cu_pc += 1;
             }
             Some(Opcode::DIV) => {
-                match self.instance.gpr[instruction.rj as usize].checked_div(self.instance.tr) {
+                match self.instance.gpr[instruction.rj as usize].checked_div(self.instance.cu_tr) {
                     Some(i) => self.instance.gpr[instruction.rj as usize] = i,
-                    None => self.instance.sr |= SR_O,
+                    None => self.instance.cu_sr |= SR_O,
                 }
-                self.instance.pc += 1;
+                self.instance.cu_pc += 1;
             }
             Some(Opcode::MOD) => {
-                self.instance.gpr[instruction.rj as usize] %= self.instance.tr;
-                self.instance.pc += 1;
+                self.instance.gpr[instruction.rj as usize] %= self.instance.cu_tr;
+                self.instance.cu_pc += 1;
             }
             Some(Opcode::AND) => {
-                self.instance.gpr[instruction.rj as usize] &= self.instance.tr;
-                self.instance.pc += 1;
+                self.instance.gpr[instruction.rj as usize] &= self.instance.cu_tr;
+                self.instance.cu_pc += 1;
             }
             Some(Opcode::OR) => {
-                self.instance.gpr[instruction.rj as usize] |= self.instance.tr;
-                self.instance.pc += 1;
+                self.instance.gpr[instruction.rj as usize] |= self.instance.cu_tr;
+                self.instance.cu_pc += 1;
             }
             Some(Opcode::XOR) => {
-                self.instance.gpr[instruction.rj as usize] ^= self.instance.tr;
-                self.instance.pc += 1;
+                self.instance.gpr[instruction.rj as usize] ^= self.instance.cu_tr;
+                self.instance.cu_pc += 1;
             }
             Some(Opcode::SHL) => {
-                self.instance.gpr[instruction.rj as usize] <<= self.instance.tr;
-                self.instance.pc += 1;
+                self.instance.gpr[instruction.rj as usize] <<= self.instance.cu_tr;
+                self.instance.cu_pc += 1;
             }
             Some(Opcode::SHR) => {
                 // Casting to unsigned because signed int defaults to arithmetic shift.
                 // This tactic worked in C, TODO: verify that it works here.
                 self.instance.gpr[instruction.rj as usize] =
-                    (self.instance.gpr[instruction.rj as usize] as u32 >> self.instance.tr) as i32;
-                self.instance.pc += 1;
+                    (self.instance.gpr[instruction.rj as usize] as u32 >> self.instance.cu_tr) as i32;
+                self.instance.cu_pc += 1;
             }
             Some(Opcode::NOT) => {
-                self.instance.gpr[instruction.rj as usize] = !self.instance.tr;
-                self.instance.pc += 1;
+                self.instance.gpr[instruction.rj as usize] = !self.instance.cu_tr;
+                self.instance.cu_pc += 1;
             }
             Some(Opcode::SHRA) => {
-                self.instance.gpr[instruction.rj as usize] >>= self.instance.tr;
-                self.instance.pc += 1;
+                self.instance.gpr[instruction.rj as usize] >>= self.instance.cu_tr;
+                self.instance.cu_pc += 1;
             }
             Some(Opcode::COMP) => {
-                if self.instance.gpr[instruction.rj as usize] > self.instance.tr {
+                if self.instance.gpr[instruction.rj as usize] > self.instance.cu_tr {
                     // Greater
-                    self.instance.sr |= SR_G;
-                    self.instance.sr &= !SR_E;
-                    self.instance.sr &= !SR_L;
-                } else if self.instance.gpr[instruction.rj as usize] == self.instance.tr {
+                    self.instance.cu_sr |= SR_G;
+                    self.instance.cu_sr &= !SR_E;
+                    self.instance.cu_sr &= !SR_L;
+                } else if self.instance.gpr[instruction.rj as usize] == self.instance.cu_tr {
                     // Equal
-                    self.instance.sr &= !SR_G;
-                    self.instance.sr |= SR_E;
-                    self.instance.sr &= !SR_L;
+                    self.instance.cu_sr &= !SR_G;
+                    self.instance.cu_sr |= SR_E;
+                    self.instance.cu_sr &= !SR_L;
                 } else {
                     // Less
-                    self.instance.sr &= !SR_G;
-                    self.instance.sr &= !SR_E;
-                    self.instance.sr |= SR_L;
+                    self.instance.cu_sr &= !SR_G;
+                    self.instance.cu_sr &= !SR_E;
+                    self.instance.cu_sr |= SR_L;
                 }
-                self.instance.pc += 1;
+                self.instance.cu_pc += 1;
             }
             // Branching instructions
             Some(Opcode::JUMP) => {
-                self.instance.pc = self.instance.tr;
+                self.instance.cu_pc = self.instance.cu_tr;
             }
             // Jumps that use GPR
             Some(Opcode::JNEG) => {
                 if self.instance.gpr[instruction.rj as usize] < 0 {
-                    self.instance.pc = self.instance.tr;
+                    self.instance.cu_pc = self.instance.cu_tr;
                 } else {
-                    self.instance.pc += 1;
+                    self.instance.cu_pc += 1;
                 }
             }
             Some(Opcode::JZER) => {
                 if self.instance.gpr[instruction.rj as usize] == 0 {
-                    self.instance.pc = self.instance.tr;
+                    self.instance.cu_pc = self.instance.cu_tr;
                 } else {
-                    self.instance.pc += 1;
+                    self.instance.cu_pc += 1;
                 }
             }
             Some(Opcode::JPOS) => {
                 if self.instance.gpr[instruction.rj as usize] > 0 {
-                    self.instance.pc = self.instance.tr;
+                    self.instance.cu_pc = self.instance.cu_tr;
                 } else {
-                    self.instance.pc += 1;
+                    self.instance.cu_pc += 1;
                 }
             }
             Some(Opcode::JNNEG) => {
                 if self.instance.gpr[instruction.rj as usize] >= 0 {
-                    self.instance.pc = self.instance.tr;
+                    self.instance.cu_pc = self.instance.cu_tr;
                 } else {
-                    self.instance.pc += 1;
+                    self.instance.cu_pc += 1;
                 }
             }
             Some(Opcode::JNZER) => {
                 if self.instance.gpr[instruction.rj as usize] != 0 {
-                    self.instance.pc = self.instance.tr;
+                    self.instance.cu_pc = self.instance.cu_tr;
                 } else {
-                    self.instance.pc += 1;
+                    self.instance.cu_pc += 1;
                 }
             }
             Some(Opcode::JNPOS) => {
                 if self.instance.gpr[instruction.rj as usize] <= 0 {
-                    self.instance.pc = self.instance.tr;
+                    self.instance.cu_pc = self.instance.cu_tr;
                 } else {
-                    self.instance.pc += 1;
+                    self.instance.cu_pc += 1;
                 }
             }
             // Jumps that use SR
             Some(Opcode::JLES) => {
-                if self.instance.sr & SR_L == SR_L {
-                    self.instance.pc = self.instance.tr;
+                if self.instance.cu_sr & SR_L == SR_L {
+                    self.instance.cu_pc = self.instance.cu_tr;
                 } else {
-                    self.instance.pc += 1;
+                    self.instance.cu_pc += 1;
                 }
             }
             Some(Opcode::JEQU) => {
-                if self.instance.sr & SR_E == SR_E {
-                    self.instance.pc = self.instance.tr;
+                if self.instance.cu_sr & SR_E == SR_E {
+                    self.instance.cu_pc = self.instance.cu_tr;
                 } else {
-                    self.instance.pc += 1;
+                    self.instance.cu_pc += 1;
                 }
             }
             Some(Opcode::JGRE) => {
-                if self.instance.sr & SR_G == SR_G {
-                    self.instance.pc = self.instance.tr;
+                if self.instance.cu_sr & SR_G == SR_G {
+                    self.instance.cu_pc = self.instance.cu_tr;
                 } else {
-                    self.instance.pc += 1;
+                    self.instance.cu_pc += 1;
                 }
             }
             Some(Opcode::JNLES) => {
-                if self.instance.sr & SR_L == 0 {
-                    self.instance.pc = self.instance.tr;
+                if self.instance.cu_sr & SR_L == 0 {
+                    self.instance.cu_pc = self.instance.cu_tr;
                 } else {
-                    self.instance.pc += 1;
+                    self.instance.cu_pc += 1;
                 }
             }
             Some(Opcode::JNEQU) => {
-                if self.instance.sr & SR_E == 0 {
-                    self.instance.pc = self.instance.tr;
+                if self.instance.cu_sr & SR_E == 0 {
+                    self.instance.cu_pc = self.instance.cu_tr;
                 } else {
-                    self.instance.pc += 1;
+                    self.instance.cu_pc += 1;
                 }
             }
             Some(Opcode::JNGRE) => {
-                if self.instance.sr & SR_G == 0 {
-                    self.instance.pc = self.instance.tr;
+                if self.instance.cu_sr & SR_G == 0 {
+                    self.instance.cu_pc = self.instance.cu_tr;
                 } else {
-                    self.instance.pc += 1;
+                    self.instance.cu_pc += 1;
                 }
             }
             // Subroutine instructions
             Some(Opcode::CALL) => {
                 self.instance.gpr[SP] += 1;
-                self.instance.memory[self.instance.gpr[SP] as usize] = self.instance.pc;
+                self.instance.memory[self.instance.gpr[SP] as usize] = self.instance.cu_pc;
                 self.instance.gpr[SP] += 1;
                 self.instance.memory[self.instance.gpr[SP] as usize] = self.instance.gpr[FP];
-                self.instance.pc = self.instance.tr;
+                self.instance.cu_pc = self.instance.cu_tr;
                 self.instance.gpr[FP] = self.instance.gpr[SP];
             }
             Some(Opcode::EXIT) => {
-                self.instance.gpr[SP] = self.instance.gpr[FP] - 2 - self.instance.tr;
-                self.instance.pc = self.instance.memory[self.instance.gpr[FP] as usize - 1];
+                self.instance.gpr[SP] = self.instance.gpr[FP] - 2 - self.instance.cu_tr;
+                self.instance.cu_pc = self.instance.memory[self.instance.gpr[FP] as usize - 1];
                 self.instance.gpr[FP] = self.instance.memory[self.instance.gpr[FP] as usize];
-                self.instance.pc += 1;
+                self.instance.cu_pc += 1;
             }
             // Stack instructions
             Some(Opcode::PUSH) => {
                 self.instance.gpr[SP] += 1;
-                self.instance.memory[self.instance.gpr[SP] as usize] = self.instance.tr;
-                self.instance.pc += 1;
+                self.instance.memory[self.instance.gpr[SP] as usize] = self.instance.cu_tr;
+                self.instance.cu_pc += 1;
             }
             Some(Opcode::POP) => {
                 self.instance.gpr[instruction.ri as usize] =
                     self.instance.memory[self.instance.gpr[SP] as usize];
                 self.instance.gpr[SP] -= 1;
-                self.instance.pc += 1;
+                self.instance.cu_pc += 1;
             }
             Some(Opcode::PUSHR) => {
                 for i in 0..7 {
                     self.instance.gpr[SP] += 1;
                     self.instance.memory[self.instance.gpr[SP] as usize] = self.instance.gpr[i];
                 }
-                self.instance.pc += 1;
+                self.instance.cu_pc += 1;
             }
             Some(Opcode::POPR) => {
                 let old_sp = self.instance.gpr[SP] as usize;
@@ -378,26 +382,26 @@ impl Emu {
                     self.instance.gpr[i] = self.instance.memory[(old_sp - 6 + i)];
                     self.instance.gpr[SP] -= 1;
                 }
-                self.instance.pc += 1;
+                self.instance.cu_pc += 1;
             }
             // Syscalls
             Some(Opcode::SVC) => {
-                self.instance.sr |= SR_S;
-                self.instance.pc += 1;
+                self.instance.cu_sr |= SR_S;
+                self.instance.cu_pc += 1;
             }
             None => {
-                self.instance.sr |= SR_U;
+                self.instance.cu_sr |= SR_U;
             }
         }
     }
 
     pub fn svc_handler(&mut self) {
-        if self.instance.sr & SR_S == 0 {
+        if self.instance.cu_sr & SR_S == 0 {
             return;
         }
-        self.instance.sr &= !SR_S; // Clear syscall flag
+        self.instance.cu_sr &= !SR_S; // Clear syscall flag
 
-        match FromPrimitive::from_i32(self.instance.tr) {
+        match FromPrimitive::from_i32(self.instance.cu_tr) {
             Some(builtin_symbols::svc_halt) => {
                 println!("SVC: System halted.");
                 self.instance.halted = true;
@@ -428,9 +432,9 @@ impl Emu {
         if self.instance.waiting_for_io == false {
             panic!("input_handler(): waiting_for_io is false. Why did you call me?")
         }
-        let instruction = TTK91Instruction::from(self.instance.ir);
+        let instruction = TTK91Instruction::from(self.instance.cu_ir);
         self.instance.gpr[instruction.rj as usize] = input;
         self.instance.waiting_for_io = false;
-        self.instance.pc += 1;
+        self.instance.cu_pc += 1;
     }
 }

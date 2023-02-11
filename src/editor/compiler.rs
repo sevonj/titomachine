@@ -713,20 +713,26 @@ pub fn compile(source: String) -> String {
         off += 1;
     }
 
+    let prog_start = 0;
+    let fp_start = prog_size-1;
+    let data_start = prog_size;
+    let sp_start = fp_start + data_size;
+
     let mut return_str = String::new();
     return_str += "___b91___\n";
     return_str += "___code___\n";
-    return_str += "0 ";
-    return_str += (prog_size - 1).to_string().as_str();
+    return_str += (prog_start).to_string().as_str();
+    return_str += " ";
+    return_str += (fp_start).to_string().as_str();
     return_str += "\n";
     for i in prog {
         return_str += i.to_string().as_str();
         return_str += "\n"
     }
     return_str += "___data___\n";
-    return_str += (prog_size).to_string().as_str();
+    return_str += (data_start).to_string().as_str();
     return_str += " ";
-    return_str += (prog_size + data_size - 1).to_string().as_str();
+    return_str += (sp_start).to_string().as_str();
     return_str += "\n";
     for i in data {
         return_str += i.to_string().as_str();

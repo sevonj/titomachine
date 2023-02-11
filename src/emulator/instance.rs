@@ -30,16 +30,16 @@ pub const FP: usize = 7;
 pub struct TTKInstance {
     pub memory: Vec<i32>,
 
-    // CU Registers
-    pub pc: i32, // Program Counter
-    pub ir: i32, // Instruction Register
-    pub tr: i32, //
-    pub sr: i32, // State Register
+    pub cu_pc: i32,     // Program Counter
+    pub cu_ir: i32,     // Instruction Register
+    pub cu_tr: i32,     // Temporary Regiter
+    pub cu_sr: i32,     // State Register
+    pub gpr: [i32; 8],  // General Purpose Registers R0..R7
+    pub mmu_base: i32,  // -- unimplemented
+    pub mmu_limit: i32, // -- unimplemented
+    pub mmu_mar: i32,   // Memory address -- unimplemented
+    pub mmu_mbr: i32,   // Memory buffer -- unimplemented
 
-    // General purpose registers
-    pub gpr: [i32; 8],
-
-    //
     pub running: bool,
     pub halted: bool,
     pub waiting_for_io: bool,
@@ -49,14 +49,18 @@ impl Default for TTKInstance {
     fn default() -> Self {
         TTKInstance {
             memory: vec![0; DEFAULT_MEMSIZE],
-            pc: 0,
-            ir: 0,
-            tr: 0,
-            sr: 0,
+            cu_pc: 0,
+            cu_ir: 0,
+            cu_tr: 0,
+            cu_sr: 0,
             gpr: [0; 8],
             running: false,
             halted: false,
             waiting_for_io: false,
+            mmu_base: 0,
+            mmu_limit: 0,
+            mmu_mar: 0,
+            mmu_mbr: 0,
         }
     }
 }
