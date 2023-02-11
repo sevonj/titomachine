@@ -5,9 +5,9 @@ Because my programs were too much for the original.
 
 ### Notes:
 - May be buggy.
-- Only working syscall is =halt.
+- Some unnecessary(?) features not yet implemented.
 
-![Screenshot from 2023-02-10 12-51-17](https://user-images.githubusercontent.com/100710152/218074215-baec423f-6a91-4326-a649-e50422cb0909.png)
+![image](https://user-images.githubusercontent.com/100710152/218274322-0004823f-8435-48dd-aab8-73447b5d2580.png)
 
 
 The OG: [Titokone](https://www.cs.helsinki.fi/group/titokone/)
