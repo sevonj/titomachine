@@ -1,6 +1,8 @@
 ; TitoTiles v0.0.4
-; Tilemap renderer test for TitoKone
+; Tilemap renderer test for Titokone
 ; https://www.cs.helsinki.fi/group/titokone/
+
+; Note: Alternatively run it on my own emulator: 
 
 ; Can render tiles, haven't done the map part.
 

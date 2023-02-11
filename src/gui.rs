@@ -143,17 +143,12 @@ impl TitoApp {
 
             ui.with_layout(Layout::left_to_right(Align::TOP), |ui| {
                 ui.label("CPU Speed: ");
-                if ui
-                    .add_enabled(
-                        !self.emu_turbo,
-                        DragValue::new(&mut self.emu_speed)
-                            .speed(0.1)
-                            .clamp_range(1..=9999),
-                    )
-                    .changed()
-                {
-                    self.send_settings()
-                }
+                ui.add_enabled(
+                    !self.emu_turbo,
+                    DragValue::new(&mut self.emu_speed)
+                        .speed(0.1)
+                        .clamp_range(1..=9999),
+                );
                 match self.emu_use_khz {
                     true => ui.label("KHz"),
                     false => ui.label("Hz"),

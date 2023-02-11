@@ -188,7 +188,7 @@ impl TitoApp {
         }
     }
 
-    pub fn send_settings(&mut self) {
+    fn send_settings(&mut self) {
         if self.emu_use_khz {
             self.emu_tx.send(CtrlMSG::SetRate(self.emu_speed * 1000.));
         } else {
@@ -208,6 +208,7 @@ impl eframe::App for TitoApp {
             ctx.request_repaint_after(std::time::Duration::from_secs(1 / 60))
         }
         self.msg_handler();
+        self.send_settings();
         self.gui_main(ctx);
     }
 }
