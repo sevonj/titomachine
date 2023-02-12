@@ -2,10 +2,10 @@ use super::{super::emulator::CtrlMSG, Base};
 use crate::TitoApp;
 pub mod instruction_parser;
 use eframe::emath::format_with_decimals_in_range;
-use egui::{Button, Color32, Context, FontId, Frame, RichText, TextEdit, Ui};
+use egui::{Button, Color32, Context, FontId, Frame, Layout, RichText, TextEdit, Ui};
 use egui_extras::{Column, RetainedImage, TableBuilder};
 use instruction_parser::*;
-use num_traits::clamp;
+use num_traits::{clamp, ToPrimitive};
 
 const FONT_TBL: FontId = FontId::monospace(12.0);
 const FONT_TBLH: FontId = FontId::proportional(12.5);
@@ -92,8 +92,12 @@ impl TitoApp {
                 });
             egui::CentralPanel::default().show(ctx, |ui| {
                 if self.emugui_display {
-                    self.display(ctx, ui);
-                    self.emu_tx.send(CtrlMSG::GetDisp);
+                    egui::TopBottomPanel::top("display")
+                        .resizable(true)
+                        .show(ctx, |ui| {
+                            self.display(ctx, ui);
+                            self.emu_tx.send(CtrlMSG::GetDisp);
+                        });
                 }
                 self.memview(ctx, ui);
             });
@@ -108,80 +112,136 @@ impl TitoApp {
         };
         let width_ins: f32 = 192.0;
 
-        TableBuilder::new(ui)
-            .striped(true)
-            .column(Column::exact(width_adr)) // Address
-            .column(Column::exact(width_val)) // Value
-            .column(Column::exact(width_ins)) // Instruction
-            .column(Column::remainder()) // Registers PC/SP/FP
-            .header(20.0, |mut header| {
-                header.col(|ui| {
-                    ui.heading(RichText::new("Address").font(FONT_TBLH.clone()));
-                });
-                header.col(|ui| {
-                    ui.heading(RichText::new("Value").font(FONT_TBLH.clone()));
-                });
-                header.col(|ui| {
-                    ui.heading(RichText::new("Instruction").font(FONT_TBLH.clone()));
-                });
-                header.col(|ui| {
-                    ui.heading(RichText::new("").font(FONT_TBLH.clone()));
-                });
-            })
-            .body(|mut body| {
-                let rowcount = self.emu_memory_len;
-                for i in 0..rowcount {
-                    let adr = self.emu_memory_off + i;
-                    let val: i32 = self.emu_memory[i as usize];
-                    let pc = self.emu_registers[0];
-                    let ir = self.emu_registers[1];
-                    let tr = self.emu_registers[2];
-                    let sr = self.emu_registers[3];
-                    let sp = self.emu_registers[10];
-                    let fp = self.emu_registers[11];
-                    // Create strings
-                    let mut reg_str = String::new();
-                    if pc == adr || sp == adr || fp == adr {
-                        reg_str.push_str("<-- ");
-                        if pc == adr {
-                            reg_str.push_str("PC ")
-                        }
-                        if sp == adr {
-                            reg_str.push_str("SP ")
-                        }
-                        if fp == adr {
-                            reg_str.push_str("FP ")
-                        }
-                    }
-                    let adr_str = match self.mem_adr_base {
-                        Base::Bin => format!("{adr:#b}"),
-                        Base::Dec => format!("{adr}"),
-                        Base::Hex => format!("{adr:#x}"),
-                    };
-                    let val_str = match self.mem_val_base {
-                        Base::Bin => format!("{val:#034b}"),
-                        Base::Dec => format!("{val}"),
-                        Base::Hex => format!("{val:#010x}"),
-                    };
-                    let ins_str = instruction_to_string(val);
-                    // Decide style
-                    let col = if i == pc { COL_TEXT_HI } else { COL_TEXT };
-                    body.row(20.0, |mut row| {
-                        row.col(|ui| {
-                            ui.label(RichText::new(adr_str).font(FONT_TBL.clone()).color(col));
-                        });
-                        row.col(|ui| {
-                            ui.label(RichText::new(val_str).font(FONT_TBL.clone()).color(col));
-                        });
-                        row.col(|ui| {
-                            ui.label(RichText::new(ins_str).font(FONT_TBL.clone()).color(col));
-                        });
-                        row.col(|ui| {
-                            ui.label(RichText::new(reg_str).font(FONT_TBL.clone()).color(col));
-                        });
+        egui::CentralPanel::default().show(ctx, |ui| {
+            /* 
+             * Memview gives an illusion of scrolling through one large table that contains all
+             * addresses, but it's size is actually always exactly what's visible on the screen.
+             *
+             * To keep the table always in view of the scroll area, we allocate the last known
+             * scroll position worth of space before it.
+             *
+             * After adding the table, we allocate more space again to make the scrollarea total
+             * height what the table would take if it contained every address.
+             *
+             * Table start offset is calculated from scroll position.
+             */
+            let row_height = 23.;
+            let height = ui.available_height() - 30.;
+            self.gui_memview_len = (height / row_height).to_i32().unwrap();
+            let total_height = row_height * (self.emu_mem_len + 2) as f32 + 30.; // +2 because for some reason it fell short by that amount
+            let view_height = height + 30.;
+            self.gui_memview_scroll = egui::ScrollArea::vertical()
+                .show(ui, |ui| {
+                    ui.allocate_space(egui::Vec2 {
+                        x: 0.,
+                        y: self.gui_memview_scroll,
                     });
-                }
-            });
+                    TableBuilder::new(ui)
+                        .striped(true)
+                        .auto_shrink([false; 2])
+                        .max_scroll_height(f32::INFINITY)
+                        .vscroll(false)
+                        .column(Column::exact(width_adr)) // Address
+                        .column(Column::exact(width_val)) // Value
+                        .column(Column::exact(width_ins)) // Instruction
+                        .column(Column::remainder()) // Registers PC/SP/FP
+                        .header(20.0, |mut header| {
+                            header.col(|ui| {
+                                ui.heading(RichText::new("Address").font(FONT_TBLH.clone()));
+                            });
+                            header.col(|ui| {
+                                ui.heading(RichText::new("Value").font(FONT_TBLH.clone()));
+                            });
+                            header.col(|ui| {
+                                ui.heading(RichText::new("Instruction").font(FONT_TBLH.clone()));
+                            });
+                            header.col(|ui| {
+                                ui.heading(RichText::new("").font(FONT_TBLH.clone()));
+                            });
+                        })
+                        .body(|mut body| {
+                            //let rowcount = self.emu_memory_len;
+                            for i in 0..self.gui_memview_len {
+                                if i >= self.gui_memview.len() as i32 {
+                                    break;
+                                }
+                                let adr = self.gui_memview_off + i;
+                                let val: i32 = self.gui_memview[i as usize];
+                                let pc = self.emu_registers[0];
+                                let sp = self.emu_registers[10];
+                                let fp = self.emu_registers[11];
+                                // Create strings
+                                let mut reg_str = String::new();
+                                if pc == adr || sp == adr || fp == adr {
+                                    reg_str.push_str("<-- ");
+                                    if pc == adr {
+                                        reg_str.push_str("PC ")
+                                    }
+                                    if sp == adr {
+                                        reg_str.push_str("SP ")
+                                    }
+                                    if fp == adr {
+                                        reg_str.push_str("FP ")
+                                    }
+                                }
+                                let adr_str = match self.mem_adr_base {
+                                    Base::Bin => format!("{adr:#b}"),
+                                    Base::Dec => format!("{adr}"),
+                                    Base::Hex => format!("{adr:#x}"),
+                                };
+                                let val_str = match self.mem_val_base {
+                                    Base::Bin => format!("{val:#034b}"),
+                                    Base::Dec => format!("{val}"),
+                                    Base::Hex => format!("{val:#010x}"),
+                                };
+                                let ins_str = instruction_to_string(val);
+                                // Decide style
+                                let col = if adr == pc { COL_TEXT_HI } else { COL_TEXT };
+                                body.row(20.0, |mut row| {
+                                    row.col(|ui| {
+                                        ui.label(
+                                            RichText::new(adr_str)
+                                                .font(FONT_TBL.clone())
+                                                .color(col),
+                                        );
+                                    });
+                                    row.col(|ui| {
+                                        ui.label(
+                                            RichText::new(val_str)
+                                                .font(FONT_TBL.clone())
+                                                .color(col),
+                                        );
+                                    });
+                                    row.col(|ui| {
+                                        ui.label(
+                                            RichText::new(ins_str)
+                                                .font(FONT_TBL.clone())
+                                                .color(col),
+                                        );
+                                    });
+                                    row.col(|ui| {
+                                        ui.label(
+                                            RichText::new(reg_str)
+                                                .font(FONT_TBL.clone())
+                                                .color(col),
+                                        );
+                                    });
+                                });
+                            }
+                        });
+
+                    ui.allocate_space(egui::Vec2 {
+                        x: 0.,
+                        y: total_height - self.gui_memview_scroll - view_height,
+                    });
+                })
+                .state
+                .offset
+                .y;
+            self.gui_memview_off = (self.gui_memview_scroll / row_height) as i32;
+        });
+        //    });
+        //});
     }
 
     fn regview(&mut self, ui: &mut Ui) {
@@ -237,7 +297,6 @@ impl TitoApp {
                     });
                 }
             });
-        //ui.separator();
         if self.emu_halted {
             ui.label("HALT");
         }
@@ -278,50 +337,56 @@ impl TitoApp {
     }
 
     fn display(&mut self, ctx: &Context, ui: &mut Ui) {
-        let target_w = clamp(ui.available_width(), 0., 800.);
-
-        let w = target_w as u32;
-        let h = (target_w * (120. / 160.)) as u32;
-        self.emu_displaybuffer = Some(image::ImageBuffer::new(w, h));
-        for (x, y, pixels) in self
-            .emu_displaybuffer
-            .as_mut()
-            .unwrap()
-            .enumerate_pixels_mut()
-        {
-            let px_x = (x as f32 / w as f32 * 160.) as u32;
-            let px_y = (y as f32 / h as f32 * 120.) as u32;
-            *pixels = image::Rgba([
-                (self.emu_dispvec[(px_x + px_y * 160) as usize] >> 4) as u8,
-                (self.emu_dispvec[(px_x + px_y * 160) as usize]) as u8,
-                (self.emu_dispvec[(px_x + px_y * 160) as usize] << 4) as u8,
-                255,
-            ]);
+        // Determine image size based on available w / h, whichever fits a smaller image
+        let target_h = clamp(ui.available_height(), 120., 400.); // size limited for performance
+        let target_w = clamp(ui.available_width(), 160., f32::INFINITY);
+        let w;
+        let h;
+        if target_w > target_h * (160. / 120.) {
+            w = (target_h * (160. / 120.)) as u32;
+            h = target_h as u32;
+        } else {
+            w = target_w as u32;
+            h = (target_w * (120. / 160.)) as u32;
         }
-        let color_image = egui::ColorImage::from_rgba_unmultiplied(
-            [w as usize, h as usize],
-            &self.emu_displaybuffer.as_ref().unwrap(),
-        );
-        let render_result = RetainedImage::from_color_image("0.png", color_image);
-
-        self.emu_displayimage = Some(render_result);
-        if let Some(img) = &self.emu_displayimage {
-            img.show(ui);
-            /*if ui.button("save").clicked() {
-                if let Some(buf) = &self.emu_displaybuffer {
-                    println!("img saved!");
-                    buf.save("test.png").unwrap();
-                }
-            };*/
-            ui.separator();
-        }
+        ui.with_layout(Layout::top_down(egui::Align::Center), |ui| {
+            self.emu_displaybuffer = Some(image::ImageBuffer::new(w, h));
+            // This is a terribly inefficient way to make the image
+            // TODO: figure out how to just rescale the original res pic.
+            for (x, y, pixels) in self
+                .emu_displaybuffer
+                .as_mut()
+                .unwrap()
+                .enumerate_pixels_mut()
+            {
+                // px_off = px_x + px_y * 160
+                let px_off = (x * 160 / w) + (y * 120 / h) * 160;
+                *pixels = image::Rgba([
+                    (self.emu_dispvec[px_off as usize] >> 4) as u8,
+                    (self.emu_dispvec[px_off as usize]) as u8,
+                    (self.emu_dispvec[px_off as usize] << 4) as u8,
+                    255,
+                ]);
+            }
+            let color_image = egui::ColorImage::from_rgba_unmultiplied(
+                [w as usize, h as usize],
+                &self.emu_displaybuffer.as_ref().unwrap(),
+            );
+            let render_result = RetainedImage::from_color_image("0.png", color_image);
+            self.emu_displayimage = Some(render_result);
+            if let Some(img) = &self.emu_displayimage {
+                img.show(ui);
+            }
+        });
     }
 
     // Refresh cached regs and memory
     fn refresh_emu_state(&mut self) {
         self.emu_tx.send(CtrlMSG::GetState);
         self.emu_tx.send(CtrlMSG::GetRegs);
-        self.emu_tx.send(CtrlMSG::GetMem(0..self.emu_memory_len));
+        self.emu_tx.send(CtrlMSG::GetMem(
+            self.gui_memview_off..self.gui_memview_off + self.gui_memview_len,
+        ));
     }
 
     fn stateview(&mut self, ui: &mut Ui) {

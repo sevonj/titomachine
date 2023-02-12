@@ -52,6 +52,9 @@ pub const SHORTCUT_PLAY: egui::KeyboardShortcut =
 pub const SHORTCUT_TICK: egui::KeyboardShortcut =
     egui::KeyboardShortcut::new(Modifiers::NONE, egui::Key::Enter);
 
+pub const SHORTCUT_DEBUG_GUI: egui::KeyboardShortcut =
+    egui::KeyboardShortcut::new(Modifiers::COMMAND.plus(Modifiers::ALT), egui::Key::D);
+
 impl TitoApp {
     pub fn gui_main(&mut self, ctx: &egui::Context) {
         egui::CentralPanel::default().show(ctx, |ui| {
@@ -186,6 +189,11 @@ impl TitoApp {
     }
 
     fn consume_shortcuts(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+        if ui.input_mut().consume_shortcut(&SHORTCUT_DEBUG_GUI) {
+            let debug = ui.style().debug.debug_on_hover;
+            ui.ctx().set_debug_on_hover(!debug);
+            println!("its debuggin time, {}", debug)
+        }
         // General
         if ui.input_mut().consume_shortcut(&SHORTCUT_NEW) {
             self.file_new()

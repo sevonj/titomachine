@@ -37,7 +37,7 @@ use gui::{Base, GuiMode};
 use image::ImageBuffer;
 use image::Rgba;
 
-const mem_display_size: usize = 512;
+const mem_display_size: usize = 16;
 
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
@@ -70,11 +70,15 @@ pub struct TitoApp {
     #[serde(skip)]
     emu_registers: Vec<i32>, // Cached registers for gui
     #[serde(skip)]
-    emu_memory: Vec<i32>, // Cached partial memory for gui
+    gui_memview: Vec<i32>, // Cached partial memory for gui
     #[serde(skip)]
-    emu_memory_off: i32, // Start offset
+    gui_memview_off: i32, // Start offset
     #[serde(skip)]
-    emu_memory_len: i32, // Size of cache
+    gui_memview_len: i32, // Size of cache
+    #[serde(skip)]
+    emu_mem_len: usize, // Size of cache
+    #[serde(skip)]
+    gui_memview_scroll: f32,
     #[serde(skip)]
     emu_waiting_for_in: bool,
     #[serde(skip)]
@@ -121,9 +125,11 @@ impl Default for TitoApp {
             emu_use_khz: false,
             emu_turbo: false,
             emu_registers: vec![0; 12],
-            emu_memory: vec![7; mem_display_size],
-            emu_memory_off: 0,
-            emu_memory_len: mem_display_size as i32,
+            emu_mem_len: 0,
+            gui_memview: vec![7; mem_display_size],
+            gui_memview_off: 0,
+            gui_memview_len: mem_display_size as i32,
+            gui_memview_scroll: 0.,
             emu_waiting_for_in: false,
             emu_displayimage: None,
             emu_displaybuffer: None,
@@ -166,7 +172,8 @@ impl TitoApp {
                     self.emu_achieved_speed = st.speed_percent;
                 }
                 ReplyMSG::Regs(vec) => self.emu_registers = vec,
-                ReplyMSG::Mem(vec) => self.emu_memory = vec,
+                ReplyMSG::Mem(vec) => self.gui_memview = vec,
+                ReplyMSG::MemSize(s) => self.emu_mem_len = s,
                 ReplyMSG::Display(vec) => {
                     self.emu_dispvec = vec;
                 }

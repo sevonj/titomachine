@@ -1,6 +1,6 @@
 [package]
 name = "TitoMachine"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2021"
 
 
@@ -13,6 +13,7 @@ eframe = { version = "0.20.1", default-features = false, features = ["glow", "de
 image = "0.24.5"
 rfd = "0.11.0" # see gtk3 if fails to build https://docs.rs/rfd/latest/rfd/
 serde = { version = "1", features = ["derive"] }
+chrono = "0.4.23"
 
 [build-dependencies]
 

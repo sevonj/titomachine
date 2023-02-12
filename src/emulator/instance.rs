@@ -16,6 +16,7 @@ pub const SR_S: i32 = 1 << 23; // SVC
 pub const SR_P: i32 = 1 << 22; // Privileged mode       // unused?
 pub const SR_D: i32 = 1 << 21; // Disable Interrupts    // unused?
 
+// GPR Names
 pub const R0: usize = 0;
 pub const R1: usize = 1;
 pub const R2: usize = 2;
@@ -28,7 +29,9 @@ pub const SP: usize = 6;
 pub const FP: usize = 7;
 
 pub struct TTKInstance {
-    pub memory: Vec<i32>,
+    pub running: bool,
+    pub halt: bool,
+    pub waiting_for_io: bool,
 
     pub cu_pc: i32,     // Program Counter
     pub cu_ir: i32,     // Instruction Register
@@ -39,28 +42,26 @@ pub struct TTKInstance {
     pub mmu_limit: i32, // -- unimplemented
     pub mmu_mar: i32,   // Memory address -- unimplemented
     pub mmu_mbr: i32,   // Memory buffer -- unimplemented
-
-    pub running: bool,
-    pub halted: bool,
-    pub waiting_for_io: bool,
+    pub memory: Vec<i32>,
 }
 
 impl Default for TTKInstance {
     fn default() -> Self {
         TTKInstance {
-            memory: vec![0; DEFAULT_MEMSIZE],
+            running: false,
+            halt: false,
+            waiting_for_io: false,
+
             cu_pc: 0,
             cu_ir: 0,
             cu_tr: 0,
             cu_sr: 0,
             gpr: [0; 8],
-            running: false,
-            halted: false,
-            waiting_for_io: false,
             mmu_base: 0,
             mmu_limit: 0,
             mmu_mar: 0,
             mmu_mbr: 0,
+            memory: vec![0; DEFAULT_MEMSIZE],
         }
     }
 }

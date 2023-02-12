@@ -639,62 +639,57 @@ pub fn compile(source: String) -> String {
             addr = 0;
         } else {
             // Mode
+            print!("parsing: \"{}\"", op2);
+            if let Some(op2_parsed) = parse_op2(op2) {
+                println!(
+                    "op2: {:?},{:?},{:?}",
+                    op2_parsed.mode, op2_parsed.addr, op2_parsed.reg
+                );
 
-            if op2.matches(['@', '=']).count() > 1 {
-                println!("Invalid addressing mode on line {}!", ln);
-                return "".into();
-            }
+                // Mode
+                mode += op2_parsed.mode;
 
-            mode -= op2.matches(['=']).count() as i32;
-            mode += op2.matches(['@']).count() as i32;
-
-            if mode < 0 {
-                println!("Invalid addressing mode on line {}!", ln);
-                return "".into();
-            }
-
-            let op2_wo_mode = op2.replace(['@', '='], "");
-
-            // No addr, only reg
-            if match_reg(&op2_wo_mode) != -1 {
-                // Disallow =R1, @R1
-                mode -= 1; // no indirect
-                if mode < 0 {
-                    println!("Invalid addressing mode on line {}!", ln);
-                    return "".into();
+                // Register
+                match op2_parsed.reg.as_str() {
+                    "R0" | "" => ri = 0,
+                    "R1" => ri = 1,
+                    "R2" => ri = 2,
+                    "R3" => ri = 3,
+                    "R4" => ri = 4,
+                    "R5" => ri = 5,
+                    "R6" | "SP" => ri = 6,
+                    "R7" | "FP" => ri = 7,
+                    _ => {
+                        println!("Line {}: Invalid Register!", ln);
+                        return "".into();
+                    }
                 }
 
-                ri = match_reg(&op2_wo_mode);
-                addr = 0;
-            } else {
-                // Addr
-                let addr_str: String = op2_wo_mode.split("(").take(1).collect();
-                if symbols_table.contains_key(&addr_str) {
-                    addr = symbols_table[&addr_str];
+                // Address
+                if op2_parsed.addr.as_str() == "" {
+                    mode -= 1;
+                    addr = 0;
+                } else if symbols_table.contains_key(&op2_parsed.addr) {
+                    addr = symbols_table[&op2_parsed.addr];
                 } else {
-                    match parse_number(addr_str.as_str()) {
+                    match parse_number(op2_parsed.addr.as_str()) {
                         Some(int) => addr = int,
                         None => {
-                            println!("invalid address: {}", addr_str);
+                            println!("Line {}: invalid address: \"{}\"", ln, op2_parsed.addr);
                             return "".into();
                         }
                     }
                 }
-
-                let mut ri_str: String = op2_wo_mode.split("(").skip(1).collect();
-                if ri_str.len() != 0 {
-                    ri_str = ri_str.split(")").take(1).collect();
-                    ri = match_reg(&ri_str);
-                    if ri == -1 {
-                        println!("invalid register");
-                        return "".into();
-                    }
-                } else {
-                    ri = 0
-                }
+            } else {
+                println!("Failed to parse second op, line {}!", ln);
+                return "".into();
+            }
+            if mode < 0 {
+                println!("Invalid addressing mode on line {}!", ln);
+                return "".into();
             }
         }
-        //println!("{}, {}, {}, {}, {}, ", opcode, rj, mode, ri, addr);
+        println!("{}, {}, {}, {}, {}, ", opcode, rj, mode, ri, addr);
 
         let mut instruction: i32 = 0;
         instruction += opcode << 24;
@@ -714,7 +709,7 @@ pub fn compile(source: String) -> String {
     }
 
     let prog_start = 0;
-    let fp_start = prog_size-1;
+    let fp_start = prog_size - 1;
     let data_start = prog_size;
     let sp_start = fp_start + data_size;
 
@@ -847,4 +842,104 @@ fn parse_number(numstr: &str) -> Option<i32> {
         return Some(-value);
     }
     Some(value)
+}
+
+struct Op2 {
+    pub mode: i32,
+    pub addr: String,
+    pub reg: String,
+}
+
+fn parse_op2(input_str: &str) -> Option<Op2> {
+    let mode: i32;
+    let mut addr = String::new();
+    let mut reg = String::new();
+    let mut chars = input_str.chars();
+
+    // Collect "-@", etc.
+    if input_str.starts_with("-=") {
+        addr += "-";
+        mode = -1;
+        chars.next();
+        chars.next();
+    } else if input_str.starts_with("-@") {
+        addr += "-";
+        mode = 1;
+        chars.next();
+        chars.next();
+    } else if input_str.starts_with("-") {
+        addr += "-";
+        mode = 0;
+        chars.next();
+    } else if input_str.starts_with("=") {
+        mode = -1;
+        chars.next();
+    } else if input_str.starts_with("@") {
+        mode = 1;
+        chars.next();
+    } else {
+        mode = 0;
+    }
+
+    // Collect addr string
+    let get_register;
+    loop {
+        match chars.next() {
+            Some(c) => match c {
+                // Next is register
+                '(' => {
+                    if addr.len() == 0{
+                        addr += "0";
+                    }
+                    get_register = true;
+                    break;
+                }
+                // Collect char
+                _ => addr += c.to_string().as_str(),
+            },
+            // String ended, no register.
+            None => {
+                get_register = false;
+                match addr.as_str() {
+                    // That was actually a reg
+                    "R0" | "R1" | "R2" | "R3" | "R4" | "R5" | "R6" | "R7" | "SP" | "FP" => {
+                        if chars.next() != None {
+                            return None; // Invalid: Should've ended heres
+                        }
+                        return Some(Op2 {
+                            // Ended nicely
+                            mode,
+                            addr: String::new(),
+                            reg: addr,
+                        });
+                    }
+                    // Addr was just addr
+                    _ => {}
+                }
+                break;
+            }
+        }
+    }
+
+    // Collect Reg string
+    if get_register {
+        loop {
+            match chars.next() {
+                Some(c) => match c {
+                    ')' => {
+                        if chars.next() != None {
+                            return None; // Invalid: Should've ended heres
+                        }
+                        break; // Ended nicely
+                    }
+                    // Collect char
+                    _ => reg += c.to_string().as_str(),
+                },
+                None => {
+                    return None; // Invalid: Parentheses not closed
+                }
+            }
+        }
+    }
+    Some(Op2 { mode, addr, reg })
 }

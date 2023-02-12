@@ -2,12 +2,16 @@
 ; Tilemap renderer test for Titokone
 ; https://www.cs.helsinki.fi/group/titokone/
 
-; Note: Alternatively run it on my own emulator: 
+; Alternatively use my own emulator:
+; https://github.com/sevonj/titomachine
 
 ; Can render tiles, haven't done the map part.
 
-; You may want to enable turbomode:
+; On Titokone you may want to enable turbomode:
 ; Options -> Running options -> Turbo mode
+
+; Or on Titomachine set CPU speed high enough,
+; say, 10KHz
 
 ; The program outputs video.
 ; Open the graphics window from the toolbar
@@ -307,14 +311,13 @@ ScrClear        pushr sp                ;
                 load  r1, =memScreen    ;
                 add   r1, =scrXY        ;
                 load  r2, scrClearColor ;
-
                 load  sp, =memScreen    ;
                 sub   sp, =1            ;
 ScrClearLoop    push  sp, r2            ; We push r0 to the screen. This combines store and increment instructions.
                 push  sp, r2            ;
                 push  sp, r2            ; Loop size:
                 push  sp, r2            ; 1 1/32th instructions per px
-                push  sp, r2            ; not bad. This *could* be unrolled futher that doesn't mean it should.
+                push  sp, r2            ; not bad. This *could* be unrolled further that doesn't mean it should.
                 push  sp, r2            ;
                 push  sp, r2            ;
                 push  sp, r2            ; 7

@@ -5,9 +5,11 @@ use std::{
     time::{Duration, Instant},
 };
 pub mod instance;
+mod performance_monitor;
 use instance::*;
 
 use self::instance::TTKInstance;
+use self::performance_monitor::PerfMonitor;
 pub mod instructions;
 pub mod loader;
 
@@ -43,6 +45,7 @@ pub enum ReplyMSG {
     State(EmuState),
     Regs(Vec<i32>),
     Mem(Vec<i32>),
+    MemSize(usize),
     Display(Vec<i32>),
     In,
     Out(i32),
@@ -67,11 +70,11 @@ pub struct Emu {
     tick_rate: f32,
     turbo: bool,
 
-    t_last: Option<Instant>,
-    since_last_tick: Duration,
-
-    last_tick: Instant,
-    last_tick_time: Duration,
+    t_last_update: Option<Instant>,
+    t_tick_timer: Duration,
+    t_last_tick: Option<Instant>,
+    perfmon: PerfMonitor,
+    interrupt_timer: Option<Duration>,
 }
 impl Emu {
     pub fn default(tx: Sender<ReplyMSG>, rx: Receiver<CtrlMSG>) -> Self {
@@ -85,26 +88,34 @@ impl Emu {
             turbo: false,
 
             // Time
-            t_last: None,
-            since_last_tick: Duration::ZERO,
-
-            last_tick: Instant::now(),
-            last_tick_time: Duration::from_micros(0),
+            t_last_update: None,
+            t_tick_timer: Duration::ZERO,
+            t_last_tick: None,
+            perfmon: PerfMonitor::default(),
+            interrupt_timer: None,
         }
     }
     pub fn run(&mut self) {
         loop {
             // Time
-            let t_tick = Duration::from_secs_f32(1. / self.tick_rate);
+            let tick_time = Duration::from_secs_f32(1. / self.tick_rate);
             let t_now = Instant::now();
             let t_delta;
-            match self.t_last {
+            match self.t_last_update {
                 Some(last) => t_delta = t_now - last,
                 None => t_delta = Duration::ZERO,
             }
-            self.t_last = Some(t_now);
+            self.t_last_update = Some(t_now);
             if self.playing {
-                self.since_last_tick += t_delta;
+                self.t_tick_timer += t_delta;
+            }
+            self.perfmon.set_rate(self.tick_rate);
+            if let Some(d) = self.interrupt_timer {
+                self.interrupt_timer = Some(d - t_delta);
+                if d == Duration::ZERO {
+                    self.interrupt_timer = None;
+                    self.instance.cu_sr |= SR_I;
+                }
             }
 
             // Messages
@@ -141,17 +152,25 @@ impl Emu {
 
             if self.playing {
                 if self.turbo {
-                    self.since_last_tick = Duration::ZERO;
+                    self.t_tick_timer = Duration::ZERO;
                     self.tick();
+                    if let Some(t) = self.t_last_tick {
+                        self.perfmon.add_sample(Instant::now() - t);
+                    }
+                    self.t_last_tick = Some(Instant::now());
                     continue;
-                } else if self.since_last_tick >= t_tick {
-                    self.since_last_tick -= t_tick;
+                } else if self.t_tick_timer >= tick_time {
+                    self.t_tick_timer -= tick_time;
                     self.tick();
+                    if let Some(t) = self.t_last_tick {
+                        self.perfmon.add_sample(Instant::now() - t);
+                    }
+                    self.t_last_tick = Some(Instant::now());
                     continue;
                 }
             }
             // Sleep longer if not running
-            match self.instance.running && !self.instance.halted {
+            match self.instance.running && !self.instance.halt {
                 true => thread::sleep(Duration::from_secs_f32(0.5 / self.tick_rate)),
                 false => thread::sleep(Duration::from_secs_f32(1. / 60.)),
             }
@@ -164,17 +183,17 @@ impl Emu {
         self.instance.cu_tr = 0;
         self.instance.cu_sr = 0;
         self.instance.running = true;
-        self.instance.halted = false;
-        self.t_last = None;
+        self.instance.halt = false;
+        self.t_last_update = None;
     }
 
     fn stop(&mut self) {
-        self.t_last = None;
+        self.t_last_update = None;
         self.instance.running = false;
     }
 
     fn playpause(&mut self, p: bool) {
-        self.t_last = None;
+        self.t_last_update = None;
         self.playing = p;
     }
 
@@ -189,20 +208,18 @@ impl Emu {
         if !self.instance.running {
             return;
         }
-        if self.instance.halted {
+        if self.instance.halt {
             return;
         }
         if self.instance.waiting_for_io {
             return;
         }
-        self.last_tick_time = Instant::now() - self.last_tick;
-        self.last_tick = Instant::now();
         self.exec();
         self.sr_handler();
 
         // Dunno why, but being halted causes the emulator to max out cpu on host machine.
         // So this stops the emulation. It's not like it needs to run after halt anyway.
-        if self.instance.halted {
+        if self.instance.halt {
             self.instance.running = false;
             self.playing = false;
         }
@@ -215,29 +232,28 @@ impl Emu {
         }
         if self.instance.cu_sr & SR_M != 0 {
             println!("Program Error: Forbidden memory address!");
-            self.instance.halted = true;
+            self.instance.halt = true;
         }
         if self.instance.cu_sr & SR_U != 0 {
             println!("Program Error: Unknown Instruction!");
-            self.instance.halted = true;
+            self.instance.halt = true;
         }
         if self.instance.cu_sr & SR_Z != 0 {
             println!("Program Error: Zero division!");
-            self.instance.halted = true;
+            self.instance.halt = true;
         }
         if self.instance.cu_sr & SR_O != 0 {
             println!("Program Error: Overflow!");
-            self.instance.halted = true;
+            self.instance.halt = true;
         }
     }
 
     fn sendstate(&mut self) {
-        let speed = 100. / (self.last_tick_time.as_secs_f32() * self.tick_rate);
         self.tx.send(ReplyMSG::State(EmuState {
             playing: self.playing,
             running: self.instance.running,
-            halted: self.instance.halted,
-            speed_percent: speed,
+            halted: self.instance.halt,
+            speed_percent: self.perfmon.get_percent(),
         }));
     }
 
@@ -250,6 +266,7 @@ impl Emu {
             retvec.push(self.instance.memory[i as usize]);
         }
         self.tx.send(ReplyMSG::Mem(retvec));
+        self.tx.send(ReplyMSG::MemSize(self.instance.memory.len()));
     }
 
     fn sendregs(&mut self) {

@@ -3,6 +3,7 @@ use super::{
     Emu, ReplyMSG,
 };
 
+use chrono::{Datelike, Local, Timelike};
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
 
@@ -99,7 +100,7 @@ impl Emu {
             println!("Err: called exec() but the machine is not turned on! You shouldn't be here.");
             return;
         }
-        if self.instance.halted {
+        if self.instance.halt {
             println!("Err: called exec() but the machine is halted! You shouldn't be here.");
             return;
         }
@@ -111,37 +112,26 @@ impl Emu {
         let instruction = TTK91Instruction::from(self.instance.cu_ir);
         self.instance.cu_tr = instruction.addr;
 
-        // Immediate operand
-        if instruction.ri != 0 {
-            // if instruction.ri as usize >= self.instance.memory.len() {
-            //     self.instance.sr |= SR_M;
-            //     return;
-            // }
-            match self
-                .instance
-                .cu_tr
-                .checked_add(self.instance.gpr[instruction.ri as usize])
-            {
-                Some(i) => self.instance.cu_tr = i,
-                None => self.instance.cu_sr |= SR_O,
-            }
+        // Get Immediate operand
+        match self
+            .instance
+            .cu_tr
+            .checked_add(self.instance.gpr[instruction.ri as usize])
+        {
+            Some(i) => self.instance.cu_tr = i,
+            None => self.instance.cu_sr |= SR_O,
         }
-        // Direct addressing: value is a pointer
-        if instruction.mode == 1 {
-            if self.instance.cu_tr as usize >= self.instance.memory.len() {
-                self.instance.cu_sr |= SR_M;
-                return;
+        
+        // Direct:   if mode == 1, get from mem once
+        // Indirect: if mode == 2, get from mem twice
+        for _ in 1..=instruction.mode {
+            if instruction.mode >= 1 {
+                if self.instance.cu_tr as usize >= self.instance.memory.len() {
+                    self.instance.cu_sr |= SR_M;
+                    return;
+                }
+                self.instance.cu_tr = self.instance.memory[self.instance.cu_tr as usize];
             }
-            self.instance.cu_tr = self.instance.memory[self.instance.cu_tr as usize];
-        }
-        // Indirect addressing: value is a pointer to a pointer
-        else if instruction.mode == 2 {
-            if self.instance.cu_tr as usize >= self.instance.memory.len() {
-                self.instance.cu_sr |= SR_M;
-                return;
-            }
-            self.instance.cu_tr =
-                self.instance.memory[self.instance.memory[self.instance.cu_tr as usize] as usize];
         }
 
         match FromPrimitive::from_i32(instruction.opcode) {
@@ -222,7 +212,8 @@ impl Emu {
                 // Casting to unsigned because signed int defaults to arithmetic shift.
                 // This tactic worked in C, TODO: verify that it works here.
                 self.instance.gpr[instruction.rj as usize] =
-                    (self.instance.gpr[instruction.rj as usize] as u32 >> self.instance.cu_tr) as i32;
+                    (self.instance.gpr[instruction.rj as usize] as u32 >> self.instance.cu_tr)
+                        as i32;
                 self.instance.cu_pc += 1;
             }
             Some(Opcode::NOT) => {
@@ -379,7 +370,15 @@ impl Emu {
             Some(Opcode::POPR) => {
                 let old_sp = self.instance.gpr[SP] as usize;
                 for i in (0..7).rev() {
-                    self.instance.gpr[i] = self.instance.memory[(old_sp - 6 + i)];
+                    let addr;
+                    match old_sp.checked_sub(6) {
+                        Some(n) => match n.checked_add(i) {
+                            Some(n) => addr = n,
+                            None => todo!(),
+                        },
+                        None => todo!(),
+                    }
+                    self.instance.gpr[i] = self.instance.memory[addr];
                     self.instance.gpr[SP] -= 1;
                 }
                 self.instance.cu_pc += 1;
@@ -404,27 +403,49 @@ impl Emu {
         match FromPrimitive::from_i32(self.instance.cu_tr) {
             Some(builtin_symbols::svc_halt) => {
                 println!("SVC: System halted.");
-                self.instance.halted = true;
+                self.instance.halt = true;
             }
             Some(builtin_symbols::svc_read) => {
                 println!("SVC: ERR: READ not implemented!");
-                self.instance.halted = true;
+                self.instance.halt = true;
             }
             Some(builtin_symbols::svc_write) => {
                 println!("SVC: ERR: WRITE not implemented!");
-                self.instance.halted = true;
+                self.instance.halt = true;
             }
             Some(builtin_symbols::svc_time) => {
-                println!("SVC: ERR: TIME not implemented!");
-                self.instance.halted = true;
+                let s_addr = self.instance.memory[self.instance.gpr[SP] as usize] as usize;
+                self.instance.gpr[SP] -= 1;
+                let m_addr = self.instance.memory[self.instance.gpr[SP] as usize] as usize;
+                self.instance.gpr[SP] -= 1;
+                let h_addr = self.instance.memory[self.instance.gpr[SP] as usize] as usize;
+                self.instance.gpr[SP] -= 1;
+                if s_addr.max(m_addr.max(h_addr)) >= self.instance.memory.len() {
+                    self.instance.cu_sr |= SR_M;
+                    return;
+                }
+                self.instance.memory[s_addr] = Local::now().second() as i32;
+                self.instance.memory[m_addr] = Local::now().minute() as i32;
+                self.instance.memory[h_addr] = Local::now().hour() as i32;
             }
             Some(builtin_symbols::svc_date) => {
-                println!("SVC: ERR: DATE not implemented!");
-                self.instance.halted = true;
+                let d_addr = self.instance.memory[self.instance.gpr[SP] as usize] as usize;
+                self.instance.gpr[SP] -= 1;
+                let m_addr = self.instance.memory[self.instance.gpr[SP] as usize] as usize;
+                self.instance.gpr[SP] -= 1;
+                let y_addr = self.instance.memory[self.instance.gpr[SP] as usize] as usize;
+                self.instance.gpr[SP] -= 1;
+                if d_addr.max(m_addr.max(y_addr)) >= self.instance.memory.len() {
+                    self.instance.cu_sr |= SR_M;
+                    return;
+                }
+                self.instance.memory[d_addr] = Local::now().day() as i32;
+                self.instance.memory[m_addr] = Local::now().month() as i32;
+                self.instance.memory[y_addr] = Local::now().year() as i32;
             }
             _ => {
                 println!("SVC: ERR: Unknown request!");
-                self.instance.halted = true;
+                self.instance.halt = true;
             }
         }
     }

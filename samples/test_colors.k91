@@ -1,0 +1,68 @@
+
+screen equ 8192;
+
+; color_r dc 0x0f00
+; color_g dc 0x00f0
+; color_b dc 0x000f
+; color_c dc 0x00ff
+; color_m dc 0x0f0f
+; color_y dc 0x0ff0
+; color_bl dc 0x0000
+; color_w dc 0x0fff
+
+color_r dc 3840
+color_g dc 240
+color_b dc 15
+color_c dc 255
+color_m dc 3855
+color_y dc 4080
+color_bl dc 0
+color_w dc 4095
+
+load sp, =screen
+sub  sp, =3
+
+load r4, =160
+mul  r4, =15
+
+load r1, color_r
+call sp, fill
+add  sp, r4
+
+load r1, color_g
+call sp, fill
+add  sp, r4
+
+load r1, color_b
+call sp, fill
+add  sp, r4
+
+load r1, color_c
+call sp, fill
+add  sp, r4
+
+load r1, color_m
+call sp, fill
+add  sp, r4
+
+load r1, color_y
+call sp, fill
+add  sp, r4
+
+load r1, color_bl
+call sp, fill
+add  sp, r4
+
+load r1, color_w
+call sp, fill
+
+
+SVC SP, =HALT   ; Service call for halt.
+
+fill load r5, =0
+    loop comp r5, r4
+        jnles end
+        add  r5, =1
+        push sp, r1
+        jump loop
+    end exit sp, =0
