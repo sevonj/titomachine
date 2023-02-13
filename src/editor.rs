@@ -48,7 +48,8 @@ impl Editor {
     }
 
     pub fn compile(&mut self) -> String {
-        compile(self.source_code.clone())
+        let mut compiler = Compiler::default();
+        compiler.compile(self.source_code.clone())
     }
 
     pub fn open_file(&mut self, pathbuf: Option<PathBuf>) {

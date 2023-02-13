@@ -1,817 +1,895 @@
 use std::collections::HashMap;
 
-pub fn compile(source: String) -> String {
-    let mut var_symbols: Vec<String> = Vec::new();
-    let mut symbols_table: HashMap<String, i32> = HashMap::from([
-        ("CRT".into(), 0),
-        ("KBD".into(), 1),
-        ("HALT".into(), 11),
-        ("READ".into(), 12),
-        ("WRITE".into(), 13),
-        ("TIME".into(), 14),
-        ("DATE".into(), 15),
-    ]);
+use num_traits::ToPrimitive;
 
-    let mut data: Vec<i32> = Vec::new();
-    let mut prog: Vec<i32> = Vec::new();
+const FORBIDDEN_CHARS: [char; 6] = [
+    '(', ')', // parentheses
+    '@', '=', // mode signs
+    '-', // minus
+    ':',
+];
 
-    // instructions.push(TTK91Instruction { opcode: 1, rj: 1, mode: 1, ri: 1, addr: 1 });
+pub struct Compiler {
+    pub output: String,
+    temp_symbols_const: HashMap<String, i32>, // constants (EQU declarations)
+    temp_symbols_code: HashMap<String, i32>,  // code segment (instruction labels)
+    temp_symbols_data: HashMap<String, i32>,  // data segment (DS, DC declarations)
+    symbol_table: HashMap<String, i32>,       // Final symbol table
+}
 
-    // Process lines: remove anything unnecessary
-    let mut processed_lines: Vec<String> = Vec::new();
-    for line in source.lines() {
-        let mut result_line = String::new();
-        // empty line
-        if line == "" {
-            processed_lines.push("".into());
-            continue;
-        }
-        // Remove comments
-        result_line += line.split(";").take(1).next().unwrap();
-
-        // Commas to spaces
-        result_line = result_line.replace(",", " ");
-        // Split words
-        let words: Vec<String> = result_line.split_whitespace().map(str::to_string).collect();
-        result_line = words.join(" ");
-        // Case
-        result_line = result_line.to_uppercase();
-        // Push
-        processed_lines.push(result_line);
-    }
-
-    // get constants
-    let mut ln = 0;
-    for line in &processed_lines {
-        ln += 1;
-        if line.len() == 0 {
-            continue;
-        }
-        let words: Vec<String> = line.split_whitespace().map(str::to_string).collect();
-        if match_instruction(words[0].as_str()) == -1 {
-            if words.len() < 2 {
-                // No word after symbol
-                println!("Line {}: No instruction!", ln);
-                return "".into();
-            }
-            if match_pseudoinstr(words[1].as_str()) == -1
-                && match_instruction(words[1].as_str()) == -1
-            {
-                // Not an instruction nor a pseudoinstruction
-                println!("Line {}: Invalid instruction!", ln);
-                return "".into();
-            }
-            if words[1].as_str() == "EQU" {
-                // Check for no value
-                if words.len() < 3 {
-                    println!("Line {}: No value given for constant {}!", ln, words[0]);
-                    return "".into();
-                }
-                let value;
-                // Get value
-                match parse_number(words[2].as_str()) {
-                    Some(n) => value = n,
-                    None => {
-                        println!("Line {}: Failed to parse constant {}!", ln, words[0]);
-                        return "".into();
-                    }
-                }
-                // Check for redefine
-                if symbols_table.contains_key(&words[0]) {
-                    println!("Line {}: Symbol {} redefined!", ln, words[0]);
-                    return "".into();
-                }
-                // Commit
-                println!(
-                    "Line {}: Found const {} with value {}.",
-                    ln, words[0], value
-                );
-                symbols_table.insert(words[0].clone(), value);
-            }
+impl Default for Compiler {
+    fn default() -> Self {
+        Compiler {
+            output: "".into(),
+            temp_symbols_const: HashMap::new(),
+            temp_symbols_code: HashMap::new(),
+            temp_symbols_data: HashMap::new(),
+            symbol_table: HashMap::new(),
         }
     }
-    // get variables
-    ln = 0;
-    let mut data_size = 0;
-    for line in &processed_lines {
-        ln += 1;
-        if line.len() == 0 {
-            continue;
+}
+
+impl Compiler {
+    fn is_symbol_valid(&mut self, symbol: String) -> Result<(), String> {
+        if symbol.len() == 0 {
+            return Err(format!("Symbol is empty. Compiler did something wrong.",));
         }
-        let words: Vec<String> = line.split_whitespace().map(str::to_string).collect();
-        if match_instruction(words[0].as_str()) == -1 {
-            if words[1].as_str() == "DC" {
-                // Check for no value
-                if words.len() < 3 {
-                    println!("Line {}: No value given for variable {}!", ln, words[0]);
-                    return "".into();
-                }
-                let value;
-                // Get value
-                match parse_number(words[2].as_str()) {
-                    Some(n) => value = n,
-                    None => {
-                        println!("Line {}: Failed to parse variable {}!", ln, words[0]);
-                        return "".into();
+        // Existing symbols
+        if let Ok(_) = get_reg(symbol.as_str()) {
+            return Err(format!(
+                "Cannot define \"{}\", it is a register!   ",
+                symbol
+            ));
+        } else if let Ok(_) = get_instruction(symbol.as_str()) {
+            return Err(format!(
+                "Cannot define \"{}\", it is an instruction!",
+                symbol
+            ));
+        } else if let Ok(_) = get_pseudoinstr(symbol.as_str()) {
+            return Err(format!(
+                "Cannot define \"{}\", it is a pseudoinstruction",
+                symbol
+            ));
+        } else if let Ok(_) = get_builtin_symbol(symbol.as_str()) {
+            return Err(format!(
+                "Cannot define \"{}\", it is a builtin symbol.",
+                symbol
+            ));
+        } else if let Ok(_) = get_builtin_const(symbol.as_str()) {
+            return Err(format!(
+                "Cannot define \"{}\", it is a builtin constant.",
+                symbol
+            ));
+        } else if self.temp_symbols_const.contains_key(&symbol) {
+            return Err(format!(
+                "Cannot define \"{}\", it is already defined!",
+                symbol
+            ));
+        } else if self.temp_symbols_code.contains_key(&symbol) {
+            return Err(format!(
+                "Cannot define \"{}\", it is already defined!",
+                symbol
+            ));
+        } else if self.temp_symbols_data.contains_key(&symbol) {
+            return Err(format!(
+                "Cannot define \"{}\", it is already defined!",
+                symbol
+            ));
+        }
+
+        // Forbidden characters
+        let mut chars = symbol.chars();
+        if chars.nth(0).unwrap().is_numeric() {
+            return Err(format!(
+                "Cannot define \"{}\", first character cannot be numeric!",
+                symbol
+            ));
+        }
+        loop {
+            match chars.next() {
+                Some(c) => {
+                    if FORBIDDEN_CHARS.contains(&c) {
+                        return Err(format!(
+                            "Symbol \"{}\" contains forbidden character: {}",
+                            symbol, c
+                        ));
                     }
                 }
-                // Check for redefine
-                if symbols_table.contains_key(&words[0]) {
-                    println!("Line {}: Symbol {} redefined!", ln, words[0]);
-                    return "".into();
-                }
-                // Commit
-                println!("Line {}: Found Var {} with value {}.", ln, words[0], value);
-                data.push(value);
-                symbols_table.insert(words[0].clone(), data_size);
-                var_symbols.push(words[0].clone());
-                data_size += 1;
-            } else if words[1].as_str() == "DS" {
-                // Check for no value
-                if words.len() < 3 {
-                    println!("Line {}: No size given for segment {}!", ln, words[0]);
-                }
-                let value;
-                // Get value
-                match parse_number(words[2].as_str()) {
-                    Some(n) => value = n,
-                    None => {
-                        println!("Line {}: Failed to parse variable {}!", ln, words[0]);
-                        return "".into();
-                    }
-                }
-                // Check for redefine
-                if symbols_table.contains_key(&words[0]) {
-                    println!("Line {}: Symbol {} redefined!", ln, words[0]);
-                    return "".into();
-                }
-                // Check for positive
-                if value < 1 {
-                    println!(
-                        "Line {}: Cannot reserve zero or negative amount of addresses!",
-                        ln
-                    );
-                    return "".into();
-                }
-                // Commit
-                println!(
-                    "Line {}: Found segment {} with size {}.",
-                    ln, words[0], value
-                );
-                for _ in 0..value {
-                    data.push(0);
-                }
-                symbols_table.insert(words[0].clone(), data_size);
-                var_symbols.push(words[0].clone());
-                data_size += value;
+                None => break,
             }
         }
+        Ok(())
     }
 
-    // get instruction labels
-    ln = 0;
-    let mut prog_size = 0;
-    for line in &processed_lines {
-        ln += 1;
-        if line.len() == 0 {
-            continue;
-        }
-        let words: Vec<String> = line.split_whitespace().map(str::to_string).collect();
-        // Is labeled
+    pub fn compile(&mut self, source: String) -> String {
+        let mut data: Vec<i32> = Vec::new();
+        let mut prog: Vec<i32> = Vec::new();
 
-        if match_instruction(words[0].as_str()) == -1 {
-            if words.len() < 2 {
-                return "".into();
-            }
-            if match_instruction(words[1].as_str()) == -1 {
+        // Process the lines: remove anything unnecessary
+        let mut processed_lines: Vec<String> = Vec::new();
+        for line in source.lines() {
+            let mut result_line = String::new();
+            // empty line
+            if line == "" {
+                processed_lines.push("".into()); // push even empty lines to preserve ln no.
                 continue;
             }
-            // Is labeled and an instruction
-            if symbols_table.contains_key(&words[0]) {
-                println!("Line {}: Symbol {} redefined!", ln, words[0]);
+            result_line += line.split(";").take(1).next().unwrap(); // Remove comments
+            result_line = result_line.replace(",", " "); // Commas to spaces
+            let words: Vec<String> = result_line.split_whitespace().map(str::to_string).collect();
+            result_line = words.join(" ");
+            result_line = result_line.to_uppercase();
+            processed_lines.push(result_line);
+        }
+
+        // Collect Symbols
+        let mut ln = 0;
+        let mut prog_size = 0;
+        let mut data_size = 0;
+        for line in &processed_lines {
+            ln += 1;
+            if line.len() == 0 {
+                continue;
+            }
+            let words: Vec<String> = line.split_whitespace().map(str::to_string).collect();
+
+            if let Ok(_) = get_instruction(words[0].as_str()) {
+                prog_size += 1;
+                continue;
+            }
+            if words[0].as_str() == "EQU" {
+                println!("Line {}: Constants cannot be anonymous!", ln);
                 return "".into();
             }
-            println!("Line {}: Found label {}.", ln, words[0]);
-            symbols_table.insert(words[0].clone(), prog_size);
-            prog_size += 1;
-        } else {
-            // Non labeled instruction
-            prog_size += 1;
-        }
-    }
-
-    for s in var_symbols {
-        symbols_table
-            .entry(s)
-            .and_modify(|offset| *offset += prog_size);
-    }
-
-    // Get Instructions
-    let mut ln = 0;
-    let mut off = 0;
-    for line in &processed_lines {
-        ln += 1;
-        if line.len() == 0 {
-            continue;
-        }
-
-        let mut words: Vec<String> = line.split_whitespace().map(str::to_string).collect();
-
-        // 1st word is not an opcode
-        if match_instruction(words[0].as_str()) == -1 {
-            // 2nd word is an opcode
-            if match_instruction(words[1].as_str()) != -1 {
-                // Remove label
-                words = line
-                    .split_whitespace()
-                    .skip(1)
-                    .map(str::to_string)
-                    .collect();
+            if let Err(e) = self.is_symbol_valid(words[0].clone()) {
+                println!("Line {}: {}", ln, e);
+                return "".into();
             }
-            // This line doesn't contain an instruction
+
+            // At this point we have established that the first word is a symbol/constant
+
+            if words.len() < 2 {
+                println!("Line {}: There's nothing after symbol {}!", ln, words[0]);
+                return "".into();
+            }
+
+            // Symbol found: Code
+            if let Ok(_) = get_instruction(words[1].as_str()) {
+                self.temp_symbols_code.insert(words[0].clone(), prog_size);
+                prog_size += 1;
+                continue;
+            }
+            if words.len() < 3 {
+                println!("Line {}: No value entered for \"{}\"!", ln, words[0]);
+                return "".into();
+            }
+            // Symbol found: Const
+            else if words[1].as_str() == "EQU" {
+                match parse_number(words[2].as_str()) {
+                    Ok(n) => {
+                        self.temp_symbols_const.insert(words[0].clone(), n);
+                        println!(
+                            "Line {}: Found const \"{}\" with value {}.",
+                            ln, words[0], n
+                        );
+                    }
+                    Err(e) => {
+                        println!("Line {}: Constant \"{}\": {}", ln, words[0], e);
+                        return "".into();
+                    }
+                }
+            }
+            // Symbol found: Data: Variable
+            else if words[1].as_str() == "DC" {
+                match parse_number(words[2].as_str()) {
+                    Ok(n) => {
+                        self.temp_symbols_data.insert(words[0].clone(), data_size);
+                        data_size += 1;
+                        data.push(n);
+                        println!(
+                            "Line {}: Found const \"{}\" with value {}.",
+                            ln, words[0], n
+                        );
+                    }
+                    Err(e) => {
+                        println!("Line {}: Constant \"{}\": {}", ln, words[0], e);
+                        return "".into();
+                    }
+                }
+            }
+            // Symbol found: Data: Segment
+            else if words[1].as_str() == "DS" {
+                match parse_number(words[2].as_str()) {
+                    Ok(n) => {
+                        self.temp_symbols_data.insert(words[0].clone(), data_size);
+                        data_size += n;
+                        for _ in 0..n {
+                            data.push(0);
+                        }
+                        println!(
+                            "Line {}: Found const \"{}\" with value {}.",
+                            ln, words[0], n
+                        );
+                    }
+                    Err(e) => {
+                        println!("Line {}: Constant \"{}\": {}", ln, words[0], e);
+                        return "".into();
+                    }
+                }
+            }
+            // Second word is invalid
             else {
+                println!("Line {}: Unknown instruction: \"{}\"", ln, words[1]);
+            }
+        }
+
+        // Now we have collected all symbols and we also know the size of code and data sections.
+        // It's let's add the declared symbols to the final symbol table
+
+        for entry in &self.temp_symbols_const {
+            self.symbol_table.insert(entry.0.to_string(), entry.1 + 0);
+        }
+        for entry in &self.temp_symbols_code {
+            self.symbol_table.insert(entry.0.to_string(), entry.1 + 0);
+        }
+        for entry in &self.temp_symbols_data {
+            self.symbol_table
+                .insert(entry.0.to_string(), entry.1 + prog_size);
+        }
+
+        // Get Instructions
+        let mut ln = 0;
+        let mut off = 0;
+        for line in &processed_lines {
+            ln += 1;
+            if line.len() == 0 {
                 continue;
             }
-        }
-        // 1st word is now an opcode, regardless of whether there was a label
-        // encode instruction
-        let opcode_str = &words[0];
-        let op1: &str;
-        let op2: &str;
 
-        let opcode: i32;
-        let rj: i32;
-        let mut mode: i32 = 1;
-        let ri: i32;
-        let addr: i32;
+            let mut words: Vec<String> = line.split_whitespace().map(str::to_string).collect();
 
-        // indirect memory access.
-        // Normally addressing mode goes like this:
-        // "=" => 0,
-        // " " => 1,
-        // "@" => 2
-        // with some instructions indirect addressign is disabled
-        // "=" is not allowed,
-        // " " => 0,
-        // "@" => 1
+            if let Err(_) = get_instruction(words[0].as_str()) {
+                if let Ok(_) = get_instruction(words[1].as_str()) {
+                    // Remove label
+                    words = line
+                        .split_whitespace()
+                        .skip(1)
+                        .map(str::to_string)
+                        .collect();
+                }
+                // This line doesn't contain an instruction
+                else {
+                    continue;
+                }
+            }
+            // 1st word is now an opcode, regardless of whether there was a label
+            // encode instruction
+            let opcode_str = &words[0];
+            let op1: &str;
+            let op2: &str;
 
-        match opcode_str.as_str() {
-            "NOP" => {
-                if words.len() != 1 {
-                    println!("Line {} Unacceptable amount of terms!", ln);
-                    return "".into();
-                }
-                opcode = 0x00;
-                op1 = "";
-                op2 = "";
-            }
-            "STORE" => {
-                if words.len() != 3 {
-                    println!("Line {} Unacceptable amount of terms!", ln);
-                    return "".into();
-                }
-                opcode = 0x01;
-                op1 = &words[1];
-                op2 = &words[2];
-                mode -= 1; // no indirect
-            }
-            "LOAD" => {
-                if words.len() != 3 {
-                    println!("Line {} Unacceptable amount of terms!", ln);
-                    return "".into();
-                }
-                opcode = 0x02;
-                op1 = &words[1];
-                op2 = &words[2];
-            }
-            "IN" => {
-                if words.len() != 3 {
-                    println!("Line {} Unacceptable amount of terms!", ln);
-                    return "".into();
-                }
-                opcode = 0x03;
-                op1 = &words[1];
-                op2 = &words[2];
-            }
-            "OUT" => {
-                if words.len() != 3 {
-                    println!("Line {} Unacceptable amount of terms!", ln);
-                    return "".into();
-                }
-                opcode = 0x04;
-                op1 = &words[1];
-                op2 = &words[2];
-            }
-            "ADD" => {
-                if words.len() != 3 {
-                    println!("Line {} Unacceptable amount of terms!", ln);
-                    return "".into();
-                }
-                opcode = 0x11;
-                op1 = &words[1];
-                op2 = &words[2];
-            }
-            "SUB" => {
-                if words.len() != 3 {
-                    println!("Line {} Unacceptable amount of terms!", ln);
-                    return "".into();
-                }
-                opcode = 0x12;
-                op1 = &words[1];
-                op2 = &words[2];
-            }
-            "MUL" => {
-                if words.len() != 3 {
-                    println!("Line {} Unacceptable amount of terms!", ln);
-                    return "".into();
-                }
-                opcode = 0x13;
-                op1 = &words[1];
-                op2 = &words[2];
-            }
-            "DIV" => {
-                if words.len() != 3 {
-                    println!("Line {} Unacceptable amount of terms!", ln);
-                    return "".into();
-                }
-                opcode = 0x14;
-                op1 = &words[1];
-                op2 = &words[2];
-            }
-            "MOD" => {
-                if words.len() != 3 {
-                    println!("Line {} Unacceptable amount of terms!", ln);
-                    return "".into();
-                }
-                opcode = 0x15;
-                op1 = &words[1];
-                op2 = &words[2];
-            }
-            "AND" => {
-                if words.len() != 3 {
-                    println!("Line {} Unacceptable amount of terms!", ln);
-                    return "".into();
-                }
-                opcode = 0x16;
-                op1 = &words[1];
-                op2 = &words[2];
-            }
-            "OR" => {
-                if words.len() != 3 {
-                    println!("Line {} Unacceptable amount of terms!", ln);
-                    return "".into();
-                }
-                opcode = 0x17;
-                op1 = &words[1];
-                op2 = &words[2];
-            }
-            "XOR" => {
-                if words.len() != 3 {
-                    println!("Line {} Unacceptable amount of terms!", ln);
-                    return "".into();
-                }
-                opcode = 0x18;
-                op1 = &words[1];
-                op2 = &words[2];
-            }
-            "SHL" => {
-                if words.len() != 3 {
-                    println!("Line {} Unacceptable amount of terms!", ln);
-                    return "".into();
-                }
-                opcode = 0x19;
-                op1 = &words[1];
-                op2 = &words[2];
-            }
-            "SHR" => {
-                if words.len() != 3 {
-                    println!("Line {} Unacceptable amount of terms!", ln);
-                    return "".into();
-                }
-                opcode = 0x1a;
-                op1 = &words[1];
-                op2 = &words[2];
-            }
-            "NOT" => {
-                if words.len() != 2 {
-                    println!("Line {} Unacceptable amount of terms!", ln);
-                    return "".into();
-                }
-                opcode = 0x1b;
-                op1 = &words[1];
-                op2 = "";
-            }
-            "SHRA" => {
-                if words.len() != 3 {
-                    println!("Line {} Unacceptable amount of terms!", ln);
-                    return "".into();
-                }
-                opcode = 0x1c;
-                op1 = &words[1];
-                op2 = &words[2];
-            }
-            "COMP" => {
-                if words.len() != 3 {
-                    println!("Line {} Unacceptable amount of terms!", ln);
-                    return "".into();
-                }
-                opcode = 0x1f;
-                op1 = &words[1];
-                op2 = &words[2];
-            }
-            "JUMP" => {
-                if words.len() != 2 {
-                    println!("Line {} Unacceptable amount of terms!", ln);
-                    return "".into();
-                }
-                opcode = 0x20;
-                op1 = "";
-                op2 = &words[1];
-                mode -= 1; // no indirect
-            }
-            "JNEG" => {
-                if words.len() != 3 {
-                    println!("Line {} Unacceptable amount of terms!", ln);
-                    return "".into();
-                }
-                opcode = 0x21;
-                op1 = &words[1];
-                op2 = &words[2];
-                mode -= 1; // no indirect
-            }
-            "JZER" => {
-                if words.len() != 3 {
-                    println!("Line {} Unacceptable amount of terms!", ln);
-                    return "".into();
-                }
-                opcode = 0x22;
-                op1 = &words[1];
-                op2 = &words[2];
-                mode -= 1; // no indirect
-            }
-            "JPOS" => {
-                if words.len() != 3 {
-                    println!("Line {} Unacceptable amount of terms!", ln);
-                    return "".into();
-                }
-                opcode = 0x23;
-                op1 = &words[1];
-                op2 = &words[2];
-                mode -= 1; // no indirect
-            }
-            "JNNEG" => {
-                if words.len() != 3 {
-                    println!("Line {} Unacceptable amount of terms!", ln);
-                    return "".into();
-                }
-                opcode = 0x24;
-                op1 = &words[1];
-                op2 = &words[2];
-                mode -= 1; // no indirect
-            }
-            "JNZER" => {
-                if words.len() != 3 {
-                    println!("Line {} Unacceptable amount of terms!", ln);
-                    return "".into();
-                }
-                opcode = 0x25;
-                op1 = &words[1];
-                op2 = &words[2];
-                mode -= 1; // no indirect
-            }
-            "JNPOS" => {
-                if words.len() != 3 {
-                    println!("Line {} Unacceptable amount of terms!", ln);
-                    return "".into();
-                }
-                opcode = 0x26;
-                op1 = &words[1];
-                op2 = &words[2];
-                mode -= 1; // no indirect
-            }
-            "JLES" => {
-                if words.len() != 2 {
-                    println!("Line {} Unacceptable amount of terms!", ln);
-                    return "".into();
-                }
-                opcode = 0x27;
-                op1 = "";
-                op2 = &words[1];
-                mode -= 1; // no indirect
-            }
-            "JEQU" => {
-                if words.len() != 2 {
-                    println!("Line {} Unacceptable amount of terms!", ln);
-                    return "".into();
-                }
-                opcode = 0x28;
-                op1 = "";
-                op2 = &words[1];
-                mode -= 1; // no indirect
-            }
-            "JGRE" => {
-                if words.len() != 2 {
-                    println!("Line {} Unacceptable amount of terms!", ln);
-                    return "".into();
-                }
-                opcode = 0x29;
-                op1 = "";
-                op2 = &words[1];
-                mode -= 1; // no indirect
-            }
-            "JNLES" => {
-                if words.len() != 2 {
-                    println!("Line {} Unacceptable amount of terms!", ln);
-                    return "".into();
-                }
-                opcode = 0x2a;
-                op1 = "";
-                op2 = &words[1];
-                mode -= 1; // no indirect
-            }
-            "JNEQU" => {
-                if words.len() != 2 {
-                    println!("Line {} Unacceptable amount of terms!", ln);
-                    return "".into();
-                }
-                opcode = 0x2b;
-                op1 = "";
-                op2 = &words[1];
-                mode -= 1; // no indirect
-            }
-            "JNGRE" => {
-                if words.len() != 2 {
-                    println!("Line {} Unacceptable amount of terms!", ln);
-                    return "".into();
-                }
-                opcode = 0x2c;
-                op1 = "";
-                op2 = &words[1];
-                mode -= 1; // no indirect
-            }
-            "CALL" => {
-                if words.len() != 3 {
-                    println!("Line {} Unacceptable amount of terms!", ln);
-                    return "".into();
-                }
-                opcode = 0x31;
-                op1 = &words[1];
-                op2 = &words[2];
-                mode -= 1; // no indirect
-            }
-            "EXIT" => {
-                if words.len() != 3 {
-                    println!("Line {} Unacceptable amount of terms!", ln);
-                    return "".into();
-                }
-                opcode = 0x32;
-                op1 = &words[1];
-                op2 = &words[2];
-            }
-            "PUSH" => {
-                if words.len() != 3 {
-                    println!("Line {} Unacceptable amount of terms!", ln);
-                    return "".into();
-                }
-                opcode = 0x33;
-                op1 = &words[1];
-                op2 = &words[2];
-            }
-            "POP" => {
-                if words.len() != 3 {
-                    println!("Line {} Unacceptable amount of terms!", ln);
-                    return "".into();
-                }
-                opcode = 0x34;
-                op1 = &words[1];
-                op2 = &words[2];
-                if match_reg(op2) == -1 {
-                    println!("Second operand must be a register for POP");
-                    return "".into();
-                }
-            }
-            "PUSHR" => {
-                if words.len() != 2 {
-                    println!("Line {} Unacceptable amount of terms!", ln);
-                    return "".into();
-                }
-                opcode = 0x35;
-                op1 = &words[1];
-                op2 = "";
-            }
-            "POPR" => {
-                if words.len() != 2 {
-                    println!("Line {} Unacceptable amount of terms!", ln);
-                    return "".into();
-                }
-                opcode = 0x36;
+            let opcode: i32;
+            let rj: i32;
+            let mut mode: i32 = 1;
+            let ri: i32;
+            let addr: i32;
 
-                op1 = &words[1];
-                op2 = "0";
-            }
-            "SVC" => {
-                if words.len() != 3 {
-                    println!("Line {} Unacceptable amount of terms!", ln);
-                    return "".into();
+            // indirect memory access.
+            // Normally addressing mode goes like this:
+            // "=" => 0,
+            // " " => 1,
+            // "@" => 2
+            // with some instructions indirect addressign is disabled
+            // "=" is not allowed,
+            // " " => 0,
+            // "@" => 1
+
+            match opcode_str.as_str() {
+                "NOP" => {
+                    if words.len() != 1 {
+                        println!("Line {} Unacceptable amount of terms!", ln);
+                        return "".into();
+                    }
+                    opcode = 0x00;
+                    op1 = "";
+                    op2 = "";
                 }
-                opcode = 0x70;
-                op1 = &words[1];
-                op2 = &words[2];
-            }
-            _ => {
-                println!("Something is wrong with the compiler :(");
-                return "".into();
-            }
-        }
-
-        if op1 == "" {
-            rj = 0;
-        } else {
-            rj = match_reg(op1);
-            if rj == -1 {
-                println!("Invalid register on line {}!", ln);
-                return "".into();
-            }
-        }
-        if op2 == "" {
-            mode = 1;
-            ri = 0;
-            addr = 0;
-        } else {
-            // Mode
-            print!("parsing: \"{}\"", op2);
-            if let Some(op2_parsed) = parse_op2(op2) {
-                println!(
-                    "op2: {:?},{:?},{:?}",
-                    op2_parsed.mode, op2_parsed.addr, op2_parsed.reg
-                );
-
-                // Mode
-                mode += op2_parsed.mode;
-
-                // Register
-                match op2_parsed.reg.as_str() {
-                    "R0" | "" => ri = 0,
-                    "R1" => ri = 1,
-                    "R2" => ri = 2,
-                    "R3" => ri = 3,
-                    "R4" => ri = 4,
-                    "R5" => ri = 5,
-                    "R6" | "SP" => ri = 6,
-                    "R7" | "FP" => ri = 7,
-                    _ => {
-                        println!("Line {}: Invalid Register!", ln);
+                "STORE" => {
+                    if words.len() != 3 {
+                        println!("Line {} Unacceptable amount of terms!", ln);
+                        return "".into();
+                    }
+                    opcode = 0x01;
+                    op1 = &words[1];
+                    op2 = &words[2];
+                    mode -= 1; // no indirect
+                }
+                "LOAD" => {
+                    if words.len() != 3 {
+                        println!("Line {} Unacceptable amount of terms!", ln);
+                        return "".into();
+                    }
+                    opcode = 0x02;
+                    op1 = &words[1];
+                    op2 = &words[2];
+                }
+                "IN" => {
+                    if words.len() != 3 {
+                        println!("Line {} Unacceptable amount of terms!", ln);
+                        return "".into();
+                    }
+                    opcode = 0x03;
+                    op1 = &words[1];
+                    op2 = &words[2];
+                }
+                "OUT" => {
+                    if words.len() != 3 {
+                        println!("Line {} Unacceptable amount of terms!", ln);
+                        return "".into();
+                    }
+                    opcode = 0x04;
+                    op1 = &words[1];
+                    op2 = &words[2];
+                }
+                "ADD" => {
+                    if words.len() != 3 {
+                        println!("Line {} Unacceptable amount of terms!", ln);
+                        return "".into();
+                    }
+                    opcode = 0x11;
+                    op1 = &words[1];
+                    op2 = &words[2];
+                }
+                "SUB" => {
+                    if words.len() != 3 {
+                        println!("Line {} Unacceptable amount of terms!", ln);
+                        return "".into();
+                    }
+                    opcode = 0x12;
+                    op1 = &words[1];
+                    op2 = &words[2];
+                }
+                "MUL" => {
+                    if words.len() != 3 {
+                        println!("Line {} Unacceptable amount of terms!", ln);
+                        return "".into();
+                    }
+                    opcode = 0x13;
+                    op1 = &words[1];
+                    op2 = &words[2];
+                }
+                "DIV" => {
+                    if words.len() != 3 {
+                        println!("Line {} Unacceptable amount of terms!", ln);
+                        return "".into();
+                    }
+                    opcode = 0x14;
+                    op1 = &words[1];
+                    op2 = &words[2];
+                }
+                "MOD" => {
+                    if words.len() != 3 {
+                        println!("Line {} Unacceptable amount of terms!", ln);
+                        return "".into();
+                    }
+                    opcode = 0x15;
+                    op1 = &words[1];
+                    op2 = &words[2];
+                }
+                "AND" => {
+                    if words.len() != 3 {
+                        println!("Line {} Unacceptable amount of terms!", ln);
+                        return "".into();
+                    }
+                    opcode = 0x16;
+                    op1 = &words[1];
+                    op2 = &words[2];
+                }
+                "OR" => {
+                    if words.len() != 3 {
+                        println!("Line {} Unacceptable amount of terms!", ln);
+                        return "".into();
+                    }
+                    opcode = 0x17;
+                    op1 = &words[1];
+                    op2 = &words[2];
+                }
+                "XOR" => {
+                    if words.len() != 3 {
+                        println!("Line {} Unacceptable amount of terms!", ln);
+                        return "".into();
+                    }
+                    opcode = 0x18;
+                    op1 = &words[1];
+                    op2 = &words[2];
+                }
+                "SHL" => {
+                    if words.len() != 3 {
+                        println!("Line {} Unacceptable amount of terms!", ln);
+                        return "".into();
+                    }
+                    opcode = 0x19;
+                    op1 = &words[1];
+                    op2 = &words[2];
+                }
+                "SHR" => {
+                    if words.len() != 3 {
+                        println!("Line {} Unacceptable amount of terms!", ln);
+                        return "".into();
+                    }
+                    opcode = 0x1a;
+                    op1 = &words[1];
+                    op2 = &words[2];
+                }
+                "NOT" => {
+                    if words.len() != 2 {
+                        println!("Line {} Unacceptable amount of terms!", ln);
+                        return "".into();
+                    }
+                    opcode = 0x1b;
+                    op1 = &words[1];
+                    op2 = "";
+                }
+                "SHRA" => {
+                    if words.len() != 3 {
+                        println!("Line {} Unacceptable amount of terms!", ln);
+                        return "".into();
+                    }
+                    opcode = 0x1c;
+                    op1 = &words[1];
+                    op2 = &words[2];
+                }
+                "COMP" => {
+                    if words.len() != 3 {
+                        println!("Line {} Unacceptable amount of terms!", ln);
+                        return "".into();
+                    }
+                    opcode = 0x1f;
+                    op1 = &words[1];
+                    op2 = &words[2];
+                }
+                "JUMP" => {
+                    if words.len() != 2 {
+                        println!("Line {} Unacceptable amount of terms!", ln);
+                        return "".into();
+                    }
+                    opcode = 0x20;
+                    op1 = "";
+                    op2 = &words[1];
+                    mode -= 1; // no indirect
+                }
+                "JNEG" => {
+                    if words.len() != 3 {
+                        println!("Line {} Unacceptable amount of terms!", ln);
+                        return "".into();
+                    }
+                    opcode = 0x21;
+                    op1 = &words[1];
+                    op2 = &words[2];
+                    mode -= 1; // no indirect
+                }
+                "JZER" => {
+                    if words.len() != 3 {
+                        println!("Line {} Unacceptable amount of terms!", ln);
+                        return "".into();
+                    }
+                    opcode = 0x22;
+                    op1 = &words[1];
+                    op2 = &words[2];
+                    mode -= 1; // no indirect
+                }
+                "JPOS" => {
+                    if words.len() != 3 {
+                        println!("Line {} Unacceptable amount of terms!", ln);
+                        return "".into();
+                    }
+                    opcode = 0x23;
+                    op1 = &words[1];
+                    op2 = &words[2];
+                    mode -= 1; // no indirect
+                }
+                "JNNEG" => {
+                    if words.len() != 3 {
+                        println!("Line {} Unacceptable amount of terms!", ln);
+                        return "".into();
+                    }
+                    opcode = 0x24;
+                    op1 = &words[1];
+                    op2 = &words[2];
+                    mode -= 1; // no indirect
+                }
+                "JNZER" => {
+                    if words.len() != 3 {
+                        println!("Line {} Unacceptable amount of terms!", ln);
+                        return "".into();
+                    }
+                    opcode = 0x25;
+                    op1 = &words[1];
+                    op2 = &words[2];
+                    mode -= 1; // no indirect
+                }
+                "JNPOS" => {
+                    if words.len() != 3 {
+                        println!("Line {} Unacceptable amount of terms!", ln);
+                        return "".into();
+                    }
+                    opcode = 0x26;
+                    op1 = &words[1];
+                    op2 = &words[2];
+                    mode -= 1; // no indirect
+                }
+                "JLES" => {
+                    if words.len() != 2 {
+                        println!("Line {} Unacceptable amount of terms!", ln);
+                        return "".into();
+                    }
+                    opcode = 0x27;
+                    op1 = "";
+                    op2 = &words[1];
+                    mode -= 1; // no indirect
+                }
+                "JEQU" => {
+                    if words.len() != 2 {
+                        println!("Line {} Unacceptable amount of terms!", ln);
+                        return "".into();
+                    }
+                    opcode = 0x28;
+                    op1 = "";
+                    op2 = &words[1];
+                    mode -= 1; // no indirect
+                }
+                "JGRE" => {
+                    if words.len() != 2 {
+                        println!("Line {} Unacceptable amount of terms!", ln);
+                        return "".into();
+                    }
+                    opcode = 0x29;
+                    op1 = "";
+                    op2 = &words[1];
+                    mode -= 1; // no indirect
+                }
+                "JNLES" => {
+                    if words.len() != 2 {
+                        println!("Line {} Unacceptable amount of terms!", ln);
+                        return "".into();
+                    }
+                    opcode = 0x2a;
+                    op1 = "";
+                    op2 = &words[1];
+                    mode -= 1; // no indirect
+                }
+                "JNEQU" => {
+                    if words.len() != 2 {
+                        println!("Line {} Unacceptable amount of terms!", ln);
+                        return "".into();
+                    }
+                    opcode = 0x2b;
+                    op1 = "";
+                    op2 = &words[1];
+                    mode -= 1; // no indirect
+                }
+                "JNGRE" => {
+                    if words.len() != 2 {
+                        println!("Line {} Unacceptable amount of terms!", ln);
+                        return "".into();
+                    }
+                    opcode = 0x2c;
+                    op1 = "";
+                    op2 = &words[1];
+                    mode -= 1; // no indirect
+                }
+                "CALL" => {
+                    if words.len() != 3 {
+                        println!("Line {} Unacceptable amount of terms!", ln);
+                        return "".into();
+                    }
+                    opcode = 0x31;
+                    op1 = &words[1];
+                    op2 = &words[2];
+                    mode -= 1; // no indirect
+                }
+                "EXIT" => {
+                    if words.len() != 3 {
+                        println!("Line {} Unacceptable amount of terms!", ln);
+                        return "".into();
+                    }
+                    opcode = 0x32;
+                    op1 = &words[1];
+                    op2 = &words[2];
+                }
+                "PUSH" => {
+                    if words.len() != 3 {
+                        println!("Line {} Unacceptable amount of terms!", ln);
+                        return "".into();
+                    }
+                    opcode = 0x33;
+                    op1 = &words[1];
+                    op2 = &words[2];
+                }
+                "POP" => {
+                    if words.len() != 3 {
+                        println!("Line {} Unacceptable amount of terms!", ln);
+                        return "".into();
+                    }
+                    opcode = 0x34;
+                    op1 = &words[1];
+                    op2 = &words[2];
+                    if let Err(_) = get_reg(op2) {
+                        println!("Second operand must be a register for POP");
                         return "".into();
                     }
                 }
+                "PUSHR" => {
+                    if words.len() != 2 {
+                        println!("Line {} Unacceptable amount of terms!", ln);
+                        return "".into();
+                    }
+                    opcode = 0x35;
+                    op1 = &words[1];
+                    op2 = "";
+                }
+                "POPR" => {
+                    if words.len() != 2 {
+                        println!("Line {} Unacceptable amount of terms!", ln);
+                        return "".into();
+                    }
+                    opcode = 0x36;
 
-                // Address
-                if op2_parsed.addr.as_str() == "" {
-                    mode -= 1;
-                    addr = 0;
-                } else if symbols_table.contains_key(&op2_parsed.addr) {
-                    addr = symbols_table[&op2_parsed.addr];
-                } else {
-                    match parse_number(op2_parsed.addr.as_str()) {
-                        Some(int) => addr = int,
-                        None => {
-                            println!("Line {}: invalid address: \"{}\"", ln, op2_parsed.addr);
-                            return "".into();
+                    op1 = &words[1];
+                    op2 = "0";
+                }
+                "SVC" => {
+                    if words.len() != 3 {
+                        println!("Line {} Unacceptable amount of terms!", ln);
+                        return "".into();
+                    }
+                    opcode = 0x70;
+                    op1 = &words[1];
+                    op2 = &words[2];
+                }
+                _ => {
+                    println!("Something is wrong with the compiler :(");
+                    return "".into();
+                }
+            }
+
+            if op1 == "" {
+                rj = 0;
+            } else {
+                match get_reg(op1) {
+                    Ok(n) => rj = n,
+                    Err(_) => {
+                        println!("Invalid register on line {}!", ln);
+                        return "".into();
+                    }
+                }
+            }
+            if op2 == "" {
+                mode = 1;
+                ri = 0;
+                addr = 0;
+            } else {
+                // Mode
+                match parse_op2(op2) {
+                    Ok(parsed) => {
+                        // Mode
+                        mode += parsed.mode;
+
+                        // Register
+                        match parsed.reg.as_str() {
+                            "R0" | "" => ri = 0,
+                            "R1" => ri = 1,
+                            "R2" => ri = 2,
+                            "R3" => ri = 3,
+                            "R4" => ri = 4,
+                            "R5" => ri = 5,
+                            "R6" | "SP" => ri = 6,
+                            "R7" | "FP" => ri = 7,
+                            _ => {
+                                println!("Line {}: Invalid Register!", ln);
+                                return "".into();
+                            }
+                        }
+
+                        // Address is empty
+                        if parsed.addr.as_str() == "" {
+                            mode -= 1;
+                            addr = 0;
+                        }
+                        // Address is in symbol table
+                        else if self.symbol_table.contains_key(&parsed.addr) {
+                            addr = self
+                                .symbol_table
+                                .get(&parsed.addr)
+                                .unwrap()
+                                .to_i32()
+                                .unwrap();
+                        } else {
+                            match parse_number(parsed.addr.as_str()) {
+                                // Address is a value
+                                Ok(int) => addr = int,
+                                Err(_) => {
+                                    // Address is builtin const
+                                    if let Ok(int) = get_builtin_const(parsed.addr.as_str()) {
+                                        addr = int;
+                                    }
+                                    // Address is builtin symbol
+                                    else if let Ok(int) = get_builtin_symbol(parsed.addr.as_str())
+                                    {
+                                        addr = int;
+                                        self.symbol_table.insert(parsed.addr, int);
+                                    }
+                                    // Address is not okay
+                                    else {
+                                        println!(
+                                            "Line {}: invalid address: \"{}\"",
+                                            ln, parsed.addr
+                                        );
+                                        return "".into();
+                                    }
+                                }
+                            }
                         }
                     }
+                    Err(e) => {
+                        println!("Line {}: {}", ln, e);
+                        return "".into();
+                    }
                 }
-            } else {
-                println!("Failed to parse second op, line {}!", ln);
-                return "".into();
+                if mode < 0 {
+                    println!("Invalid addressing mode on line {}!", ln);
+                    return "".into();
+                }
             }
-            if mode < 0 {
-                println!("Invalid addressing mode on line {}!", ln);
-                return "".into();
+            //println!("{}, {}, {}, {}, {}, ", opcode, rj, mode, ri, addr);
+
+            let mut instruction: i32 = 0;
+            instruction += opcode << 24;
+            instruction += rj << 21;
+            instruction += mode << 19;
+            instruction += ri << 16;
+            match i16::try_from(addr) {
+                Ok(int) => {
+                    instruction += (int as i32) & 0xffff;
+                }
+                Err(e) => println!("Line {}: {}", ln, e),
             }
+
+            prog.push(instruction);
+
+            off += 1;
         }
-        println!("{}, {}, {}, {}, {}, ", opcode, rj, mode, ri, addr);
 
-        let mut instruction: i32 = 0;
-        instruction += opcode << 24;
-        instruction += rj << 21;
-        instruction += mode << 19;
-        instruction += ri << 16;
-        match i16::try_from(addr) {
-            Ok(int) => {
-                instruction += (int as i32) & 0xffff;
-            }
-            Err(e) => println!("Line {}: {}", ln, e),
-        }
+        let prog_start = 0;
+        let fp_start = prog_size - 1;
+        let data_start = prog_size;
+        let sp_start = fp_start + data_size;
 
-        prog.push(instruction);
-
-        off += 1;
-    }
-
-    let prog_start = 0;
-    let fp_start = prog_size - 1;
-    let data_start = prog_size;
-    let sp_start = fp_start + data_size;
-
-    let mut return_str = String::new();
-    return_str += "___b91___\n";
-    return_str += "___code___\n";
-    return_str += (prog_start).to_string().as_str();
-    return_str += " ";
-    return_str += (fp_start).to_string().as_str();
-    return_str += "\n";
-    for i in prog {
-        return_str += i.to_string().as_str();
-        return_str += "\n"
-    }
-    return_str += "___data___\n";
-    return_str += (data_start).to_string().as_str();
-    return_str += " ";
-    return_str += (sp_start).to_string().as_str();
-    return_str += "\n";
-    for i in data {
-        return_str += i.to_string().as_str();
-        return_str += "\n"
-    }
-    return_str += "___symboltable___\n";
-    for (key, value) in symbols_table {
-        return_str += key.as_str();
+        let mut return_str = String::new();
+        return_str += "___b91___\n";
+        return_str += "___code___\n";
+        return_str += (prog_start).to_string().as_str();
         return_str += " ";
-        return_str += value.to_string().as_str();
+        return_str += (fp_start).to_string().as_str();
         return_str += "\n";
-    }
-    return_str += "___end___\n";
+        for i in prog {
+            return_str += i.to_string().as_str();
+            return_str += "\n"
+        }
+        return_str += "___data___\n";
+        return_str += (data_start).to_string().as_str();
+        return_str += " ";
+        return_str += (sp_start).to_string().as_str();
+        return_str += "\n";
+        for i in data {
+            return_str += i.to_string().as_str();
+            return_str += "\n"
+        }
+        return_str += "___symboltable___\n";
+        for (key, value) in &self.symbol_table {
+            return_str += key.as_str();
+            return_str += " ";
+            return_str += value.to_string().as_str();
+            return_str += "\n";
+        }
+        return_str += "___end___\n";
 
-    println!("Compiled:\n{}", return_str);
-    return_str
+        //println!("Compiled:\n{}", return_str);
+        return_str
+    }
 }
 
-fn match_instruction(opstr: &str) -> i32 {
-    match opstr {
-        "NOP" => 0x00,
-        "STORE" => 0x01,
-        "LOAD" => 0x02,
-        "IN" => 0x03,
-        "OUT" => 0x04,
-        "ADD" => 0x11,
-        "SUB" => 0x12,
-        "MUL" => 0x13,
-        "DIV" => 0x14,
-        "MOD" => 0x15,
-        "AND" => 0x16,
-        "OR" => 0x17,
-        "XOR" => 0x18,
-        "SHL" => 0x19,
-        "SHR" => 0x1A,
-        "NOT" => 0x1B,
-        "SHRA" => 0x1C,
-        "COMP" => 0x1F,
-        "JUMP" => 0x20,
-        "JNEG" => 0x21,
-        "JZER" => 0x22,
-        "JPOS" => 0x23,
-        "JNNEG" => 0x24,
-        "JNZER" => 0x25,
-        "JNPOS" => 0x26,
-        "JLES" => 0x27,
-        "JEQU" => 0x28,
-        "JGRE" => 0x29,
-        "JNLES" => 0x2A,
-        "JNEQU" => 0x2B,
-        "JNGRE" => 0x2C,
-        "CALL" => 0x31,
-        "EXIT" => 0x32,
-        "PUSH" => 0x33,
-        "POP" => 0x34,
-        "PUSHR" => 0x35,
-        "POPR" => 0x36,
-        "SVC" => 0x70,
-        _ => -1,
-    }
-}
-fn match_pseudoinstr(opstr: &str) -> i32 {
-    match opstr {
-        "EQU" => 0x00,
-        "DC" => 0x01,
-        "DS" => 0x02,
-        _ => -1,
-    }
-}
-fn match_reg(regstr: &str) -> i32 {
+fn get_reg(regstr: &str) -> Result<i32, String> {
     match regstr {
-        "R0" => 0,
-        "R1" => 1,
-        "R2" => 2,
-        "R3" => 3,
-        "R4" => 4,
-        "R5" => 5,
-        "R6" | "SP" => 6,
-        "R7" | "FP" => 7,
-        _ => -1,
+        "R0" | "" => Ok(0),
+        "R1" => Ok(1),
+        "R2" => Ok(2),
+        "R3" => Ok(3),
+        "R4" => Ok(4),
+        "R5" => Ok(5),
+        "R6" | "SP" => Ok(6),
+        "R7" | "FP" => Ok(7),
+        _ => Err(format!("{} is not an instruction.", regstr)),
+    }
+}
+fn get_instruction(opstr: &str) -> Result<i32, String> {
+    match opstr {
+        "NOP" => Ok(0x00),
+        "STORE" => Ok(0x01),
+        "LOAD" => Ok(0x02),
+        "IN" => Ok(0x03),
+        "OUT" => Ok(0x04),
+        "ADD" => Ok(0x11),
+        "SUB" => Ok(0x12),
+        "MUL" => Ok(0x13),
+        "DIV" => Ok(0x14),
+        "MOD" => Ok(0x15),
+        "AND" => Ok(0x16),
+        "OR" => Ok(0x17),
+        "XOR" => Ok(0x18),
+        "SHL" => Ok(0x19),
+        "SHR" => Ok(0x1A),
+        "NOT" => Ok(0x1B),
+        "SHRA" => Ok(0x1C),
+        "COMP" => Ok(0x1F),
+        "JUMP" => Ok(0x20),
+        "JNEG" => Ok(0x21),
+        "JZER" => Ok(0x22),
+        "JPOS" => Ok(0x23),
+        "JNNEG" => Ok(0x24),
+        "JNZER" => Ok(0x25),
+        "JNPOS" => Ok(0x26),
+        "JLES" => Ok(0x27),
+        "JEQU" => Ok(0x28),
+        "JGRE" => Ok(0x29),
+        "JNLES" => Ok(0x2A),
+        "JNEQU" => Ok(0x2B),
+        "JNGRE" => Ok(0x2C),
+        "CALL" => Ok(0x31),
+        "EXIT" => Ok(0x32),
+        "PUSH" => Ok(0x33),
+        "POP" => Ok(0x34),
+        "PUSHR" => Ok(0x35),
+        "POPR" => Ok(0x36),
+        "SVC" => Ok(0x70),
+        _ => Err(format!("{} is not an instruction.", opstr)),
+    }
+}
+fn get_pseudoinstr(opstr: &str) -> Result<i32, String> {
+    match opstr {
+        "EQU" => Ok(0x00),
+        "DC" => Ok(0x01),
+        "DS" => Ok(0x02),
+        _ => Err(format!("{} is not a pseudoinstruction.", opstr)),
     }
 }
 
-fn parse_number(numstr: &str) -> Option<i32> {
+fn get_builtin_const(sym: &str) -> Result<i32, String> {
+    match sym {
+        "SHRT_MAX" => Ok(32767),
+        "SHRT_MIN" => Ok(-32768),
+        "USHRT_MAX" => Ok(65535),
+        "INT_MAX" => Ok(2147483647),
+        "INT_MIN" => Ok(-2147483648),
+        "UINT_MAX" => Ok(-1),
+        _ => Err(format!("{} is not a builtin_const.", sym)),
+    }
+}
+
+fn get_builtin_symbol(sym: &str) -> Result<i32, String> {
+    match sym {
+        "CRT" => Ok(0),
+        "KBD" => Ok(1),
+        "HALT" => Ok(11),
+        "READ" => Ok(12),
+        "WRITE" => Ok(13),
+        "TIME" => Ok(14),
+        "DATE" => Ok(15),
+        _ => Err(format!("{} is not a builtin_symbol.", sym)),
+    }
+}
+
+fn parse_number(numstr: &str) -> Result<i32, String> {
     let minus = numstr.starts_with('-');
     let mut numstr2: String;
     if minus {
@@ -835,13 +913,13 @@ fn parse_number(numstr: &str) -> Option<i32> {
     }
     match u32::from_str_radix(numstr2.as_str(), radix) {
         Ok(int) => value = int as i32,
-        Err(_) => return None,
+        Err(e) => return Err(e.to_string()),
     }
 
-    if minus {
-        return Some(-value);
+    match minus {
+        true => Ok(-value),
+        false => Ok(value),
     }
-    Some(value)
 }
 
 struct Op2 {
@@ -850,7 +928,7 @@ struct Op2 {
     pub reg: String,
 }
 
-fn parse_op2(input_str: &str) -> Option<Op2> {
+fn parse_op2(input_str: &str) -> Result<Op2, String> {
     let mode: i32;
     let mut addr = String::new();
     let mut reg = String::new();
@@ -888,7 +966,7 @@ fn parse_op2(input_str: &str) -> Option<Op2> {
             Some(c) => match c {
                 // Next is register
                 '(' => {
-                    if addr.len() == 0{
+                    if addr.len() == 0 {
                         addr += "0";
                     }
                     get_register = true;
@@ -903,10 +981,7 @@ fn parse_op2(input_str: &str) -> Option<Op2> {
                 match addr.as_str() {
                     // That was actually a reg
                     "R0" | "R1" | "R2" | "R3" | "R4" | "R5" | "R6" | "R7" | "SP" | "FP" => {
-                        if chars.next() != None {
-                            return None; // Invalid: Should've ended heres
-                        }
-                        return Some(Op2 {
+                        return Ok(Op2 {
                             // Ended nicely
                             mode,
                             addr: String::new(),
@@ -928,7 +1003,7 @@ fn parse_op2(input_str: &str) -> Option<Op2> {
                 Some(c) => match c {
                     ')' => {
                         if chars.next() != None {
-                            return None; // Invalid: Should've ended heres
+                            return Err("Text after register.".into());
                         }
                         break; // Ended nicely
                     }
@@ -936,10 +1011,10 @@ fn parse_op2(input_str: &str) -> Option<Op2> {
                     _ => reg += c.to_string().as_str(),
                 },
                 None => {
-                    return None; // Invalid: Parentheses not closed
+                    return Err("Parentheses not closed".into());
                 }
             }
         }
     }
-    Some(Op2 { mode, addr, reg })
+    Ok(Op2 { mode, addr, reg })
 }
