@@ -131,95 +131,100 @@ impl Compiler {
             if line.len() == 0 {
                 continue;
             }
-            let words: Vec<String> = line.split_whitespace().map(str::to_string).collect();
+            let mut words: Vec<String> = line.split_whitespace().map(str::to_string).collect();
 
+            let symbol;
+            if let Ok(()) = self.is_symbol_valid(words[0].clone()) {
+                println!("Line {}: Found symbol \"{}\"", ln, words[0]);
+                symbol = Some(words.remove(0));
+                if words.len() == 0 {
+                    println!(
+                        "Line {}: There's no instruction after symbol {}!",
+                        ln,
+                        symbol.unwrap()
+                    );
+                    return "".into();
+                }
+            } else {
+                symbol = None;
+            }
+
+            // At this point, possible symbol has been removed from words.
+
+            // Deal with anonymous lines
+            if symbol == None && words[0].as_str() == "EQU" {}
+
+            // Code
             if let Ok(_) = get_instruction(words[0].as_str()) {
+                if let Some(sym) = symbol {
+                    self.temp_symbols_code.insert(sym, prog_size); // Add label if any
+                }
                 prog_size += 1;
                 continue;
             }
-            if words[0].as_str() == "EQU" {
-                println!("Line {}: Constants cannot be anonymous!", ln);
-                return "".into();
-            }
-            if let Err(e) = self.is_symbol_valid(words[0].clone()) {
-                println!("Line {}: {}", ln, e);
-                return "".into();
-            }
-
-            // At this point we have established that the first word is a symbol/constant
-
             if words.len() < 2 {
-                println!("Line {}: There's nothing after symbol {}!", ln, words[0]);
+                println!("Line {}: No value entered for symbol!", ln);
                 return "".into();
             }
-
-            // Symbol found: Code
-            if let Ok(_) = get_instruction(words[1].as_str()) {
-                self.temp_symbols_code.insert(words[0].clone(), prog_size);
-                prog_size += 1;
-                continue;
-            }
-            if words.len() < 3 {
-                println!("Line {}: No value entered for \"{}\"!", ln, words[0]);
-                return "".into();
-            }
-            // Symbol found: Const
-            else if words[1].as_str() == "EQU" {
-                match parse_number(words[2].as_str()) {
-                    Ok(n) => {
-                        self.temp_symbols_const.insert(words[0].clone(), n);
-                        println!(
-                            "Line {}: Found const \"{}\" with value {}.",
-                            ln, words[0], n
-                        );
-                    }
-                    Err(e) => {
-                        println!("Line {}: Constant \"{}\": {}", ln, words[0], e);
-                        return "".into();
-                    }
-                }
-            }
-            // Symbol found: Data: Variable
-            else if words[1].as_str() == "DC" {
-                match parse_number(words[2].as_str()) {
-                    Ok(n) => {
-                        self.temp_symbols_data.insert(words[0].clone(), data_size);
-                        data_size += 1;
-                        data.push(n);
-                        println!(
-                            "Line {}: Found const \"{}\" with value {}.",
-                            ln, words[0], n
-                        );
-                    }
-                    Err(e) => {
-                        println!("Line {}: Constant \"{}\": {}", ln, words[0], e);
-                        return "".into();
-                    }
-                }
-            }
-            // Symbol found: Data: Segment
-            else if words[1].as_str() == "DS" {
-                match parse_number(words[2].as_str()) {
-                    Ok(n) => {
-                        self.temp_symbols_data.insert(words[0].clone(), data_size);
-                        data_size += n;
-                        for _ in 0..n {
-                            data.push(0);
+            // Pseudoinstr
+            match get_pseudoinstr(words[0].as_str()) {
+                Ok(n) => match n {
+                    // EQU
+                    0 => {
+                        if let Some(sym) = symbol {
+                            match parse_number(words[1].as_str()) {
+                                Ok(n) => {
+                                    self.temp_symbols_const.insert(sym, n);
+                                }
+                                Err(e) => {
+                                    println!("Line {}: {}", ln, e);
+                                    return "".into();
+                                }
+                            }
+                        } else {
+                            println!("Line {}: Constants cannot be anonymous!", ln);
+                            return "".into();
                         }
-                        println!(
-                            "Line {}: Found const \"{}\" with value {}.",
-                            ln, words[0], n
-                        );
                     }
-                    Err(e) => {
-                        println!("Line {}: Constant \"{}\": {}", ln, words[0], e);
-                        return "".into();
-                    }
+                    // DC
+                    1 => match parse_number(words[1].as_str()) {
+                        Ok(n) => {
+                            if let Some(sym) = symbol {
+                                self.temp_symbols_data.insert(sym, data_size);
+                            }
+                            data_size += 1;
+                            data.push(n);
+                        }
+                        Err(e) => {
+                            println!("Line {}: {}", ln, e);
+                            return "".into();
+                        }
+                    },
+                    // DS
+                    _ => match parse_number(words[1].as_str()) {
+                        Ok(n) => {
+                            if n <= 0 {
+                                println!("Line {}: Segment size must be larger than zero!", ln);
+                                return "".into();
+                            }
+                            if let Some(sym) = symbol {
+                                self.temp_symbols_data.insert(sym, data_size);
+                            }
+                            data_size += n;
+                            for _ in 0..n {
+                                data.push(0);
+                            }
+                        }
+                        Err(e) => {
+                            println!("Line {}: {}", ln, e);
+                            return "".into();
+                        }
+                    },
+                },
+                Err(_) => {
+                    println!("Line {}: Unknown instruction: \"{}\"", ln, words[1]);
+                    return "".into();
                 }
-            }
-            // Second word is invalid
-            else {
-                println!("Line {}: Unknown instruction: \"{}\"", ln, words[1]);
             }
         }
 
@@ -794,7 +799,7 @@ impl Compiler {
         }
         return_str += "___end___\n";
 
-        //println!("Compiled:\n{}", return_str);
+        println!("Compiled:\n{}", return_str);
         return_str
     }
 }
