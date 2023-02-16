@@ -1,5 +1,5 @@
-use super::{super::emulator::CtrlMSG, Base};
-use crate::TitoApp;
+use super::Base;
+use crate::{emulator::emu_debug::CtrlMSG, TitoApp};
 pub mod instruction_parser;
 use eframe::emath::format_with_decimals_in_range;
 use egui::{Button, Color32, Context, FontId, Frame, Layout, RichText, TextEdit, Ui};
@@ -113,7 +113,7 @@ impl TitoApp {
         let width_ins: f32 = 192.0;
 
         egui::CentralPanel::default().show(ctx, |ui| {
-            /* 
+            /*
              * Memview gives an illusion of scrolling through one large table that contains all
              * addresses, but it's size is actually always exactly what's visible on the screen.
              *
@@ -167,9 +167,9 @@ impl TitoApp {
                                 }
                                 let adr = self.gui_memview_off + i;
                                 let val: i32 = self.gui_memview[i as usize];
-                                let pc = self.emu_registers[0];
-                                let sp = self.emu_registers[10];
-                                let fp = self.emu_registers[11];
+                                let pc = self.emu_regs.pc;
+                                let sp = self.emu_regs.gpr[6];
+                                let fp = self.emu_regs.gpr[7];
                                 // Create strings
                                 let mut reg_str = String::new();
                                 if pc == adr || sp == adr || fp == adr {
@@ -253,7 +253,7 @@ impl TitoApp {
             false => 72.0,
         };
 
-        let pc = self.emu_registers[0];
+        let pc = self.emu_regs.pc;
         TableBuilder::new(ui)
             .striped(true)
             .column(Column::initial(reg_name_width))
@@ -273,23 +273,21 @@ impl TitoApp {
                     });
                 });
                 for i in 0..8 {
-                    let val = self.emu_registers[4 + i];
+                    let val = self.emu_regs.gpr[i];
                     let val_str = match self.regs_base {
                         Base::Bin => format!("{val:#034b}"),
                         Base::Dec => format!("{val}"),
                         Base::Hex => format!("{val:#010x}"),
                     };
                     body.row(20.0, |mut row| {
-                        row.col(|ui| match i {
-                            6 => {
-                                ui.label("SP");
-                            }
-                            7 => {
-                                ui.label("FP");
-                            }
-                            _ => {
-                                ui.label(format!("R{i}"));
-                            }
+                        row.col(|ui| {
+                            let regname;
+                            match i {
+                                6 => regname = "SP".into(),
+                                7 => regname = "SP".into(),
+                                _ => regname = format!("R{i}"),
+                            };
+                            ui.label(regname);
                         });
                         row.col(|ui| {
                             ui.label(val_str);

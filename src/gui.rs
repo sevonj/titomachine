@@ -1,12 +1,10 @@
-use super::emulator::CtrlMSG;
-use crate::TitoApp;
+use crate::{emulator::emu_debug::CtrlMSG, TitoApp};
 use serde;
 pub mod file_actions;
 pub mod gui_editor;
 pub mod gui_emulator;
 
 use egui::{Align, Button, DragValue, Layout, Modifiers};
-use rfd;
 
 #[derive(PartialEq)]
 pub enum GuiMode {

@@ -30,6 +30,18 @@ impl Default for Compiler {
 }
 
 impl Compiler {
+    fn out(&mut self, text: String) {
+        self.output += (text + "\n").as_str();
+    }
+
+    fn clear(&mut self) {
+        self.output = "".into();
+        self.temp_symbols_const = HashMap::new();
+        self.temp_symbols_code = HashMap::new();
+        self.temp_symbols_data = HashMap::new();
+        self.symbol_table = HashMap::new();
+    }
+
     fn is_symbol_valid(&mut self, symbol: String) -> Result<(), String> {
         if symbol.len() == 0 {
             return Err(format!("Symbol is empty. Compiler did something wrong.",));
@@ -101,7 +113,9 @@ impl Compiler {
         Ok(())
     }
 
-    pub fn compile(&mut self, source: String) -> String {
+    pub fn compile(&mut self, source: String) -> Result<String, ()> {
+        self.clear();
+
         let mut data: Vec<i32> = Vec::new();
         let mut prog: Vec<i32> = Vec::new();
 
@@ -135,15 +149,15 @@ impl Compiler {
 
             let symbol;
             if let Ok(()) = self.is_symbol_valid(words[0].clone()) {
-                println!("Line {}: Found symbol \"{}\"", ln, words[0]);
+                self.out(format!("Line {}: Found symbol \"{}\"", ln, words[0]));
                 symbol = Some(words.remove(0));
                 if words.len() == 0 {
-                    println!(
+                    self.out(format!(
                         "Line {}: There's no instruction after symbol {}!",
                         ln,
                         symbol.unwrap()
-                    );
-                    return "".into();
+                    ));
+                    return Err(());
                 }
             } else {
                 symbol = None;
@@ -163,8 +177,8 @@ impl Compiler {
                 continue;
             }
             if words.len() < 2 {
-                println!("Line {}: No value entered for symbol!", ln);
-                return "".into();
+                self.out(format!("Line {}: No value entered for symbol!", ln));
+                return Err(());
             }
             // Pseudoinstr
             match get_pseudoinstr(words[0].as_str()) {
@@ -177,13 +191,13 @@ impl Compiler {
                                     self.temp_symbols_const.insert(sym, n);
                                 }
                                 Err(e) => {
-                                    println!("Line {}: {}", ln, e);
-                                    return "".into();
+                                    self.out(format!("Line {}: {}", ln, e));
+                                    return Err(());
                                 }
                             }
                         } else {
-                            println!("Line {}: Constants cannot be anonymous!", ln);
-                            return "".into();
+                            self.out(format!("Line {}: Constants cannot be anonymous!", ln));
+                            return Err(());
                         }
                     }
                     // DC
@@ -196,16 +210,19 @@ impl Compiler {
                             data.push(n);
                         }
                         Err(e) => {
-                            println!("Line {}: {}", ln, e);
-                            return "".into();
+                            self.out(format!("Line {}: {}", ln, e));
+                            return Err(());
                         }
                     },
                     // DS
                     _ => match parse_number(words[1].as_str()) {
                         Ok(n) => {
                             if n <= 0 {
-                                println!("Line {}: Segment size must be larger than zero!", ln);
-                                return "".into();
+                                self.out(format!(
+                                    "Line {}: Segment size must be larger than zero!",
+                                    ln
+                                ));
+                                return Err(());
                             }
                             if let Some(sym) = symbol {
                                 self.temp_symbols_data.insert(sym, data_size);
@@ -216,17 +233,24 @@ impl Compiler {
                             }
                         }
                         Err(e) => {
-                            println!("Line {}: {}", ln, e);
-                            return "".into();
+                            self.out(format!("Line {}: {}", ln, e));
+                            return Err(());
                         }
                     },
                 },
                 Err(_) => {
-                    println!("Line {}: Unknown instruction: \"{}\"", ln, words[1]);
-                    return "".into();
+                    self.out(format!(
+                        "Line {}: Unknown instruction: \"{}\"",
+                        ln, words[1]
+                    ));
+                    return Err(());
                 }
             }
         }
+
+        self.out("".into());
+        self.out(format!("code size: {}", prog_size));
+        self.out(format!("data size: {}", data_size));
 
         // Now we have collected all symbols and we also know the size of code and data sections.
         // It's let's add the declared symbols to the final symbol table
@@ -241,6 +265,10 @@ impl Compiler {
             self.symbol_table
                 .insert(entry.0.to_string(), entry.1 + prog_size);
         }
+
+        self.out("".into());
+        self.out("Built symbol table.".into());
+        self.out("".into());
 
         // Get Instructions
         let mut ln = 0;
@@ -292,8 +320,8 @@ impl Compiler {
             match opcode_str.as_str() {
                 "NOP" => {
                     if words.len() != 1 {
-                        println!("Line {} Unacceptable amount of terms!", ln);
-                        return "".into();
+                        self.out(format!("Line {}: Unacceptable amount of terms!", ln));
+                        return Err(());
                     }
                     opcode = 0x00;
                     op1 = "";
@@ -301,8 +329,8 @@ impl Compiler {
                 }
                 "STORE" => {
                     if words.len() != 3 {
-                        println!("Line {} Unacceptable amount of terms!", ln);
-                        return "".into();
+                        self.out(format!("Line {}: Unacceptable amount of terms!", ln));
+                        return Err(());
                     }
                     opcode = 0x01;
                     op1 = &words[1];
@@ -311,8 +339,8 @@ impl Compiler {
                 }
                 "LOAD" => {
                     if words.len() != 3 {
-                        println!("Line {} Unacceptable amount of terms!", ln);
-                        return "".into();
+                        self.out(format!("Line {}: Unacceptable amount of terms!", ln));
+                        return Err(());
                     }
                     opcode = 0x02;
                     op1 = &words[1];
@@ -320,8 +348,8 @@ impl Compiler {
                 }
                 "IN" => {
                     if words.len() != 3 {
-                        println!("Line {} Unacceptable amount of terms!", ln);
-                        return "".into();
+                        self.out(format!("Line {}: Unacceptable amount of terms!", ln));
+                        return Err(());
                     }
                     opcode = 0x03;
                     op1 = &words[1];
@@ -329,8 +357,8 @@ impl Compiler {
                 }
                 "OUT" => {
                     if words.len() != 3 {
-                        println!("Line {} Unacceptable amount of terms!", ln);
-                        return "".into();
+                        self.out(format!("Line {}: Unacceptable amount of terms!", ln));
+                        return Err(());
                     }
                     opcode = 0x04;
                     op1 = &words[1];
@@ -338,8 +366,8 @@ impl Compiler {
                 }
                 "ADD" => {
                     if words.len() != 3 {
-                        println!("Line {} Unacceptable amount of terms!", ln);
-                        return "".into();
+                        self.out(format!("Line {}: Unacceptable amount of terms!", ln));
+                        return Err(());
                     }
                     opcode = 0x11;
                     op1 = &words[1];
@@ -347,8 +375,8 @@ impl Compiler {
                 }
                 "SUB" => {
                     if words.len() != 3 {
-                        println!("Line {} Unacceptable amount of terms!", ln);
-                        return "".into();
+                        self.out(format!("Line {}: Unacceptable amount of terms!", ln));
+                        return Err(());
                     }
                     opcode = 0x12;
                     op1 = &words[1];
@@ -356,8 +384,8 @@ impl Compiler {
                 }
                 "MUL" => {
                     if words.len() != 3 {
-                        println!("Line {} Unacceptable amount of terms!", ln);
-                        return "".into();
+                        self.out(format!("Line {}: Unacceptable amount of terms!", ln));
+                        return Err(());
                     }
                     opcode = 0x13;
                     op1 = &words[1];
@@ -365,8 +393,8 @@ impl Compiler {
                 }
                 "DIV" => {
                     if words.len() != 3 {
-                        println!("Line {} Unacceptable amount of terms!", ln);
-                        return "".into();
+                        self.out(format!("Line {}: Unacceptable amount of terms!", ln));
+                        return Err(());
                     }
                     opcode = 0x14;
                     op1 = &words[1];
@@ -374,8 +402,8 @@ impl Compiler {
                 }
                 "MOD" => {
                     if words.len() != 3 {
-                        println!("Line {} Unacceptable amount of terms!", ln);
-                        return "".into();
+                        self.out(format!("Line {}: Unacceptable amount of terms!", ln));
+                        return Err(());
                     }
                     opcode = 0x15;
                     op1 = &words[1];
@@ -383,8 +411,8 @@ impl Compiler {
                 }
                 "AND" => {
                     if words.len() != 3 {
-                        println!("Line {} Unacceptable amount of terms!", ln);
-                        return "".into();
+                        self.out(format!("Line {}: Unacceptable amount of terms!", ln));
+                        return Err(());
                     }
                     opcode = 0x16;
                     op1 = &words[1];
@@ -392,8 +420,8 @@ impl Compiler {
                 }
                 "OR" => {
                     if words.len() != 3 {
-                        println!("Line {} Unacceptable amount of terms!", ln);
-                        return "".into();
+                        self.out(format!("Line {}: Unacceptable amount of terms!", ln));
+                        return Err(());
                     }
                     opcode = 0x17;
                     op1 = &words[1];
@@ -401,8 +429,8 @@ impl Compiler {
                 }
                 "XOR" => {
                     if words.len() != 3 {
-                        println!("Line {} Unacceptable amount of terms!", ln);
-                        return "".into();
+                        self.out(format!("Line {}: Unacceptable amount of terms!", ln));
+                        return Err(());
                     }
                     opcode = 0x18;
                     op1 = &words[1];
@@ -410,8 +438,8 @@ impl Compiler {
                 }
                 "SHL" => {
                     if words.len() != 3 {
-                        println!("Line {} Unacceptable amount of terms!", ln);
-                        return "".into();
+                        self.out(format!("Line {}: Unacceptable amount of terms!", ln));
+                        return Err(());
                     }
                     opcode = 0x19;
                     op1 = &words[1];
@@ -419,8 +447,8 @@ impl Compiler {
                 }
                 "SHR" => {
                     if words.len() != 3 {
-                        println!("Line {} Unacceptable amount of terms!", ln);
-                        return "".into();
+                        self.out(format!("Line {}: Unacceptable amount of terms!", ln));
+                        return Err(());
                     }
                     opcode = 0x1a;
                     op1 = &words[1];
@@ -428,8 +456,8 @@ impl Compiler {
                 }
                 "NOT" => {
                     if words.len() != 2 {
-                        println!("Line {} Unacceptable amount of terms!", ln);
-                        return "".into();
+                        self.out(format!("Line {}: Unacceptable amount of terms!", ln));
+                        return Err(());
                     }
                     opcode = 0x1b;
                     op1 = &words[1];
@@ -437,8 +465,8 @@ impl Compiler {
                 }
                 "SHRA" => {
                     if words.len() != 3 {
-                        println!("Line {} Unacceptable amount of terms!", ln);
-                        return "".into();
+                        self.out(format!("Line {}: Unacceptable amount of terms!", ln));
+                        return Err(());
                     }
                     opcode = 0x1c;
                     op1 = &words[1];
@@ -446,8 +474,8 @@ impl Compiler {
                 }
                 "COMP" => {
                     if words.len() != 3 {
-                        println!("Line {} Unacceptable amount of terms!", ln);
-                        return "".into();
+                        self.out(format!("Line {}: Unacceptable amount of terms!", ln));
+                        return Err(());
                     }
                     opcode = 0x1f;
                     op1 = &words[1];
@@ -455,8 +483,8 @@ impl Compiler {
                 }
                 "JUMP" => {
                     if words.len() != 2 {
-                        println!("Line {} Unacceptable amount of terms!", ln);
-                        return "".into();
+                        self.out(format!("Line {}: Unacceptable amount of terms!", ln));
+                        return Err(());
                     }
                     opcode = 0x20;
                     op1 = "";
@@ -465,8 +493,8 @@ impl Compiler {
                 }
                 "JNEG" => {
                     if words.len() != 3 {
-                        println!("Line {} Unacceptable amount of terms!", ln);
-                        return "".into();
+                        self.out(format!("Line {}: Unacceptable amount of terms!", ln));
+                        return Err(());
                     }
                     opcode = 0x21;
                     op1 = &words[1];
@@ -475,8 +503,8 @@ impl Compiler {
                 }
                 "JZER" => {
                     if words.len() != 3 {
-                        println!("Line {} Unacceptable amount of terms!", ln);
-                        return "".into();
+                        self.out(format!("Line {}: Unacceptable amount of terms!", ln));
+                        return Err(());
                     }
                     opcode = 0x22;
                     op1 = &words[1];
@@ -485,8 +513,8 @@ impl Compiler {
                 }
                 "JPOS" => {
                     if words.len() != 3 {
-                        println!("Line {} Unacceptable amount of terms!", ln);
-                        return "".into();
+                        self.out(format!("Line {}: Unacceptable amount of terms!", ln));
+                        return Err(());
                     }
                     opcode = 0x23;
                     op1 = &words[1];
@@ -495,8 +523,8 @@ impl Compiler {
                 }
                 "JNNEG" => {
                     if words.len() != 3 {
-                        println!("Line {} Unacceptable amount of terms!", ln);
-                        return "".into();
+                        self.out(format!("Line {}: Unacceptable amount of terms!", ln));
+                        return Err(());
                     }
                     opcode = 0x24;
                     op1 = &words[1];
@@ -505,8 +533,8 @@ impl Compiler {
                 }
                 "JNZER" => {
                     if words.len() != 3 {
-                        println!("Line {} Unacceptable amount of terms!", ln);
-                        return "".into();
+                        self.out(format!("Line {}: Unacceptable amount of terms!", ln));
+                        return Err(());
                     }
                     opcode = 0x25;
                     op1 = &words[1];
@@ -515,8 +543,8 @@ impl Compiler {
                 }
                 "JNPOS" => {
                     if words.len() != 3 {
-                        println!("Line {} Unacceptable amount of terms!", ln);
-                        return "".into();
+                        self.out(format!("Line {}: Unacceptable amount of terms!", ln));
+                        return Err(());
                     }
                     opcode = 0x26;
                     op1 = &words[1];
@@ -525,8 +553,8 @@ impl Compiler {
                 }
                 "JLES" => {
                     if words.len() != 2 {
-                        println!("Line {} Unacceptable amount of terms!", ln);
-                        return "".into();
+                        self.out(format!("Line {}: Unacceptable amount of terms!", ln));
+                        return Err(());
                     }
                     opcode = 0x27;
                     op1 = "";
@@ -535,8 +563,8 @@ impl Compiler {
                 }
                 "JEQU" => {
                     if words.len() != 2 {
-                        println!("Line {} Unacceptable amount of terms!", ln);
-                        return "".into();
+                        self.out(format!("Line {}: Unacceptable amount of terms!", ln));
+                        return Err(());
                     }
                     opcode = 0x28;
                     op1 = "";
@@ -545,8 +573,8 @@ impl Compiler {
                 }
                 "JGRE" => {
                     if words.len() != 2 {
-                        println!("Line {} Unacceptable amount of terms!", ln);
-                        return "".into();
+                        self.out(format!("Line {}: Unacceptable amount of terms!", ln));
+                        return Err(());
                     }
                     opcode = 0x29;
                     op1 = "";
@@ -555,8 +583,8 @@ impl Compiler {
                 }
                 "JNLES" => {
                     if words.len() != 2 {
-                        println!("Line {} Unacceptable amount of terms!", ln);
-                        return "".into();
+                        self.out(format!("Line {}: Unacceptable amount of terms!", ln));
+                        return Err(());
                     }
                     opcode = 0x2a;
                     op1 = "";
@@ -565,8 +593,8 @@ impl Compiler {
                 }
                 "JNEQU" => {
                     if words.len() != 2 {
-                        println!("Line {} Unacceptable amount of terms!", ln);
-                        return "".into();
+                        self.out(format!("Line {}: Unacceptable amount of terms!", ln));
+                        return Err(());
                     }
                     opcode = 0x2b;
                     op1 = "";
@@ -575,8 +603,8 @@ impl Compiler {
                 }
                 "JNGRE" => {
                     if words.len() != 2 {
-                        println!("Line {} Unacceptable amount of terms!", ln);
-                        return "".into();
+                        self.out(format!("Line {}: Unacceptable amount of terms!", ln));
+                        return Err(());
                     }
                     opcode = 0x2c;
                     op1 = "";
@@ -585,8 +613,8 @@ impl Compiler {
                 }
                 "CALL" => {
                     if words.len() != 3 {
-                        println!("Line {} Unacceptable amount of terms!", ln);
-                        return "".into();
+                        self.out(format!("Line {}: Unacceptable amount of terms!", ln));
+                        return Err(());
                     }
                     opcode = 0x31;
                     op1 = &words[1];
@@ -595,8 +623,8 @@ impl Compiler {
                 }
                 "EXIT" => {
                     if words.len() != 3 {
-                        println!("Line {} Unacceptable amount of terms!", ln);
-                        return "".into();
+                        self.out(format!("Line {}: Unacceptable amount of terms!", ln));
+                        return Err(());
                     }
                     opcode = 0x32;
                     op1 = &words[1];
@@ -604,8 +632,8 @@ impl Compiler {
                 }
                 "PUSH" => {
                     if words.len() != 3 {
-                        println!("Line {} Unacceptable amount of terms!", ln);
-                        return "".into();
+                        self.out(format!("Line {}: Unacceptable amount of terms!", ln));
+                        return Err(());
                     }
                     opcode = 0x33;
                     op1 = &words[1];
@@ -613,21 +641,24 @@ impl Compiler {
                 }
                 "POP" => {
                     if words.len() != 3 {
-                        println!("Line {} Unacceptable amount of terms!", ln);
-                        return "".into();
+                        self.out(format!("Line {}: Unacceptable amount of terms!", ln));
+                        return Err(());
                     }
                     opcode = 0x34;
                     op1 = &words[1];
                     op2 = &words[2];
                     if let Err(_) = get_reg(op2) {
-                        println!("Second operand must be a register for POP");
-                        return "".into();
+                        self.out(format!(
+                            "Line {}: Second operand must be a register for POP",
+                            ln
+                        ));
+                        return Err(());
                     }
                 }
                 "PUSHR" => {
                     if words.len() != 2 {
-                        println!("Line {} Unacceptable amount of terms!", ln);
-                        return "".into();
+                        self.out(format!("Line {}: Unacceptable amount of terms!", ln));
+                        return Err(());
                     }
                     opcode = 0x35;
                     op1 = &words[1];
@@ -635,8 +666,8 @@ impl Compiler {
                 }
                 "POPR" => {
                     if words.len() != 2 {
-                        println!("Line {} Unacceptable amount of terms!", ln);
-                        return "".into();
+                        self.out(format!("Line {}: Unacceptable amount of terms!", ln));
+                        return Err(());
                     }
                     opcode = 0x36;
 
@@ -645,16 +676,19 @@ impl Compiler {
                 }
                 "SVC" => {
                     if words.len() != 3 {
-                        println!("Line {} Unacceptable amount of terms!", ln);
-                        return "".into();
+                        self.out(format!("Line {}: Unacceptable amount of terms!", ln));
+                        return Err(());
                     }
                     opcode = 0x70;
                     op1 = &words[1];
                     op2 = &words[2];
                 }
                 _ => {
-                    println!("Something is wrong with the compiler :(");
-                    return "".into();
+                    self.out(format!(
+                        "Line {}: Something is wrong with the compiler :(",
+                        ln
+                    ));
+                    return Err(());
                 }
             }
 
@@ -664,8 +698,8 @@ impl Compiler {
                 match get_reg(op1) {
                     Ok(n) => rj = n,
                     Err(_) => {
-                        println!("Invalid register on line {}!", ln);
-                        return "".into();
+                        self.out(format!("Line {}: Invalid register!", ln));
+                        return Err(());
                     }
                 }
             }
@@ -691,8 +725,8 @@ impl Compiler {
                             "R6" | "SP" => ri = 6,
                             "R7" | "FP" => ri = 7,
                             _ => {
-                                println!("Line {}: Invalid Register!", ln);
-                                return "".into();
+                                self.out(format!("Line {}: Invalid Register!", ln));
+                                return Err(());
                             }
                         }
 
@@ -726,27 +760,27 @@ impl Compiler {
                                     }
                                     // Address is not okay
                                     else {
-                                        println!(
+                                        self.out(format!(
                                             "Line {}: invalid address: \"{}\"",
                                             ln, parsed.addr
-                                        );
-                                        return "".into();
+                                        ));
+                                        return Err(());
                                     }
                                 }
                             }
                         }
                     }
                     Err(e) => {
-                        println!("Line {}: {}", ln, e);
-                        return "".into();
+                        self.out(format!("Line {}: {}", ln, e));
+                        return Err(());
                     }
                 }
                 if mode < 0 {
-                    println!("Invalid addressing mode on line {}!", ln);
-                    return "".into();
+                    self.out(format!("Line {}: Invalid addressing mode!", ln));
+                    return Err(());
                 }
             }
-            //println!("{}, {}, {}, {}, {}, ", opcode, rj, mode, ri, addr);
+            //self.out(format!("{}, {}, {}, {}, {}, ", opcode, rj, mode, ri, addr);
 
             let mut instruction: i32 = 0;
             instruction += opcode << 24;
@@ -757,7 +791,7 @@ impl Compiler {
                 Ok(int) => {
                     instruction += (int as i32) & 0xffff;
                 }
-                Err(e) => println!("Line {}: {}", ln, e),
+                Err(e) => self.out(format!("Line {}: {}", ln, e)),
             }
 
             prog.push(instruction);
@@ -799,8 +833,8 @@ impl Compiler {
         }
         return_str += "___end___\n";
 
-        println!("Compiled:\n{}", return_str);
-        return_str
+        self.out(format!("Compiled:\n{}", return_str));
+        Ok(return_str)
     }
 }
 
@@ -899,7 +933,6 @@ fn parse_number(numstr: &str) -> Result<i32, String> {
     let mut numstr2: String;
     if minus {
         numstr2 = numstr.chars().into_iter().skip(1).collect();
-        println!("{}", numstr2)
     } else {
         numstr2 = numstr.into();
     }

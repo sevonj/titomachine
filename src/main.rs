@@ -25,19 +25,18 @@
  */
 #[macro_use]
 extern crate num_derive;
-use std::env;
-use std::{path::PathBuf, sync::mpsc, thread};
+use std::{env, path::PathBuf, sync::mpsc, thread};
 pub mod editor;
 pub mod emulator;
 pub mod gui;
 use editor::*;
 use egui_extras::RetainedImage;
-use emulator::{CtrlMSG, Emu, ReplyMSG};
+use emulator::{
+    emu_debug::{CtrlMSG, DebugRegs, ReplyMSG},
+    Emu,
+};
 use gui::{Base, GuiMode};
-use image::ImageBuffer;
-use image::Rgba;
-
-const mem_display_size: usize = 16;
+use image::{ImageBuffer, Rgba};
 
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
@@ -68,7 +67,7 @@ pub struct TitoApp {
     #[serde(skip)]
     emu_turbo: bool,
     #[serde(skip)]
-    emu_registers: Vec<i32>, // Cached registers for gui
+    emu_regs: DebugRegs,
     #[serde(skip)]
     gui_memview: Vec<i32>, // Cached partial memory for gui
     #[serde(skip)]
@@ -124,11 +123,11 @@ impl Default for TitoApp {
             emu_achieved_speed: 0.,
             emu_use_khz: false,
             emu_turbo: false,
-            emu_registers: vec![0; 12],
+            emu_regs: DebugRegs::default(),
             emu_mem_len: 0,
-            gui_memview: vec![7; mem_display_size],
+            gui_memview: vec![7; 16],
             gui_memview_off: 0,
-            gui_memview_len: mem_display_size as i32,
+            gui_memview_len: 16 as i32,
             gui_memview_scroll: 0.,
             emu_waiting_for_in: false,
             emu_displayimage: None,
@@ -161,36 +160,40 @@ impl TitoApp {
 
         Default::default()
     }
+    
     fn msg_handler(&mut self) {
+        // Loop until there are no messages, because messages may
+        // come faster than update.
         loop {
-            match self.emu_rx.try_recv().unwrap_or(ReplyMSG::None) {
-                // Emulator State
-                ReplyMSG::State(st) => {
-                    self.emu_running = st.running;
-                    self.emu_halted = st.halted;
-                    self.emu_playing = st.playing;
-                    self.emu_achieved_speed = st.speed_percent;
+            if let Ok(msg) = self.emu_rx.try_recv() {
+                match msg {
+                    // Emulator State
+                    ReplyMSG::State(st) => {
+                        self.emu_running = st.running;
+                        self.emu_halted = st.halted;
+                        self.emu_playing = st.playing;
+                        self.emu_achieved_speed = st.speed_percent;
+                    }
+                    ReplyMSG::Regs(regs) => self.emu_regs = regs,
+                    ReplyMSG::Mem(vec) => self.gui_memview = vec,
+                    ReplyMSG::MemSize(s) => self.emu_mem_len = s,
+                    ReplyMSG::Display(vec) => {
+                        self.emu_dispvec = vec;
+                    }
+                    // IO
+                    ReplyMSG::In => self.emu_waiting_for_in = true,
+                    ReplyMSG::Out(n) => {
+                        self.buf_out = n.to_string() + "\n" + self.buf_out.as_str(); // Add a line to beginning
+                        self.buf_out = self // Remove last line
+                            .buf_out
+                            .lines()
+                            .take(16)
+                            .map(|s| s.to_string() + "\n")
+                            .collect();
+                    }
                 }
-                ReplyMSG::Regs(vec) => self.emu_registers = vec,
-                ReplyMSG::Mem(vec) => self.gui_memview = vec,
-                ReplyMSG::MemSize(s) => self.emu_mem_len = s,
-                ReplyMSG::Display(vec) => {
-                    self.emu_dispvec = vec;
-                }
-                // IO
-                ReplyMSG::In => self.emu_waiting_for_in = true,
-                ReplyMSG::Out(n) => {
-                    self.buf_out = n.to_string() + "\n" + self.buf_out.as_str(); // Add a line to beginning
-                    self.buf_out = self // Remove last line
-                        .buf_out
-                        .lines()
-                        .take(16)
-                        .map(|s| s.to_string() + "\n")
-                        .collect();
-                }
-                ReplyMSG::None => {
-                    break;
-                }
+            } else {
+                break;
             }
         }
     }

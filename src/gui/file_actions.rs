@@ -1,5 +1,5 @@
 use super::GuiMode;
-use crate::{emulator::CtrlMSG, TitoApp};
+use crate::{emulator::emu_debug::CtrlMSG, TitoApp};
 use rfd::FileDialog;
 use std::env::current_dir;
 
@@ -37,7 +37,13 @@ impl TitoApp {
     }
 
     pub fn file_compile(&mut self) {
-        self.current_prog = self.editor.compile();
+        match self.editor.compile() {
+            Ok(program) => {
+                self.current_prog = program;
+                self.guimode = GuiMode::Emulator;
+            }
+            Err(_) => self.current_prog = "".into(),
+        }
         self.emu_tx
             .send(CtrlMSG::LoadProg(self.current_prog.clone()));
     }

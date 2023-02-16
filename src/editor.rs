@@ -23,6 +23,8 @@ pub struct Editor {
     pub source_path: Option<String>,
     pub source_code: String,
     pub line_no: String,
+    pub linecnt: i32,
+    pub compiler: Compiler,
 }
 
 impl Default for Editor {
@@ -31,6 +33,8 @@ impl Default for Editor {
             source_path: None,
             source_code: DEFAULT_PROGRAM.into(),
             line_no: "".into(),
+            linecnt: 1,
+            compiler: Compiler::default(),
         };
         ed.update_linecount();
         ed
@@ -39,17 +43,16 @@ impl Default for Editor {
 
 impl Editor {
     pub fn update_linecount(&mut self) {
-        let linecnt = self.source_code.matches("\n").count();
+        self.linecnt = self.source_code.matches("\n").count() as i32;
         self.line_no = "1".into();
-        for i in 2..linecnt + 2 {
+        for i in 2..self.linecnt + 2 {
             self.line_no += "\n";
             self.line_no += i.to_string().as_str();
         }
     }
 
-    pub fn compile(&mut self) -> String {
-        let mut compiler = Compiler::default();
-        compiler.compile(self.source_code.clone())
+    pub fn compile(&mut self) -> Result<String, ()> {
+        self.compiler.compile(self.source_code.clone())
     }
 
     pub fn open_file(&mut self, pathbuf: Option<PathBuf>) {

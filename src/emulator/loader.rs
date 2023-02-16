@@ -1,10 +1,18 @@
-use super::instance::{TTKInstance, FP, SP};
+/*
+ * Funcs here will
+ * - Load a program to memory (and set up control regs)
+ *
+ * Accessing memory through cpu is dumb
+ */
 
-pub fn load_program(prog: &str, instance: &mut TTKInstance) {
+use super::{
+    cpu::CPU,
+    cpu::{FP, SP},
+};
+
+pub fn load_program(cpu: &mut CPU, prog: &str) {
+    cpu.debug_memclear();
     let mut mem_idx: usize = 0;
-
-    // Skip is used to skip lines belo headers.
-    let mut skip = 0;
     let mut lines = prog.lines();
     loop {
         let line;
@@ -17,7 +25,7 @@ pub fn load_program(prog: &str, instance: &mut TTKInstance) {
             "___code___" => match lines.next() {
                 Some(ln) => match ln.split_whitespace().nth(1) {
                     Some(word) => match word.parse::<i32>() {
-                        Ok(n) => instance.gpr[FP] = n,
+                        Ok(n) => cpu.debug_set_fp(n),
                         Err(_) => break,
                     },
                     None => break,
@@ -27,7 +35,7 @@ pub fn load_program(prog: &str, instance: &mut TTKInstance) {
             "___data___" => match lines.next() {
                 Some(ln) => match ln.split_whitespace().nth(1) {
                     Some(word) => match word.parse::<i32>() {
-                        Ok(n) => instance.gpr[SP] = n,
+                        Ok(n) => cpu.debug_set_sp(n),
                         Err(_) => break,
                     },
                     None => break,
@@ -44,38 +52,21 @@ pub fn load_program(prog: &str, instance: &mut TTKInstance) {
             }
             _ => match line.parse::<i32>() {
                 Ok(value) => {
-                    if mem_idx >= instance.memory.len() {
-                        println!("ERR: Program does not fit in memory!\nConsider increasing memory size or making smaller programs.\nRan out at address {}.", instance.memory.len());
-                        clear(instance);
+                    if mem_idx >= cpu.debug_memlen() {
+                        println!("ERR: Program does not fit in memory!\nConsider increasing memory size or making smaller programs.\nRan out at address {}.", cpu.debug_memlen());
+                        cpu.debug_memclear();
+                        cpu.debug_clear_cu();
                         return;
                     }
-                    instance.memory[mem_idx] = value;
+                    cpu.debug_memwrite(mem_idx, value);
                     mem_idx += 1;
                 }
                 Err(_e) => {
                     println!("ERR: Failed to parse \"{}\" as a 32bit integer.", line);
-                    clear(instance);
+                    cpu.debug_memclear();
                     return;
                 }
             },
         }
     }
-}
-
-pub fn clear(instance: &mut TTKInstance) {
-    for i in &mut instance.memory {
-        *i = 0;
-    }
-    instance.cu_pc = 0;
-    instance.cu_ir = 0;
-    instance.cu_tr = 0;
-    instance.cu_sr = 0;
-    for i in &mut instance.gpr {
-        *i = 0;
-    }
-}
-
-pub fn setmemsize(instance: &mut TTKInstance, size: usize) {
-    instance.memory.clear();
-    instance.memory.resize(size, 0);
 }

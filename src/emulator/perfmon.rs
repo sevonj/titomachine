@@ -1,6 +1,11 @@
-use std::time::Duration;
+/*
+ * Performance monitor keeps track of how the well
+ * the emulator can keep up with target cpu speed.
+ *
+ */
 
 use num_traits::ToPrimitive;
+use std::time::Duration;
 
 const SAMPLECNT: usize = 128;
 
