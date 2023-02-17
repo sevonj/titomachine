@@ -82,7 +82,7 @@ impl TitoApp {
                     self.emulator_panel(ctx, ui);
                 } else {
                     if self.emu_running {
-                        self.emu_tx.send(CtrlMSG::Stop);
+                        self.emu_tx.send(CtrlMSG::PlaybackStop);
                         self.emu_running = false;
                     }
                     self.editor_panel(ctx, ui);
@@ -225,22 +225,22 @@ impl TitoApp {
             if ui.input_mut().consume_shortcut(&SHORTCUT_TOGGLEPOWER) {
                 match self.emu_running {
                     true => {
-                        self.emu_tx.send(CtrlMSG::Stop);
+                        self.emu_tx.send(CtrlMSG::PlaybackStop);
                     }
                     false => {
-                        self.emu_tx.send(CtrlMSG::Start);
+                        self.emu_tx.send(CtrlMSG::PlaybackStart);
                     }
                 }
             }
             if ui.input_mut().consume_shortcut(&SHORTCUT_STOP) {
-                self.emu_tx.send(CtrlMSG::Stop);
+                self.emu_tx.send(CtrlMSG::PlaybackStop);
             }
             if self.emu_running {
                 if ui.input_mut().consume_shortcut(&SHORTCUT_PLAY) {
-                    self.emu_tx.send(CtrlMSG::PlayPause(!self.emu_playing));
+                    self.emu_tx.send(CtrlMSG::PlaybackPlayPause(!self.emu_playing));
                 }
                 if ui.input_mut().consume_shortcut(&SHORTCUT_TICK) && !self.emu_playing {
-                    self.emu_tx.send(CtrlMSG::Tick);
+                    self.emu_tx.send(CtrlMSG::PlaybackTick);
                     ctx.request_repaint_after(std::time::Duration::from_secs(1 / 60))
                 }
             }

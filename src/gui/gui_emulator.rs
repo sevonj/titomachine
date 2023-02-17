@@ -22,13 +22,13 @@ impl TitoApp {
         }
         if ui.add(Button::new(text_onoff)).clicked() {
             self.emu_playing = false;
-            self.emu_tx.send(CtrlMSG::PlayPause(false));
+            self.emu_tx.send(CtrlMSG::PlaybackPlayPause(false));
             if self.emu_running {
                 self.emu_running = false;
-                self.emu_tx.send(CtrlMSG::Stop);
+                self.emu_tx.send(CtrlMSG::PlaybackStop);
             } else {
                 self.emu_running = true;
-                self.emu_tx.send(CtrlMSG::Start);
+                self.emu_tx.send(CtrlMSG::PlaybackStart);
             }
         }
 
@@ -43,14 +43,14 @@ impl TitoApp {
                 .clicked()
             {
                 self.emu_playing = !self.emu_playing;
-                self.emu_tx.send(CtrlMSG::PlayPause(self.emu_playing));
+                self.emu_tx.send(CtrlMSG::PlaybackPlayPause(self.emu_playing));
             }
             ui.add_enabled_ui(!self.emu_playing, |ui| {
                 if ui
                     .add(Button::new(RichText::new("|▶")).min_size(egui::vec2(24.0, 0.0)))
                     .clicked()
                 {
-                    self.emu_tx.send(CtrlMSG::Tick);
+                    self.emu_tx.send(CtrlMSG::PlaybackTick);
                 }
             })
         });
@@ -324,7 +324,7 @@ impl TitoApp {
             if ui.button("Send").clicked() {
                 if self.buf_in.parse::<i32>().is_ok() {
                     self.emu_tx
-                        .send(CtrlMSG::In(self.buf_in.parse::<i32>().unwrap()));
+                        .send(CtrlMSG::DevKbdIn(self.buf_in.parse::<i32>().unwrap()));
                     self.buf_in = String::new();
                     self.emu_waiting_for_in = false;
                 } else {
