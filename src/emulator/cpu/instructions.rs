@@ -80,11 +80,12 @@ impl CPU {
                 self.cu_pc += 1;
             }
             Some(Opcode::IN) => {
-                //self.tx.send(ReplyMSG::In);
+                //TODO: proper devices
                 self.waiting_for_io = true;
             }
             Some(Opcode::OUT) => {
-                //self.tx.send(ReplyMSG::Out(self.gpr[rj as usize]));
+                //
+                self.output = Some(self.gpr[rj as usize]);
                 self.cu_pc += 1;
             }
             Some(Opcode::ADD) => {

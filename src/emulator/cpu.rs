@@ -36,7 +36,7 @@ pub const FP: usize = 7;
 pub struct CPU {
     // These two will be removed or something
     pub waiting_for_io: bool,
-    //pub running: bool,
+    pub output: Option<i32>,
     halt: bool,       //
     cu_pc: i32,       // Program Counter
     cu_ir: i32,       // Instruction Register
@@ -54,6 +54,7 @@ impl CPU {
     pub fn new() -> Self {
         CPU {
             waiting_for_io: false,
+            output: None,
             halt: false,
             cu_pc: 0,
             cu_ir: 0,

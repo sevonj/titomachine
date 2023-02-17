@@ -155,5 +155,13 @@ impl Emu {
         self.perfmon.tick();
         self.t_last_cpu_tick = Some(Instant::now());
         self.cpu.tick();
+
+        if self.cpu.waiting_for_io {
+            self.tx.send(ReplyMSG::In);
+        }
+        if let Some(val) = self.cpu.output {
+            self.tx.send(ReplyMSG::Out(val));
+            self.cpu.output = None;
+        }
     }
 }
