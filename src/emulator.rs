@@ -152,9 +152,7 @@ impl Emu {
         {
             return;
         }
-        if let Some(t) = self.t_last_cpu_tick {
-            self.perfmon.add_sample(Instant::now() - t);
-        }
+        self.perfmon.tick();
         self.t_last_cpu_tick = Some(Instant::now());
         self.cpu.tick();
     }
