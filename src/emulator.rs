@@ -11,9 +11,10 @@ mod loader;
 
 pub struct Emu {
     cpu: CPU,
-    ctlr_tx: Sender<ReplyMSG>,
-    ctrl_rx: Receiver<CtrlMSG>,
+    tx: Sender<ReplyMSG>,
+    rx: Receiver<CtrlMSG>,
     loaded_prog: String,
+    running: bool,
     playing: bool,
     tick_rate: f32,
     turbo: bool,
@@ -28,9 +29,10 @@ impl Emu {
     pub fn default(tx: Sender<ReplyMSG>, rx: Receiver<CtrlMSG>) -> Self {
         Emu {
             cpu: CPU::new(),
-            ctlr_tx: tx,
-            ctrl_rx: rx,
+            tx,
+            rx,
             loaded_prog: String::new(),
+            running: false,
             playing: false,
             tick_rate: 10.,
             turbo: false,
@@ -58,8 +60,10 @@ impl Emu {
                     if self.tick_timer >= tick_time {
                         self.tick_timer -= tick_time;
                         self.tick();
+                    } else {
+                        // If no tick, sleep
+                        thread::sleep(Duration::from_secs_f32(0.5 / self.tick_rate))
                     }
-                    thread::sleep(Duration::from_secs_f32(0.5 / self.tick_rate))
                 }
             } else {
                 // Sleep longer when not playing
@@ -93,15 +97,16 @@ impl Emu {
         // Loop until there are no messages, because messages may
         // come faster than update.
         loop {
-            if let Ok(msg) = self.ctrl_rx.try_recv() {
+            if let Ok(msg) = self.rx.try_recv() {
                 match msg {
                     // Playback control
-                    CtrlMSG::Start => self.start(),
-                    CtrlMSG::Stop => self.stop(),
-                    CtrlMSG::PlayPause(p) => self.playpause(p),
-                    CtrlMSG::Tick => self.tick(),
+                    CtrlMSG::PlaybackStart => self.start(),
+                    CtrlMSG::PlaybackStop => self.stop(),
+                    CtrlMSG::PlaybackPlayPause(p) => self.playpause(p),
+                    CtrlMSG::PlaybackTick => self.tick(),
                     // Dev
-                    CtrlMSG::In(input) => self.cpu.input_handler(input),
+                    CtrlMSG::DevKbdIn(input) => self.cpu.input_handler(input),
+                    CtrlMSG::DevGamepadState(_input) => todo!(),
                     // Loader
                     CtrlMSG::LoadProg(fname) => self.loadprog(fname),
                     // Settings
@@ -122,14 +127,14 @@ impl Emu {
 
     fn start(&mut self) {
         self.cpu.debug_clear_cu();
-        self.cpu.running = true;
+        self.running = true;
         self.cpu.debug_set_halt(false);
         self.t_last_update = None;
     }
 
     fn stop(&mut self) {
         self.t_last_update = None;
-        self.cpu.running = false;
+        self.running = false;
     }
 
     fn playpause(&mut self, p: bool) {
@@ -138,18 +143,13 @@ impl Emu {
     }
 
     fn loadprog(&mut self, prog: String) {
-        self.cpu.running = false;
+        self.running = false;
         self.loaded_prog = prog;
         loader::load_program(&mut self.cpu, &self.loaded_prog);
     }
 
     fn tick(&mut self) {
-        if self.cpu.waiting_for_io
-            || self.cpu.debug_get_halt()
-            || !self.cpu.running
-            || false
-            || false
-        {
+        if self.cpu.waiting_for_io || self.cpu.debug_get_halt() || !self.running {
             return;
         }
         self.perfmon.tick();
