@@ -34,7 +34,7 @@ impl PerfMonitor {
             panic!("PerfMonitor: tickrate can't be zero or negative!!")
         }
         self.target_rate = rate;
-        self.update_rate = rate.min(1.);
+        self.update_rate = rate.min(4.);
     }
 
     pub fn tick(&mut self) {
