@@ -1,52 +1,47 @@
 use super::{CPU, FP, SP, SR_D, SR_E, SR_G, SR_I, SR_L, SR_M, SR_O, SR_P, SR_S, SR_U, SR_Z};
-use num_derive::FromPrimitive;
-use num_traits::FromPrimitive;
 
-#[derive(FromPrimitive, ToPrimitive)]
-pub enum Opcode {
-    NOP = 0x00,
-    STORE = 0x01,
-    LOAD = 0x02,
-    IN = 0x03,
-    OUT = 0x04,
-    ADD = 0x11,
-    SUB = 0x12,
-    MUL = 0x13,
-    DIV = 0x14,
-    MOD = 0x15,
-    AND = 0x16,
-    OR = 0x17,
-    XOR = 0x18,
-    SHL = 0x19,
-    SHR = 0x1A,
-    NOT = 0x1B,
-    SHRA = 0x1C,
-    COMP = 0x1F,
-    JUMP = 0x20,
-    JNEG = 0x21,
-    JZER = 0x22,
-    JPOS = 0x23,
-    JNNEG = 0x24,
-    JNZER = 0x25,
-    JNPOS = 0x26,
-    JLES = 0x27,
-    JEQU = 0x28,
-    JGRE = 0x29,
-    JNLES = 0x2A,
-    JNEQU = 0x2B,
-    JNGRE = 0x2C,
-    CALL = 0x31,
-    EXIT = 0x32,
-    PUSH = 0x33,
-    POP = 0x34,
-    PUSHR = 0x35,
-    POPR = 0x36,
-    SVC = 0x70,
-}
+const NOP: u16 = 0x00;
+const STORE: u16 = 0x01;
+const LOAD: u16 = 0x02;
+const IN: u16 = 0x03;
+const OUT: u16 = 0x04;
+const ADD: u16 = 0x11;
+const SUB: u16 = 0x12;
+const MUL: u16 = 0x13;
+const DIV: u16 = 0x14;
+const MOD: u16 = 0x15;
+const AND: u16 = 0x16;
+const OR: u16 = 0x17;
+const XOR: u16 = 0x18;
+const SHL: u16 = 0x19;
+const SHR: u16 = 0x1A;
+const NOT: u16 = 0x1B;
+const SHRA: u16 = 0x1C;
+const COMP: u16 = 0x1F;
+const JUMP: u16 = 0x20;
+const JNEG: u16 = 0x21;
+const JZER: u16 = 0x22;
+const JPOS: u16 = 0x23;
+const JNNEG: u16 = 0x24;
+const JNZER: u16 = 0x25;
+const JNPOS: u16 = 0x26;
+const JLES: u16 = 0x27;
+const JEQU: u16 = 0x28;
+const JGRE: u16 = 0x29;
+const JNLES: u16 = 0x2A;
+const JNEQU: u16 = 0x2B;
+const JNGRE: u16 = 0x2C;
+const CALL: u16 = 0x31;
+const EXIT: u16 = 0x32;
+const PUSH: u16 = 0x33;
+const POP: u16 = 0x34;
+const PUSHR: u16 = 0x35;
+const POPR: u16 = 0x36;
+const SVC: u16 = 0x70;
 
 impl CPU {
     pub fn exec_instruction(&mut self) {
-        let opcode = self.cu_ir >> 24;
+        let opcode = (self.cu_ir >> 24) as u16;
         let rj = (self.cu_ir >> 21) & 0x7;
         let mode = (self.cu_ir >> 19) & 0x3;
         let ri = (self.cu_ir >> 16) & 0x7;
@@ -67,90 +62,90 @@ impl CPU {
             self.cu_tr = self.memread(self.cu_tr);
         }
 
-        match FromPrimitive::from_i32(opcode) {
-            Some(Opcode::NOP) => {
+        match opcode {
+            NOP => {
                 self.cu_pc += 1;
             }
-            Some(Opcode::STORE) => {
+            STORE => {
                 self.memwrite(self.cu_tr, self.gpr[rj as usize]);
                 self.cu_pc += 1;
             }
-            Some(Opcode::LOAD) => {
+            LOAD => {
                 self.gpr[rj as usize] = self.cu_tr;
                 self.cu_pc += 1;
             }
-            Some(Opcode::IN) => {
+            IN => {
                 //TODO: proper devices
                 self.waiting_for_io = true;
             }
-            Some(Opcode::OUT) => {
+            OUT => {
                 //
                 self.output = Some(self.gpr[rj as usize]);
                 self.cu_pc += 1;
             }
-            Some(Opcode::ADD) => {
+            ADD => {
                 match self.gpr[rj as usize].checked_add(self.cu_tr) {
                     Some(i) => self.gpr[rj as usize] = i,
                     None => self.cu_sr |= SR_O,
                 }
                 self.cu_pc += 1;
             }
-            Some(Opcode::SUB) => {
+            SUB => {
                 match self.gpr[rj as usize].checked_sub(self.cu_tr) {
                     Some(i) => self.gpr[rj as usize] = i,
                     None => self.cu_sr |= SR_O,
                 }
                 self.cu_pc += 1;
             }
-            Some(Opcode::MUL) => {
+            MUL => {
                 match self.gpr[rj as usize].checked_mul(self.cu_tr) {
                     Some(i) => self.gpr[rj as usize] = i,
                     None => self.cu_sr |= SR_O,
                 }
                 self.cu_pc += 1;
             }
-            Some(Opcode::DIV) => {
+            DIV => {
                 match self.gpr[rj as usize].checked_div(self.cu_tr) {
                     Some(i) => self.gpr[rj as usize] = i,
                     None => self.cu_sr |= SR_O,
                 }
                 self.cu_pc += 1;
             }
-            Some(Opcode::MOD) => {
+            MOD => {
                 self.gpr[rj as usize] %= self.cu_tr;
                 self.cu_pc += 1;
             }
-            Some(Opcode::AND) => {
+            AND => {
                 self.gpr[rj as usize] &= self.cu_tr;
                 self.cu_pc += 1;
             }
-            Some(Opcode::OR) => {
+            OR => {
                 self.gpr[rj as usize] |= self.cu_tr;
                 self.cu_pc += 1;
             }
-            Some(Opcode::XOR) => {
+            XOR => {
                 self.gpr[rj as usize] ^= self.cu_tr;
                 self.cu_pc += 1;
             }
-            Some(Opcode::SHL) => {
+            SHL => {
                 self.gpr[rj as usize] <<= self.cu_tr;
                 self.cu_pc += 1;
             }
-            Some(Opcode::SHR) => {
+            SHR => {
                 // Casting to unsigned because signed int defaults to arithmetic shift.
                 // This tactic worked in C, TODO: verify that it works here.
                 self.gpr[rj as usize] = (self.gpr[rj as usize] as u32 >> self.cu_tr) as i32;
                 self.cu_pc += 1;
             }
-            Some(Opcode::NOT) => {
+            NOT => {
                 self.gpr[rj as usize] = !self.cu_tr;
                 self.cu_pc += 1;
             }
-            Some(Opcode::SHRA) => {
+            SHRA => {
                 self.gpr[rj as usize] >>= self.cu_tr;
                 self.cu_pc += 1;
             }
-            Some(Opcode::COMP) => {
+            COMP => {
                 if self.gpr[rj as usize] > self.cu_tr {
                     // Greater
                     self.cu_sr |= SR_G;
@@ -170,46 +165,46 @@ impl CPU {
                 self.cu_pc += 1;
             }
             // Branching instructions
-            Some(Opcode::JUMP) => {
+            JUMP => {
                 self.cu_pc = self.cu_tr;
             }
             // Jumps that use GPR
-            Some(Opcode::JNEG) => {
+            JNEG => {
                 if self.gpr[rj as usize] < 0 {
                     self.cu_pc = self.cu_tr;
                 } else {
                     self.cu_pc += 1;
                 }
             }
-            Some(Opcode::JZER) => {
+            JZER => {
                 if self.gpr[rj as usize] == 0 {
                     self.cu_pc = self.cu_tr;
                 } else {
                     self.cu_pc += 1;
                 }
             }
-            Some(Opcode::JPOS) => {
+            JPOS => {
                 if self.gpr[rj as usize] > 0 {
                     self.cu_pc = self.cu_tr;
                 } else {
                     self.cu_pc += 1;
                 }
             }
-            Some(Opcode::JNNEG) => {
+            JNNEG => {
                 if self.gpr[rj as usize] >= 0 {
                     self.cu_pc = self.cu_tr;
                 } else {
                     self.cu_pc += 1;
                 }
             }
-            Some(Opcode::JNZER) => {
+            JNZER => {
                 if self.gpr[rj as usize] != 0 {
                     self.cu_pc = self.cu_tr;
                 } else {
                     self.cu_pc += 1;
                 }
             }
-            Some(Opcode::JNPOS) => {
+            JNPOS => {
                 if self.gpr[rj as usize] <= 0 {
                     self.cu_pc = self.cu_tr;
                 } else {
@@ -217,42 +212,42 @@ impl CPU {
                 }
             }
             // Jumps that use SR
-            Some(Opcode::JLES) => {
+            JLES => {
                 if self.cu_sr & SR_L == SR_L {
                     self.cu_pc = self.cu_tr;
                 } else {
                     self.cu_pc += 1;
                 }
             }
-            Some(Opcode::JEQU) => {
+            JEQU => {
                 if self.cu_sr & SR_E == SR_E {
                     self.cu_pc = self.cu_tr;
                 } else {
                     self.cu_pc += 1;
                 }
             }
-            Some(Opcode::JGRE) => {
+            JGRE => {
                 if self.cu_sr & SR_G == SR_G {
                     self.cu_pc = self.cu_tr;
                 } else {
                     self.cu_pc += 1;
                 }
             }
-            Some(Opcode::JNLES) => {
+            JNLES => {
                 if self.cu_sr & SR_L == 0 {
                     self.cu_pc = self.cu_tr;
                 } else {
                     self.cu_pc += 1;
                 }
             }
-            Some(Opcode::JNEQU) => {
+            JNEQU => {
                 if self.cu_sr & SR_E == 0 {
                     self.cu_pc = self.cu_tr;
                 } else {
                     self.cu_pc += 1;
                 }
             }
-            Some(Opcode::JNGRE) => {
+            JNGRE => {
                 if self.cu_sr & SR_G == 0 {
                     self.cu_pc = self.cu_tr;
                 } else {
@@ -260,7 +255,7 @@ impl CPU {
                 }
             }
             // Subroutine instructions
-            Some(Opcode::CALL) => {
+            CALL => {
                 self.gpr[SP] += 1;
                 self.memwrite(self.gpr[SP], self.cu_pc);
                 self.gpr[SP] += 1;
@@ -268,31 +263,31 @@ impl CPU {
                 self.cu_pc = self.cu_tr;
                 self.gpr[FP] = self.gpr[SP];
             }
-            Some(Opcode::EXIT) => {
+            EXIT => {
                 self.gpr[SP] = self.gpr[FP] - 2 - self.cu_tr;
                 self.cu_pc = self.memread(self.gpr[FP] - 1);
                 self.gpr[FP] = self.memread(self.gpr[FP]);
                 self.cu_pc += 1;
             }
             // Stack instructions
-            Some(Opcode::PUSH) => {
+            PUSH => {
                 self.gpr[SP] += 1;
                 self.memwrite(self.gpr[SP], self.cu_tr);
                 self.cu_pc += 1;
             }
-            Some(Opcode::POP) => {
+            POP => {
                 self.gpr[ri as usize] = self.memread(self.gpr[SP]);
                 self.gpr[SP] -= 1;
                 self.cu_pc += 1;
             }
-            Some(Opcode::PUSHR) => {
+            PUSHR => {
                 for i in 0..7 {
                     self.gpr[SP] += 1;
                     self.memwrite(self.gpr[SP], self.gpr[i]);
                 }
                 self.cu_pc += 1;
             }
-            Some(Opcode::POPR) => {
+            POPR => {
                 let old_sp = self.gpr[SP];
                 for i in (0..7).rev() {
                     let addr;
@@ -309,13 +304,11 @@ impl CPU {
                 self.cu_pc += 1;
             }
             // Syscalls
-            Some(Opcode::SVC) => {
+            SVC => {
                 self.cu_sr |= SR_S;
                 self.cu_pc += 1;
             }
-            None => {
-                self.cu_sr |= SR_U;
-            }
+            _ => self.cu_sr |= SR_U,
         }
     }
 }
