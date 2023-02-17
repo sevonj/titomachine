@@ -36,8 +36,7 @@ pub const FP: usize = 7;
 pub struct CPU {
     // These two will be removed or something
     pub waiting_for_io: bool,
-    pub running: bool,
-
+    //pub running: bool,
     halt: bool,       //
     cu_pc: i32,       // Program Counter
     cu_ir: i32,       // Instruction Register
@@ -55,7 +54,6 @@ impl CPU {
     pub fn new() -> Self {
         CPU {
             waiting_for_io: false,
-            running: false,
             halt: false,
             cu_pc: 0,
             cu_ir: 0,
@@ -71,10 +69,6 @@ impl CPU {
     }
 
     pub fn tick(&mut self) {
-        if !self.running {
-            println!("Err: called tick() but the machine is not turned on! You shouldn't be here.");
-            return;
-        }
         self.cu_ir = self.memread(self.cu_pc);
         self.exec_instruction();
         self.sr_handler()
