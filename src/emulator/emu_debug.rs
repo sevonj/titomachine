@@ -6,20 +6,16 @@
 use super::Emu;
 use std::ops::Range;
 pub enum CtrlMSG {
-    // Playback control
-    Start,
-    Stop,
-    PlayPause(bool),
-    Tick,
-    // Dev
-    In(i32),
-    // Loader
+    PlaybackStart,
+    PlaybackStop,
+    PlaybackPlayPause(bool),
+    PlaybackTick,
+    DevKbdIn(i32),
+    DevGamepadState(i32),
     LoadProg(String),
-    // Settings
     SetRate(f32),
     SetTurbo(bool),
     SetMemSize(usize),
-    // Debug
     GetState,
     GetRegs,
     GetMem(Range<i32>),
@@ -69,9 +65,9 @@ impl Default for DebugRegs {
 
 impl Emu {
     pub fn debug_sendstate(&mut self) {
-        self.ctlr_tx.send(ReplyMSG::State(EmuState {
+        self.tx.send(ReplyMSG::State(EmuState {
             playing: self.playing,
-            running: self.cpu.running,
+            running: self.running,
             halted: self.cpu.debug_get_halt(),
             speed_percent: self.perfmon.get_percent(),
         }));
@@ -85,15 +81,15 @@ impl Emu {
             }
             retvec.push(self.cpu.debug_memread(i as usize));
         }
-        self.ctlr_tx.send(ReplyMSG::Mem(retvec));
-        self.ctlr_tx
+        self.tx.send(ReplyMSG::Mem(retvec));
+        self.tx
             .send(ReplyMSG::MemSize(self.cpu.debug_memlen()));
     }
 
     pub fn debug_sendregs(&mut self) {
         let cu = self.cpu.debug_get_cu();
         let mmu = self.cpu.debug_get_mmu();
-        self.ctlr_tx.send(ReplyMSG::Regs(DebugRegs {
+        self.tx.send(ReplyMSG::Regs(DebugRegs {
             pc: cu[0],
             ir: cu[1],
             tr: cu[2],
@@ -109,6 +105,6 @@ impl Emu {
     pub fn debug_senddisp(&mut self) {
         let range = 8192..8192 + 120 * 160;
         let retvec = self.cpu.debug_memread_range(range).to_vec();
-        self.ctlr_tx.send(ReplyMSG::Display(retvec));
+        self.tx.send(ReplyMSG::Display(retvec));
     }
 }
