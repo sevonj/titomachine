@@ -102,8 +102,7 @@ impl Default for TitoApp {
         let (tx2, rx2) = mpsc::channel();
 
         thread::spawn(move || {
-            let mut emu = Emu::default(tx2, rx);
-            emu.run();
+            emulator::run(tx2, rx);
         });
         TitoApp {
             working_dir: env::current_dir().unwrap(),
@@ -160,7 +159,7 @@ impl TitoApp {
 
         Default::default()
     }
-    
+
     fn msg_handler(&mut self) {
         // Loop until there are no messages, because messages may
         // come faster than update.

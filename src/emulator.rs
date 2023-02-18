@@ -9,6 +9,13 @@ use self::perfmon::PerfMonitor;
 mod cpu;
 mod loader;
 
+pub fn run(tx: Sender<ReplyMSG>, rx: Receiver<CtrlMSG>) {
+    let mut emu = Emu::default(tx, rx);
+    loop {
+        emu.update();
+    }
+}
+
 pub struct Emu {
     cpu: CPU,
     tx: Sender<ReplyMSG>,
@@ -44,31 +51,28 @@ impl Emu {
         }
     }
 
-    pub fn run(&mut self) {
-        loop {
-            self.timekeeper();
-            self.check_mail();
-
-            if self.playing {
-                let tick_time = Duration::from_secs_f32(1. / self.tick_rate);
-                if self.turbo {
-                    // Turbomode: No limits!
-                    self.tick_timer = Duration::ZERO;
+    pub fn update(&mut self) {
+        self.timekeeper();
+        self.check_mail();
+        if self.playing {
+            let tick_time = Duration::from_secs_f32(1. / self.tick_rate);
+            if self.turbo {
+                // Turbomode: No limits!
+                self.tick_timer = Duration::ZERO;
+                self.tick();
+            } else {
+                // Normomode: Wait for tick timer
+                if self.tick_timer >= tick_time {
+                    self.tick_timer -= tick_time;
                     self.tick();
                 } else {
-                    // Normomode: Wait for tick timer
-                    if self.tick_timer >= tick_time {
-                        self.tick_timer -= tick_time;
-                        self.tick();
-                    } else {
-                        // If no tick, sleep
-                        thread::sleep(Duration::from_secs_f32(0.5 / self.tick_rate))
-                    }
+                    // If no tick, sleep
+                    thread::sleep(Duration::from_secs_f32(0.5 / self.tick_rate))
                 }
-            } else {
-                // Sleep longer when not playing
-                thread::sleep(Duration::from_secs_f32(1. / 60.));
             }
+        } else {
+            // Sleep longer when not playing
+            thread::sleep(Duration::from_secs_f32(1. / 60.));
         }
     }
 
