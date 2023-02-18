@@ -1,3 +1,5 @@
+use egui::os::OperatingSystem;
+
 pub mod cpu_debug;
 mod instructions;
 mod mmu;
@@ -34,9 +36,9 @@ pub const SP: usize = 6;
 pub const FP: usize = 7;
 
 pub struct CPU {
-    // These two will be removed or something
-    pub waiting_for_io: bool,
-    pub output: Option<i32>,
+    // TODO: Do something to these two
+    pub input_wait: Option<i32>,
+    pub output: Option<(i32, i32)>,
     halt: bool,       //
     cu_pc: i32,       // Program Counter
     cu_ir: i32,       // Instruction Register
@@ -53,7 +55,7 @@ pub struct CPU {
 impl CPU {
     pub fn new() -> Self {
         CPU {
-            waiting_for_io: false,
+            input_wait: None,
             output: None,
             halt: false,
             cu_pc: 0,
@@ -99,12 +101,12 @@ impl CPU {
     }
 
     pub fn input_handler(&mut self, input: i32) {
-        if self.waiting_for_io == false {
-            panic!("input_handler(): waiting_for_io is false. Why did you call me?")
+        if self.input_wait == None {
+            panic!("input_handler(): Cpu is not waiting for io. Why did you call me?")
         }
         let rj = (self.cu_ir >> 21) & 0x7;
         self.gpr[rj as usize] = input;
-        self.waiting_for_io = false;
+        self.input_wait = None;
         self.cu_pc += 1;
     }
 }

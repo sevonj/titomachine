@@ -76,11 +76,12 @@ impl CPU {
             }
             IN => {
                 //TODO: proper devices
-                self.waiting_for_io = true;
+                self.input_wait = Some(self.cu_tr);
             }
             OUT => {
-                //
-                self.output = Some(self.gpr[rj as usize]);
+                let dev = self.cu_tr;
+                let val = self.gpr[rj as usize];
+                self.output = Some((dev, val));
                 self.cu_pc += 1;
             }
             ADD => {

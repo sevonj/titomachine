@@ -919,6 +919,7 @@ fn get_builtin_symbol(sym: &str) -> Result<i32, String> {
     match sym {
         "CRT" => Ok(0),
         "KBD" => Ok(1),
+        "RTC" => Ok(2),
         "HALT" => Ok(11),
         "READ" => Ok(12),
         "WRITE" => Ok(13),

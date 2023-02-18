@@ -3,11 +3,19 @@ use std::thread;
 use std::time::{Duration, Instant};
 pub mod emu_debug;
 mod perfmon;
+use chrono::Local;
+
 use self::cpu::{CPU, SR_I, SR_M, SR_O, SR_S, SR_U, SR_Z};
 use self::emu_debug::{CtrlMSG, ReplyMSG};
 use self::perfmon::PerfMonitor;
 mod cpu;
 mod loader;
+
+const DEV_KBD: i32 = 0;
+const DEV_CRT: i32 = 1;
+const DEV_RTC: i32 = 2;
+const DEV_STDIN: i32 = 6;
+const DEV_STDOUT: i32 = 7;
 
 pub fn run(tx: Sender<ReplyMSG>, rx: Receiver<CtrlMSG>) {
     let mut emu = Emu::default(tx, rx);
@@ -153,19 +161,55 @@ impl Emu {
     }
 
     fn tick(&mut self) {
-        if self.cpu.waiting_for_io || self.cpu.debug_get_halt() || !self.running {
+        if self.cpu.input_wait != None || self.cpu.debug_get_halt() || !self.running {
             return;
         }
         self.perfmon.tick();
         self.t_last_cpu_tick = Some(Instant::now());
         self.cpu.tick();
 
-        if self.cpu.waiting_for_io {
-            self.tx.send(ReplyMSG::In);
+        if let Some(dev) = self.cpu.input_wait {
+            self.dev_read(dev)
         }
-        if let Some(val) = self.cpu.output {
-            self.tx.send(ReplyMSG::Out(val));
+        if let Some((dev, val)) = self.cpu.output {
+            self.dev_write(dev, val);
             self.cpu.output = None;
+        }
+    }
+
+    fn dev_read(&mut self, dev: i32) {
+        match dev {
+            DEV_KBD => {
+                self.tx.send(ReplyMSG::In);
+            }
+            DEV_CRT => {
+                println!("You can't read from crt!");
+                self.cpu.input_handler(0);
+            }
+            DEV_RTC => {
+                let time = Local::now().timestamp() as i32;
+                self.cpu.input_handler(time);
+            }
+            _ => {
+                println!("Attempted to read from an unknown device");
+                self.cpu.input_handler(0);
+            }
+        }
+    }
+    fn dev_write(&mut self, dev: i32, val: i32) {
+        match dev {
+            DEV_KBD => {
+                println!("You can't output to a keyboard!");
+            }
+            DEV_CRT => {
+                self.tx.send(ReplyMSG::Out(val));
+            }
+            DEV_RTC => {
+                println!("You can't output to RTC!");
+            }
+            _ => {
+                println!("Attempted to write into an unknown device");
+            }
         }
     }
 }
