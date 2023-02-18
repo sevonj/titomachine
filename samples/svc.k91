@@ -1,0 +1,56 @@
+; Default OS Library
+
+; Depends on unimplemented features:
+; - HALT instruction
+; - Disable interrupts -instruction
+; - RTC device
+
+; Supervisor functions:
+;SVC_HALT    pushr sp    ;
+;            HLT
+;
+;SVC_TIME    pushr sp    ;
+;            ; in r1, =rtc ;
+;            ; convert rtc unix time to time
+;SVC_DATE    pushr sp;
+;            ; in rtc
+;            ; convert rtc unix time to date
+
+call sp, SVC_TIME;
+
+svc sp, =halt;
+
+
+
+SVC_HALT nop   ; permanent halt
+;           disable interrupts
+;           HLT
+
+SVC_TIME    pushr   sp          ;
+            in      r1, =rtc    ;
+            load    r2, r1      ; Sec
+            mod     r2, =60     ;
+            store   r2, @-9(sp) ;
+            div     r1, =60     ;
+            load    r2, r1      ; Min
+            mod     r2, =60     ;
+            store   r2, @-10(sp);
+            div     r1, =60     ;
+            load    r2, r1      ; Hr
+            mod     r2, =24     ;
+            store   r2, @-11(sp);
+            popr    sp,         ;
+            exit    sp, =3      ;
+            
+SVC_READ    pushr   sp          ;
+            in      r1, =kbd    ;
+            load    r2, @-9(sp) ;
+            store   r1, @r2     ;
+            popr    sp          ;
+            exit    sp, =1;     ;
+
+SVC_WRITE   pushr   sp          ;
+            load    r1, -9(sp)  ;
+            out     r1, =crt    ;
+            popr    sp          ;
+            exit    sp, =1;     ;

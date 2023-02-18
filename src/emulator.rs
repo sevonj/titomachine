@@ -11,8 +11,8 @@ use self::perfmon::PerfMonitor;
 mod cpu;
 mod loader;
 
-const DEV_KBD: i32 = 0;
-const DEV_CRT: i32 = 1;
+const DEV_CRT: i32 = 0;
+const DEV_KBD: i32 = 1;
 const DEV_RTC: i32 = 2;
 const DEV_STDIN: i32 = 6;
 const DEV_STDOUT: i32 = 7;
@@ -179,15 +179,15 @@ impl Emu {
 
     fn dev_read(&mut self, dev: i32) {
         match dev {
-            DEV_KBD => {
-                self.tx.send(ReplyMSG::In);
-            }
             DEV_CRT => {
                 println!("You can't read from crt!");
                 self.cpu.input_handler(0);
             }
+            DEV_KBD => {
+                self.tx.send(ReplyMSG::In);
+            }
             DEV_RTC => {
-                let time = Local::now().timestamp() as i32;
+                let time = Local::now().timestamp() as i32 + Local::now().offset().local_minus_utc();               
                 self.cpu.input_handler(time);
             }
             _ => {
@@ -198,11 +198,11 @@ impl Emu {
     }
     fn dev_write(&mut self, dev: i32, val: i32) {
         match dev {
-            DEV_KBD => {
-                println!("You can't output to a keyboard!");
-            }
             DEV_CRT => {
                 self.tx.send(ReplyMSG::Out(val));
+            }
+            DEV_KBD => {
+                println!("You can't output to a keyboard!");
             }
             DEV_RTC => {
                 println!("You can't output to RTC!");

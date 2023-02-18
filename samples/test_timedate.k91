@@ -7,19 +7,145 @@ sec dc 0
 
 space2 dc -99999
 
+rtx_hr dc 0
+rtx_min dc 0
+rtx_sec dc 0
+
+space3 dc -99999
+
+
 ; date
-yr dc 0
-mon dc 0
-day dc 0
+;yr dc 0
+;mon dc 0
+;day dc 0
 
 push sp, =hr
 push sp, =min
 push sp, =sec
 svc sp, =time
 
-push sp, =yr
-push sp, =mon
-push sp, =day
-svc sp, =date
+push sp, =hr
+push sp, =min
+push sp, =sec
+call sp, SVC_DATE
+
+;push sp, =yr
+;push sp, =mon
+;push sp, =day
+;svc sp, =date
 
 svc sp, =halt
+
+SVC_DATE    pushr   sp          ;
+            in      r1, =rtc    ;
+            load    r2, r1      ; 
+            load    r3, =3600   ;
+            mul     r3, =24     ;
+            mod     r2, r3      ; R2 is now hr/min/sec part of timestamp
+            sub     r1, r2      ; R1 is now timestamp without hr/min/sec
+            div     r1, r3      ; R1 is now days since epoch
+            load    r2, =1970   ; R2 is current year
+            ; TODO: Make this faster.
+            loop nop
+                push    sp, =0          ;
+                push    sp, r2          ;
+                call    sp, DaysInYear  ;
+                pop     sp, r5          ; Number of days in this year
+                comp    r1, r5          ; If R1 contains less days than this year, exit loop
+                jles    EndYear         ;
+                sub r1, r5              ; Remove this years days from R1
+                add r2, =1              ; Add 1 to current year
+                jump loop    
+            EndYear store r2, @-4(fp)   ;
+
+                                        ; R2 = Current Month
+            load    r2,     =1          ; January
+            comp    r1,     =31         ;
+            jles    EndMon              ;
+            sub     r1,     =31         ;
+
+            add     r2,     =1          ; February
+            load    r3,     r5          ; load days in this year. 
+            sub     r3,     =365        ; R3 can be 0 or 1, depending on leap year.
+            add     r3,     =28         ; Make it 28 or 29
+            comp    r1,     r3          ; 
+            jles    EndMon              ;
+            sub     r1,     r3          ;
+
+            add     r2,     =1          ; March
+            comp    r1,     =31         ;
+            jles    EndMon              ;
+            sub     r1,     =31         ;
+
+            add     r2,     =1          ; April
+            comp    r1,     =30         ;
+            jles    EndMon              ;
+            sub     r1,     =30         ;
+
+            add     r2,     =1          ; May
+            comp    r1,     =31         ;
+            jles    EndMon              ;
+            sub     r1,     =31         ;
+
+            add     r2,     =1          ; June
+            comp    r1,     =30         ;
+            jles    EndMon              ;
+            sub     r1,     =30         ;
+
+            add     r2,     =1          ; July
+            comp    r1,     =31         ;
+            jles    EndMon              ;
+            sub     r1,     =31         ;
+
+            add     r2,     =1          ; August
+            comp    r1,     =31         ;
+            jles    EndMon              ;
+            sub     r1,     =31         ;
+
+            add     r2,     =1          ; September
+            comp    r1,     =30         ;
+            jles    EndMon              ;
+            sub     r1,     =30         ;
+
+            add     r2,     =1          ; October
+            comp    r1,     =31         ;
+            jles    EndMon              ;
+            sub     r1,     =31         ;
+
+            add     r2,     =1          ; November
+            comp    r1,     =30         ;
+            jles    EndMon              ;
+            sub     r1,     =30         ;
+
+            add     r2,     =1          ; December
+            comp    r1,     =31         ;
+            jles    EndMon              ;
+            sub     r1,     =31         ;
+
+            EndMon store r2, @-3(fp)    ;
+            add r1, =1                  ;
+            EndDay store r1, @-2(fp)    ;
+            svc sp, =halt
+
+                ; -3(fp) return value: 365 or 366.
+                ; -2(fp) arg0: year
+    DaysInYear  pushr   sp                  ;
+                load    r4, =365            ; Default case: Not leap year
+                load    r5, -2(fp)          ;
+                mod     r5, =4              ; 
+                jnzer   r5, DaysInYearEnd   ; Not divisible by 4: Exit, aint a leap year
+                load    r4, =366            ; 
+                load    r5, -2(fp)          ;
+                mod     r5, =100            ; 
+                jnzer   r5, DaysInYearEnd   ; Not divisible by 100: Exit, is a leap year
+                load    r4, =365            ; 
+                load    r5, -2(fp)          ;
+                mod     r5, =400            ; 
+                jnzer   r5, DaysInYearEnd   ; Not divisible by 400: Exit, aint a leap year
+                load    r4, =366            ; 
+
+        DaysInYearEnd nop                   ;
+                store   r4, -3(fp)          ;
+                popr    sp                  ;
+                exit    sp, =1              ;
+
