@@ -43,7 +43,8 @@ impl TitoApp {
                 .clicked()
             {
                 self.emu_playing = !self.emu_playing;
-                self.emu_tx.send(CtrlMSG::PlaybackPlayPause(self.emu_playing));
+                self.emu_tx
+                    .send(CtrlMSG::PlaybackPlayPause(self.emu_playing));
             }
             ui.add_enabled_ui(!self.emu_playing, |ui| {
                 if ui
@@ -234,6 +235,22 @@ impl TitoApp {
                         x: 0.,
                         y: total_height - self.gui_memview_scroll - view_height,
                     });
+                    if self.emugui_follow_pc && self.emu_playing {
+                        let pc_pos = row_height * self.emu_regs.pc as f32;
+                        ui.scroll_to_rect(
+                            egui::Rect {
+                                min: egui::Pos2 {
+                                    x: 0.,
+                                    y: pc_pos - self.gui_memview_scroll,
+                                },
+                                max: egui::Pos2 {
+                                    x: 0.,
+                                    y: pc_pos - self.gui_memview_scroll + view_height,
+                                },
+                            },
+                            Some(egui::Align::Center),
+                        );
+                    }
                 })
                 .state
                 .offset

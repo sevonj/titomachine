@@ -5,10 +5,12 @@ mod instructions;
 mod mmu;
 mod svc;
 
-pub const DEFAULT_MEMSIZE: usize = 1024 * 80;
+pub const DEFAULT_MEMSIZE: usize = 1024 * 1024 * 2 / 4;
 
 // State Register
 pub const SR_DEFAULT: i32 = 0;
+//                                    GELOZUMI SPD
+pub const SR_EXCEPTION_MASK: i32 = 0b_00011111_10000000_00000000_00000000;
 pub const SR_G: i32 = 1 << 31; // Comp Greater
 pub const SR_E: i32 = 1 << 30; // Comp Equal
 pub const SR_L: i32 = 1 << 29; // Comp Less
@@ -40,6 +42,7 @@ pub struct CPU {
     pub input_wait: Option<i32>,
     pub output: Option<(i32, i32)>,
     halt: bool,       //
+    burn: bool,       // CPU is disabled permanently.
     cu_pc: i32,       // Program Counter
     cu_ir: i32,       // Instruction Register
     cu_tr: i32,       // Temporary Regiter
@@ -50,6 +53,7 @@ pub struct CPU {
     mmu_mar: u32,     // Mem Address Reg -- unimplemented
     mmu_mbr: i32,     // Mem Buffer Reg -- unimplemented
     memory: Vec<i32>, // Memory being inside the CPU is kinda dumb, but hey.
+    ivt: [i32; 16],   // Interrupt Vector Table. See comment at exception_check()
 }
 
 impl CPU {
@@ -58,6 +62,7 @@ impl CPU {
             input_wait: None,
             output: None,
             halt: false,
+            burn: false,
             cu_pc: 0,
             cu_ir: 0,
             cu_tr: 0,
@@ -68,36 +73,102 @@ impl CPU {
             mmu_mar: 0,
             mmu_mbr: 0,
             memory: vec![0; DEFAULT_MEMSIZE],
+            ivt: [0; 16],
         }
     }
 
     pub fn tick(&mut self) {
+        if self.burn {
+            return;
+        }
         self.cu_ir = self.memread(self.cu_pc);
+        self.cu_pc += 1;
         self.exec_instruction();
-        self.sr_handler()
+        self.exception_check()
     }
 
-    // Check for anomalies in state registers
-    fn sr_handler(&mut self) {
-        if self.cu_sr & SR_S != 0 {
-            self.svc_handler();
-        }
-        if self.cu_sr & SR_M != 0 {
-            println!("Program Error: Forbidden memory address!");
-            self.debug_set_halt(true);
-        }
-        if self.cu_sr & SR_U != 0 {
-            println!("Program Error: Unknown Instruction!");
-            self.debug_set_halt(true);
-        }
-        if self.cu_sr & SR_Z != 0 {
-            println!("Program Error: Zero division!");
-            self.debug_set_halt(true);
+    // This will replace sr_handler
+    fn exception_check(&mut self) {
+        /*
+         * SR    | IVT entry
+         *
+         * Exceptions:
+         *  SR_O | 0: Overflow
+         *  SR_Z | 1: Zero div
+         *  SR_U | 2: Unknown instruction
+         *  SR_M | 3: Forbidden Memory access
+         *       | 4: - unused -
+         *
+         * Device interrupts
+         *  SR_I | 5: Memory parity error
+         *  SR_I | 6: Timer interrupt
+         *  SR_I | 7: Keyboard
+         *  SR_I | 8: Mouse
+         *  SR_I | 9: Disc drive
+         *  SR_I | 10: Printer
+         *
+         * Supervisor Calls (OS defaults)
+         *  SR_S | 11: HALT
+         *  SR_S | 12: READ
+         *  SR_S | 13: WRITE
+         *  SR_S | 14: TIME
+         *  SR_S | 15: DATE
+         */
+        // Interrupts disabled.
+        if self.cu_sr & SR_D != 0 {
+            return;
         }
         if self.cu_sr & SR_O != 0 {
-            println!("Program Error: Overflow!");
-            self.debug_set_halt(true);
+            self.enter_interrupt_handler(0);
         }
+        if self.cu_sr & SR_Z != 0 {
+            self.enter_interrupt_handler(1);
+        }
+        if self.cu_sr & SR_U != 0 {
+            self.enter_interrupt_handler(2);
+        }
+        if self.cu_sr & SR_M != 0 {
+            self.enter_interrupt_handler(3);
+        }
+        if self.cu_sr & SR_I != 0 {
+            // idk how this is supposed to work.
+            // I assume it goes to tr.
+            match self.cu_tr {
+                5 => self.enter_interrupt_handler(5),
+                6 => self.enter_interrupt_handler(6),
+                7 => self.enter_interrupt_handler(7),
+                8 => self.enter_interrupt_handler(8),
+                9 => self.enter_interrupt_handler(9),
+                10 => self.enter_interrupt_handler(10),
+                _ => panic!("interrupt id wtf {}", self.cu_tr),
+            }
+        }
+        if self.cu_sr & SR_S != 0 {
+            match self.cu_tr {
+                11 => self.enter_interrupt_handler(11),
+                12 => self.enter_interrupt_handler(12),
+                13 => self.enter_interrupt_handler(13),
+                14 => self.enter_interrupt_handler(14),
+                15 => self.enter_interrupt_handler(15),
+                _ => panic!("svc id wtf {}", self.cu_tr),
+            }
+        }
+    }
+
+    // Common bookkeeping for interrupt handlers
+    fn enter_interrupt_handler(&mut self, handler_idx: i32) {
+        // Push SR, PC, FP
+        self.gpr[SP] += 1;
+        self.memwrite(self.gpr[SP], self.cu_sr);
+        self.gpr[SP] += 1;
+        self.memwrite(self.gpr[SP], self.cu_pc);
+        self.gpr[SP] += 1;
+        self.memwrite(self.gpr[SP], self.gpr[FP]);
+        // SET SR_P
+        self.cu_sr |= SR_D;
+        self.cu_pc = self.ivt[handler_idx as usize];
+
+        //
     }
 
     pub fn input_handler(&mut self, input: i32) {

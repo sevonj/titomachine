@@ -13,6 +13,7 @@ pub enum CtrlMSG {
     DevKbdIn(i32),
     DevGamepadState(i32),
     LoadProg(String),
+    ClearMem,
     SetRate(f32),
     SetTurbo(bool),
     SetMemSize(usize),

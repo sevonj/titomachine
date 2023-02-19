@@ -91,6 +91,7 @@ pub struct TitoApp {
     #[serde(skip)]
     guimode: GuiMode,
     emugui_display: bool,
+    emugui_follow_pc: bool,
     mem_adr_base: Base,
     mem_val_base: Base,
     regs_base: Base,
@@ -136,6 +137,7 @@ impl Default for TitoApp {
             // GUI
             guimode: GuiMode::Editor,
             emugui_display: false,
+            emugui_follow_pc: true,
             mem_adr_base: Base::Dec,
             mem_val_base: Base::Dec,
             regs_base: Base::Dec,

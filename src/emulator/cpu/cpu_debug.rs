@@ -95,4 +95,25 @@ impl CPU {
             self.memory[addr] = values[i];
         }
     }
+    pub fn debug_set_ivt(&mut self, idx: usize, value: i32) {
+        self.ivt[idx] = value
+    }
+    pub fn debug_print_regs(&mut self) {
+        println!("\nCPU Status:\n");
+        println!("HALT:    {}\nOn Fire: {}\n", self.halt, self.burn);
+        println!(
+            "Control Unit\n  PC: {}\n  IR: {}\n  TR: {}\n  SR: {:32b}\n",
+            self.cu_pc, self.cu_ir, self.cu_tr, self.cu_sr
+        );
+        println!("Interrupt Vector Table");
+        for (i, val) in self.ivt.into_iter().enumerate() {
+            println!(" {:2}: {}", i, val);
+        }
+    }
+    pub fn debug_is_on_fire(&mut self) -> bool {
+        self.burn
+    }
+    pub fn debug_clear_fire(&mut self) {
+        self.burn = false;
+    }
 }

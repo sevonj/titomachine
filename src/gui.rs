@@ -128,6 +128,7 @@ impl TitoApp {
 
         ui.menu_button("Options", |ui| {
             ui.menu_button("Memory View", |ui| {
+                ui.checkbox(&mut self.emugui_follow_pc, "Follow PC");
                 ui.label("Memview Address base");
                 ui.radio_value(&mut self.mem_adr_base, Base::Bin, "Binary");
                 ui.radio_value(&mut self.mem_adr_base, Base::Dec, "Decimal");

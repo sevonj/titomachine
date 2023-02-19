@@ -1,4 +1,5 @@
 mod compiler;
+mod default_os;
 use compiler::*;
 use std::{
     env::set_current_dir,
@@ -53,6 +54,11 @@ impl Editor {
 
     pub fn compile(&mut self) -> Result<String, ()> {
         self.compiler.compile(self.source_code.clone())
+    }
+
+    pub fn compile_default_os(&mut self) -> Result<String, ()> {
+        self.compiler
+            .compile(format!("org {};\n", default_os::DEFAULT_SVC_ORG) + default_os::DEFAULT_OS)
     }
 
     pub fn open_file(&mut self, pathbuf: Option<PathBuf>) {

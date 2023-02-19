@@ -1,4 +1,5 @@
-; Default Interrupt handlers
+pub const DEFAULT_SVC_ORG: usize = 1024 * 1024 * 2 / 4 - 512; // 2 MB - 2 KB
+pub const DEFAULT_OS: &str = "; Default Interrupt handlers
 
 ExceptionHandler0  hcf ; Overflow
 ExceptionHandler1  hcf ; Zero div
@@ -159,3 +160,4 @@ SVC15       pushr   sp          ; SVC DATE
                 store   r4, -3(fp)          ;
                 popr    sp                  ;
                 exit    sp, =1              ;
+";

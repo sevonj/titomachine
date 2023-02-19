@@ -37,6 +37,19 @@ impl TitoApp {
     }
 
     pub fn file_compile(&mut self) {
+        self.emu_tx.send(CtrlMSG::ClearMem);
+        if true {
+            match self.editor.compile_default_os() {
+                Ok(program) => {
+                    self.current_prog = program;
+                    self.guimode = GuiMode::Emulator;
+                }
+                Err(_) => self.current_prog = "".into(),
+            }
+            self.emu_tx
+                .send(CtrlMSG::LoadProg(self.current_prog.clone()));
+        }
+
         match self.editor.compile() {
             Ok(program) => {
                 self.current_prog = program;

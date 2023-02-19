@@ -121,6 +121,7 @@ impl Emu {
                     CtrlMSG::DevGamepadState(_input) => todo!(),
                     // Loader
                     CtrlMSG::LoadProg(fname) => self.loadprog(fname),
+                    CtrlMSG::ClearMem => self.clearmem(),
                     // Settings
                     CtrlMSG::SetRate(rate) => self.tick_rate = rate,
                     CtrlMSG::SetTurbo(t) => self.turbo = t,
@@ -138,9 +139,11 @@ impl Emu {
     }
 
     fn start(&mut self) {
+        self.reload();
         self.cpu.debug_clear_cu();
         self.running = true;
         self.cpu.debug_set_halt(false);
+        self.cpu.debug_clear_fire();
         self.t_last_update = None;
     }
 
@@ -155,9 +158,17 @@ impl Emu {
     }
 
     fn loadprog(&mut self, prog: String) {
-        self.running = false;
+        self.stop();
         self.loaded_prog = prog;
         loader::load_program(&mut self.cpu, &self.loaded_prog);
+    }
+    fn reload(&mut self) {
+        loader::load_program(&mut self.cpu, &self.loaded_prog);
+    }
+
+    fn clearmem(&mut self) {
+        self.stop();
+        self.cpu.debug_memclear();
     }
 
     fn tick(&mut self) {
@@ -175,6 +186,10 @@ impl Emu {
             self.dev_write(dev, val);
             self.cpu.output = None;
         }
+        if self.cpu.debug_is_on_fire() {
+            self.playing = false;
+            self.running = false;
+        }
     }
 
     fn dev_read(&mut self, dev: i32) {
@@ -187,7 +202,8 @@ impl Emu {
                 self.tx.send(ReplyMSG::In);
             }
             DEV_RTC => {
-                let time = Local::now().timestamp() as i32 + Local::now().offset().local_minus_utc();               
+                let time =
+                    Local::now().timestamp() as i32 + Local::now().offset().local_minus_utc();
                 self.cpu.input_handler(time);
             }
             _ => {

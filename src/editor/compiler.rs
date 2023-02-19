@@ -116,6 +116,7 @@ impl Compiler {
     pub fn compile(&mut self, source: String) -> Result<String, ()> {
         self.clear();
 
+        let mut org: Option<i32> = None;
         let mut data: Vec<i32> = Vec::new();
         let mut prog: Vec<i32> = Vec::new();
 
@@ -165,7 +166,7 @@ impl Compiler {
 
             // At this point, possible symbol has been removed from words.
 
-            // Deal with anonymous lines
+            // Must not be anonymous
             if symbol == None && words[0].as_str() == "EQU" {}
 
             // Code
@@ -181,67 +182,85 @@ impl Compiler {
                 return Err(());
             }
             // Pseudoinstr
-            match get_pseudoinstr(words[0].as_str()) {
-                Ok(n) => match n {
-                    // EQU
-                    0 => {
-                        if let Some(sym) = symbol {
-                            match parse_number(words[1].as_str()) {
-                                Ok(n) => {
-                                    self.temp_symbols_const.insert(sym, n);
-                                }
-                                Err(e) => {
-                                    self.out(format!("Line {}: {}", ln, e));
-                                    return Err(());
-                                }
+            match words[0].as_str() {
+                "EQU" => {
+                    if let Some(sym) = symbol {
+                        match parse_number(words[1].as_str()) {
+                            Ok(n) => {
+                                self.temp_symbols_const.insert(sym, n);
                             }
-                        } else {
-                            self.out(format!("Line {}: Constants cannot be anonymous!", ln));
+                            Err(e) => {
+                                self.out(format!("Line {}: {}", ln, e));
+                                return Err(());
+                            }
+                        }
+                    } else {
+                        self.out(format!("Line {}: Constants cannot be anonymous!", ln));
+                        return Err(());
+                    }
+                }
+                "DC" => match parse_number(words[1].as_str()) {
+                    Ok(n) => {
+                        if let Some(sym) = symbol {
+                            self.temp_symbols_data.insert(sym, data_size);
+                        }
+                        data_size += 1;
+                        data.push(n);
+                    }
+                    Err(e) => {
+                        self.out(format!("Line {}: {}", ln, e));
+                        return Err(());
+                    }
+                },
+                "DS" => match parse_number(words[1].as_str()) {
+                    Ok(n) => {
+                        if n <= 0 {
+                            self.out(format!(
+                                "Line {}: Segment size must be larger than zero!",
+                                ln
+                            ));
+                            return Err(());
+                        }
+                        if let Some(sym) = symbol {
+                            self.temp_symbols_data.insert(sym, data_size);
+                        }
+                        data_size += n;
+                        for _ in 0..n {
+                            data.push(0);
+                        }
+                    }
+                    Err(e) => {
+                        self.out(format!("Line {}: {}", ln, e));
+                        return Err(());
+                    }
+                },
+                "ORG" => {
+                    if symbol != None {
+                        self.out(format!("Line {}: Cannot name origin!", ln));
+                        return Err(());
+                    }
+                    if org != None {
+                        self.out(format!("Line {}: Origin redefined!", ln));
+                        return Err(());
+                    }
+                    match parse_number(words[1].as_str()) {
+                        Ok(n) => {
+                            if n < 0 {
+                                self.out(format!("Line {}: Origin must not be negative.", ln));
+                                return Err(());
+                            }
+                            org = Some(n);
+                        }
+                        Err(e) => {
+                            self.out(format!("Line {}: {}", ln, e));
                             return Err(());
                         }
                     }
-                    // DC
-                    1 => match parse_number(words[1].as_str()) {
-                        Ok(n) => {
-                            if let Some(sym) = symbol {
-                                self.temp_symbols_data.insert(sym, data_size);
-                            }
-                            data_size += 1;
-                            data.push(n);
-                        }
-                        Err(e) => {
-                            self.out(format!("Line {}: {}", ln, e));
-                            return Err(());
-                        }
-                    },
-                    // DS
-                    _ => match parse_number(words[1].as_str()) {
-                        Ok(n) => {
-                            if n <= 0 {
-                                self.out(format!(
-                                    "Line {}: Segment size must be larger than zero!",
-                                    ln
-                                ));
-                                return Err(());
-                            }
-                            if let Some(sym) = symbol {
-                                self.temp_symbols_data.insert(sym, data_size);
-                            }
-                            data_size += n;
-                            for _ in 0..n {
-                                data.push(0);
-                            }
-                        }
-                        Err(e) => {
-                            self.out(format!("Line {}: {}", ln, e));
-                            return Err(());
-                        }
-                    },
-                },
-                Err(_) => {
+                }
+                _ => {
                     self.out(format!(
-                        "Line {}: Unknown instruction: \"{}\"",
-                        ln, words[1]
+                        "Line {}: Compiler made an error :(\n(Pseudoinstruction matching)",
+                        ln
                     ));
                     return Err(());
                 }
@@ -254,16 +273,22 @@ impl Compiler {
 
         // Now we have collected all symbols and we also know the size of code and data sections.
         // It's let's add the declared symbols to the final symbol table
-
+        let origin;
+        match org {
+            Some(o) => origin = o,
+            None => origin = 0,
+        }
         for entry in &self.temp_symbols_const {
-            self.symbol_table.insert(entry.0.to_string(), entry.1 + 0);
+            self.symbol_table
+                .insert(entry.0.to_string(), entry.1 + origin);
         }
         for entry in &self.temp_symbols_code {
-            self.symbol_table.insert(entry.0.to_string(), entry.1 + 0);
+            self.symbol_table
+                .insert(entry.0.to_string(), entry.1 + origin);
         }
         for entry in &self.temp_symbols_data {
             self.symbol_table
-                .insert(entry.0.to_string(), entry.1 + prog_size);
+                .insert(entry.0.to_string(), entry.1 + prog_size + origin);
         }
 
         self.out("".into());
@@ -683,9 +708,36 @@ impl Compiler {
                     op1 = &words[1];
                     op2 = &words[2];
                 }
+                "IEXIT" => {
+                    if words.len() != 3 {
+                        self.out(format!("Line {}: Unacceptable amount of terms!", ln));
+                        return Err(());
+                    }
+                    opcode = 0x39;
+                    op1 = &words[1];
+                    op2 = &words[2];
+                }
+                "HLT" => {
+                    if words.len() != 1 {
+                        self.out(format!("Line {}: Unacceptable amount of terms!", ln));
+                        return Err(());
+                    }
+                    opcode = 0x71;
+                    op1 = "";
+                    op2 = "";
+                }
+                "HCF" => {
+                    if words.len() != 1 {
+                        self.out(format!("Line {}: Unacceptable amount of terms!", ln));
+                        return Err(());
+                    }
+                    opcode = 0x72;
+                    op1 = "";
+                    op2 = "";
+                }
                 _ => {
                     self.out(format!(
-                        "Line {}: Something is wrong with the compiler :(",
+                        "Line {}: Compiler made an error :(\n(Instruction matching)",
                         ln
                     ));
                     return Err(());
@@ -799,9 +851,9 @@ impl Compiler {
             off += 1;
         }
 
-        let prog_start = 0;
-        let fp_start = prog_size - 1;
-        let data_start = prog_size;
+        let prog_start = origin;
+        let fp_start = prog_size - 1 + origin;
+        let data_start = prog_size + origin;
         let sp_start = fp_start + data_size;
 
         let mut return_str = String::new();
@@ -834,6 +886,7 @@ impl Compiler {
         return_str += "___end___\n";
 
         self.out(format!("Compiled:\n{}", return_str));
+        println!("Compiled:\n{}", return_str);
         Ok(return_str)
     }
 }
@@ -891,6 +944,10 @@ fn get_instruction(opstr: &str) -> Result<i32, String> {
         "PUSHR" => Ok(0x35),
         "POPR" => Ok(0x36),
         "SVC" => Ok(0x70),
+
+        "IEXIT" => Ok(0x39),
+        "HLT" => Ok(0x71),
+        "HCF" => Ok(0x72),
         _ => Err(format!("{} is not an instruction.", opstr)),
     }
 }
@@ -899,6 +956,7 @@ fn get_pseudoinstr(opstr: &str) -> Result<i32, String> {
         "EQU" => Ok(0x00),
         "DC" => Ok(0x01),
         "DS" => Ok(0x02),
+        "ORG" => Ok(0x03),
         _ => Err(format!("{} is not a pseudoinstruction.", opstr)),
     }
 }
