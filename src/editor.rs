@@ -1,5 +1,4 @@
 mod compiler;
-mod default_os;
 use compiler::*;
 use std::{
     env::set_current_dir,
@@ -8,17 +7,8 @@ use std::{
     path::PathBuf,
 };
 
-const DEFAULT_PROGRAM: &str =
-    "; To run a program, press the Compile button and then change to Run view.
-
-; This program calculates 2+2
-
-LOAD R1, =2     ; Load 2 into Register 1
-ADD  R1, =2     ; Add 2 to R1
-OUT  R1, =CRT   ; Output the value of R1
-
-; Remember to stop the machine once you're done!
-SVC SP, =HALT   ; Service call for halt.";
+const DEFAULT_OS: &str = include_str!("../samples/default_os.k91");
+const DEFAULT_PROGRAM: &str = include_str!("../samples/default_program.k91");
 
 pub struct Editor {
     pub source_path: Option<String>,
@@ -57,8 +47,7 @@ impl Editor {
     }
 
     pub fn compile_default_os(&mut self) -> Result<String, ()> {
-        self.compiler
-            .compile(format!("org {};\n", default_os::DEFAULT_SVC_ORG) + default_os::DEFAULT_OS)
+        self.compiler.compile(DEFAULT_OS.into())
     }
 
     pub fn open_file(&mut self, pathbuf: Option<PathBuf>) {
