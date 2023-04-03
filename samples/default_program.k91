@@ -1,0 +1,10 @@
+; Press the Compile button to compile and load the program.
+
+; This program calculates 2+2
+
+LOAD R1, =2     ; Load 2 into Register 1
+ADD  R1, =2     ; Add 2 to R1
+OUT  R1, =CRT   ; Output the value of R1
+
+; Remember to stop the program once you're done!
+HCF ; Halt & Catch Fire. This instruction stops the machine.

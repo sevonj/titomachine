@@ -1,21 +1,20 @@
-pub const DEFAULT_SVC_ORG: usize = 0x2000 - 512; // 32KB - 2 KB
-pub const DEFAULT_OS: &str = "
 ; Default Interrupt handlers
-ExceptionHandler0  hcf ; Overflow
-ExceptionHandler1  hcf ; Zero div
-ExceptionHandler2  hcf ; Unknow instruction
-ExceptionHandler3  hcf ; Memory protection
-ExceptionHandler4  hcf ; unused
+ORG 0x1E00              ; This will be stuffed near the end of ram.
+                        ; Starting at 0x1E00 leaves 30kB for user program.
 
+ExceptionHandler0  hcf  ; Overflow
+ExceptionHandler1  hcf  ; Zero div
+ExceptionHandler2  hcf  ; Unknow instruction
+ExceptionHandler3  hcf  ; Memory protection
+ExceptionHandler4  hcf  ; unused
 
-InterruptHandler5  hcf ; Memory parity error
+InterruptHandler5  hcf  ; Memory parity error
 
 ; Timer interrupt
 ;     The handler will just clear the interrupt and return.
-;     This is till useful because the machine wakes up from halt.
 InterruptHandler6       pushr sp        ;
-                        load  r0, =0    ; load 0
-                        out   r0, =0x20 ; send it to PIC command
+                        load  r0, =0    ; PIC command for clearing interrupts is 0
+                        out   r0, =0x20 ; send it to PIC command port
                         popr  sp        ;
                         iexit sp, =0    ;
 
@@ -56,7 +55,9 @@ SVC14       pushr   sp          ; SVC TIME
             iexit   sp, =3      ;
 
 
-SVC15       pushr   sp          ; Date
+; SVC DATE
+;       This is long. Maybe should implement this in RTC device?
+SVC15       pushr   sp          ;
             in      r1, =rtc    ; Get Unix time 
             load    r2, r1      ; 
             load    r3, =3600   ; R3 will contain number of seconds in a day.
@@ -156,4 +157,3 @@ yr_done    store r2, @-12(sp)           ; Store Year
             store   r3, @-10(sp)        ; Store day
             popr    sp                  ;
             iexit   sp, =3              ;
-";
