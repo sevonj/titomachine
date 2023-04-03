@@ -1,0 +1,72 @@
+; test_colors.k91
+; This will render color bands on screen
+
+screen  equ 0x2000
+spstash equ 0x0100
+
+color_r dc 0x0f00
+color_g dc 0x00f0
+color_b dc 0x000f
+color_c dc 0x00ff
+color_m dc 0x0f0f
+color_y dc 0x0ff0
+color_bl dc 0x0000
+color_w dc 0x0fff
+
+load r5, =screen
+sub  r5, =1     ; because push increments before writing!
+load r3, r5
+
+load r4, =160   ; R4 determines how many pixels to write in fill
+mul  r4, =15
+
+add  r3, r4     ; R3 has the address where we stop
+load r1, color_r
+call sp, fill
+add  r5, r4
+
+add  r3, r4
+load r1, color_g
+call sp, fill
+add  r5, r4
+
+add  r3, r4
+load r1, color_b
+call sp, fill
+add  r5, r4
+
+add  r3, r4
+load r1, color_c
+call sp, fill
+add  r5, r4
+
+add  r3, r4
+load r1, color_m
+call sp, fill
+add  r5, r4
+
+add  r3, r4
+load r1, color_y
+call sp, fill
+add  r5, r4
+
+add  r3, r4
+load r1, color_bl
+call sp, fill
+add  r5, r4
+
+add  r3, r4
+load r1, color_w
+call sp, fill
+
+
+hcf ; Stop the program
+
+fill    store sp, spstash
+        load  sp, r5
+        loop comp sp, r3
+            jnles end
+            push sp, r1
+            jump loop
+        load sp, spstash
+        end exit sp, =0

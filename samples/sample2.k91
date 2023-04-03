@@ -1,0 +1,25 @@
+; Sample program:
+; Fill a Array with 5 input values and output their sum.
+
+Array       DS 5    ; Reserve 5 words of space. "Array" will refer to the first address.
+ArraySize   EQU 5   ; Array does not tell the size, so we have to declare a constant to use it.
+Sum         DC 0    ; Result will be stored here.
+
+
+    ; Init regs with 0 (They do often start with 0, but really their state could be
+    ; whatever they were previously left to).
+
+    load r3, =0 ; R3 holds the sum of all entries
+    load r1, =0 ; R1 is the loop iterator. Also used for array index.
+
+    LOOP    comp  r1, =ArraySize    ; iterator is less/equal/greater than =ArraySize
+            jnles END               ; If above does NOT return "less", we have looped ArraySize times.
+            in    r2, =kbd          ; Input a value to R2
+            store r2, Array(r1)     ; Store entry to Array start address + R1
+            add   r3, r2            ; Add entry to the sum.
+            add   r1, =1            ; increment iterator
+            jump  LOOP              ;
+
+END store r3, Sum           ; Store the sum to Sum
+    out r3, =crt            ; Output the value while at it
+    svc sp, =halt           ; Halt

@@ -1,0 +1,8 @@
+; Timer Interrupt Test
+
+LOAD R1, =5000  ; 5000 milliseconds
+OUT  R1, =0x22  ; Send wait time to timer
+HLT             ; Halt
+LOAD R1, =420   ; The machine should continue after 5 seconds.
+OUT  R1, =CRT   ; 
+HCF             ; End

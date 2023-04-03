@@ -1,0 +1,26 @@
+space dc -99999
+
+; time
+hr dc 0
+min dc 0
+sec dc 0
+
+space2 dc -99999
+
+yr dc 0
+mon dc 0
+day dc 0
+
+space3 dc -99999
+
+push sp, =hr
+push sp, =min
+push sp, =sec
+svc sp, =time
+
+push sp, =yr
+push sp, =mon
+push sp, =day
+svc sp, =date
+
+svc sp, =halt
