@@ -1,6 +1,6 @@
-; New features (additions to original titokone):
+; Showcase feature added in this project:
 
-; Support for bin, oct, and hex values!
+; Support for bin, oct, and hex values
 
 Variable_A   dc  0b110100  ; This is 52
 Variable_B   dc  0o64      ; This is also 52
@@ -19,5 +19,10 @@ Variable_J   dc  0o37777777777                      ; This is also -1
 Variable_K   dc  4294967295                         ; This is also -1
 Variable_L   dc  0xffffffff                         ; This is also -1
 
+hcf;
 
-SVC SP, =HALT   ; Service call for halt.
+; New instructions:
+
+HLT     ; Halt instruction (interrupt will wake the machine from halt)
+HCF     ; Halt & Catch Fire. This turns the machine off.
+IEXIT   ; Interrupt return
