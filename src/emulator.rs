@@ -142,7 +142,6 @@ impl Emu {
         if self.playing {
             self.tick_timer += delta;
         }
-        self.perfmon.set_rate(self.tick_rate);
         self.bus.pic.update_timer(delta)
     }
 
