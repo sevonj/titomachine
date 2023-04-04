@@ -151,20 +151,22 @@ impl TitoApp {
                         .speed(0.1)
                         .clamp_range(1..=9999),
                 );
-                match self.emu_use_khz {
-                    true => ui.label("KHz"),
-                    false => ui.label("Hz"),
+                match self.emu_cpuspeedmul {
+                    crate::FreqMagnitude::Hz =>  ui.label("Hz"),
+                    crate::FreqMagnitude::KHz => ui.label("KHz"),
+                    crate::FreqMagnitude::MHz => ui.label("MHz"),
                 }
             });
             ui.with_layout(Layout::left_to_right(Align::TOP), |ui| {
-                ui.radio_value(&mut self.emu_use_khz, false, "Hz");
-                if ui.radio_value(&mut self.emu_use_khz, true, "KHz").changed() {
-                    if self.emu_use_khz {
-                        self.tx_ctrl.send(CtrlMSG::SetRate(self.emu_speed * 1000.));
-                    } else {
-                        self.tx_ctrl.send(CtrlMSG::SetRate(self.emu_speed));
-                    }
-                };
+                if ui.radio_value(&mut self.emu_cpuspeedmul, crate::FreqMagnitude::Hz, "Hz").clicked(){
+                    self.send_settings();
+                }
+                if ui.radio_value(&mut self.emu_cpuspeedmul, crate::FreqMagnitude::KHz, "KHz").clicked(){
+                    self.send_settings();
+                }
+                if ui.radio_value(&mut self.emu_cpuspeedmul, crate::FreqMagnitude::MHz, "MHz").clicked(){
+                    self.send_settings();
+                }
             });
             if ui.checkbox(&mut self.emu_turbo, "Turbo Mode").changed() {
                 self.tx_ctrl.send(CtrlMSG::SetTurbo(self.emu_turbo));
