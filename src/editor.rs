@@ -7,8 +7,8 @@ use std::{
     path::PathBuf,
 };
 
-const DEFAULT_OS: &str = include_str!("../samples/default_os.k91");
-const DEFAULT_PROGRAM: &str = include_str!("../samples/default_program.k91");
+const DEFAULT_OS: &str = include_str!("../programs/default/default_os.k91");
+const DEFAULT_PROGRAM: &str = include_str!("../programs/default/default_program.k91");
 
 pub struct Editor {
     pub source_path: Option<String>,
