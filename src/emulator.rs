@@ -72,6 +72,7 @@ pub struct Emu {
     tick_rate: f32,
     turbo: bool,
     tick_timer: Duration,
+    mail_timer: Duration,
     t_last_update: Option<Instant>,
     t_last_cpu_tick: Option<Instant>,
     perfmon: PerfMonitor,
@@ -96,6 +97,7 @@ impl Emu {
             tick_rate: 10.,
             turbo: false,
             tick_timer: Duration::ZERO,
+            mail_timer: Duration::ZERO,
             t_last_update: None,
             t_last_cpu_tick: None,
             perfmon: PerfMonitor::default(),
@@ -142,7 +144,8 @@ impl Emu {
         if self.playing {
             self.tick_timer += delta;
         }
-        self.bus.pic.update_timer(delta)
+        self.bus.pic.update_timer(delta);
+        self.mail_timer += delta;
     }
 
     fn do_devices(&mut self) {
@@ -151,7 +154,12 @@ impl Emu {
     }
 
     fn check_mail(&mut self) {
-        // Loop until there are no messages, because messages may arrive faster than update.
+        // check mail less often
+        if self.mail_timer < Duration::from_secs_f32(1. / 60.) {
+            return;
+        }
+        self.mail_timer = Duration::ZERO;
+        // Loop until there are no messages, because messages may arrive faster than this is called.
         loop {
             if let Ok(msg) = self.rx.try_recv() {
                 match msg {
