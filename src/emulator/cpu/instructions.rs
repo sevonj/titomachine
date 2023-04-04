@@ -242,7 +242,6 @@ impl CPU {
                 }
             }
             IEXIT => {
-                println!("IEXIT");
                 // Pop FP, PC, SR
                 self.gpr[FP] = self.memread(bus, self.gpr[SP]);
                 self.cu_pc = self.memread(bus, self.gpr[SP] - 1);
