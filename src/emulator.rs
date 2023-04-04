@@ -222,10 +222,13 @@ impl Emu {
     }
 
     fn tick(&mut self) {
-        if self.cpu.input_wait != None || self.cpu.debug_get_halt() || !self.running {
+        if !self.running {
             return;
         }
         self.perfmon.tick();
+        if self.cpu.debug_get_halt() {
+            return;
+        }
         self.t_last_cpu_tick = Some(Instant::now());
         self.cpu.tick(&mut self.bus);
 
