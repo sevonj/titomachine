@@ -1,0 +1,19 @@
+; Midi Test
+
+MIDI    equ 0x30   ;
+TIMER   equ 0x22   ;
+
+NOTEON  equ 0      ; Placeholder solution
+NOTEOFF equ 1      ; Placeholder solution
+
+LOAD R1, =1000  ; Setup int timer
+OUT  R1, =TIMER ;
+
+loop nop
+    load r1, =NOTEON    ;
+    out  r1, =MIDI      ;
+    hlt                 ;
+    load r1, =NOTEOFF   ;
+    out  r1, =MIDI      ;
+    hlt                 ;
+    jump loop           ;
