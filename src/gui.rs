@@ -180,9 +180,17 @@ impl TitoApp {
         });
 
         ui.menu_button("Help", |ui| {
-            if ui.button("↗TTK-91 Reference").clicked() {
+            if ui.button("↗Project Wiki").clicked() {
+                ui.output()
+                    .open_url("https://github.com/sevonj/titomachine/wiki");
+            }
+            if ui.button("↗Old TTK-91 Reference").clicked() {
                 ui.output()
                     .open_url("https://www.cs.helsinki.fi/group/titokone/ttk91_ref_fi.html");
+            }
+            if ui.button("↗Github").clicked() {
+                ui.output()
+                    .open_url("https://github.com/sevonj/titomachine/");
             }
         });
     }
