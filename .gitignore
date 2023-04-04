@@ -1,3 +1,4 @@
 /target
 /build
 *.b91
+perf.data

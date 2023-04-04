@@ -58,7 +58,7 @@ pub struct TitoApp {
     emu_running: bool,
     emu_halted: bool,
     emu_playing: bool,
-    emu_use_khz: bool,
+    emu_cpuspeedmul: FreqMagnitude,
     emu_speed: f32,
     #[serde(skip)]
     emu_achieved_speed: f32,
@@ -95,6 +95,13 @@ pub struct TitoApp {
     regs_base: Base,
 }
 
+#[derive(serde::Deserialize, serde::Serialize, PartialEq)]
+pub(crate) enum FreqMagnitude {
+    Hz,
+    KHz,
+    MHz,
+}
+
 impl Default for TitoApp {
     fn default() -> Self {
         let (tx_control, rx_control) = mpsc::channel();
@@ -125,7 +132,7 @@ impl Default for TitoApp {
             emu_playing: false,
             emu_speed: 10.,
             emu_achieved_speed: 0.,
-            emu_use_khz: false,
+            emu_cpuspeedmul: FreqMagnitude::Hz,
             emu_turbo: false,
             emu_regs: DebugRegs::default(),
             emu_mem_len: 0,
@@ -204,16 +211,14 @@ impl TitoApp {
     }
 
     fn send_settings(&mut self) {
-        if self.emu_use_khz {
-            match self.tx_ctrl.send(CtrlMSG::SetRate(self.emu_speed * 1000.)) {
-                Ok(_) => (),
-                Err(_) => todo!(),
-            }
-        } else {
-            match self.tx_ctrl.send(CtrlMSG::SetRate(self.emu_speed)) {
-                Ok(_) => (),
-                Err(_) => todo!(),
-            }
+        let speed = match self.emu_cpuspeedmul {
+            FreqMagnitude::Hz => self.emu_speed,
+            FreqMagnitude::KHz => self.emu_speed * 1000.,
+            FreqMagnitude::MHz => self.emu_speed * 1000000.,
+        };
+        match self.tx_ctrl.send(CtrlMSG::SetRate(speed)) {
+            Ok(_) => (),
+            Err(_) => todo!(),
         }
     }
 }
