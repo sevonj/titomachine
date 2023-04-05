@@ -221,6 +221,14 @@ impl TitoApp {
             Err(_) => todo!(),
         }
     }
+    fn stop_emulation(&mut self) {
+        self.emu_running = false;
+        if self.emu_waiting_for_in {
+            // send some input to unfreeze emu thread
+            self.tx_devkbd.send(0);
+        }
+        self.tx_ctrl.send(CtrlMSG::PlaybackStop);
+    }
 }
 
 impl eframe::App for TitoApp {
