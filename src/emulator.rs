@@ -72,7 +72,6 @@ pub struct Emu {
     tick_rate: f32,
     turbo: bool,
     tick_timer: Duration,
-    mail_timer: Duration,
     t_last_update: Option<Instant>,
     t_last_cpu_tick: Option<Instant>,
     perfmon: PerfMonitor,
@@ -97,7 +96,6 @@ impl Emu {
             tick_rate: 10.,
             turbo: false,
             tick_timer: Duration::ZERO,
-            mail_timer: Duration::ZERO,
             t_last_update: None,
             t_last_cpu_tick: None,
             perfmon: PerfMonitor::default(),
@@ -109,7 +107,6 @@ impl Emu {
 
     pub fn update(&mut self) {
         self.timekeeper();
-        self.do_devices();
         self.check_mail();
         if self.playing {
             let tick_time = Duration::from_secs_f32(1. / self.tick_rate);
@@ -118,10 +115,14 @@ impl Emu {
                 self.tick_timer = Duration::ZERO;
                 self.tick();
             } else {
-                // Normomode: Wait for tick timer
-                if self.tick_timer >= tick_time {
-                    self.tick_timer -= tick_time;
-                    self.tick();
+                // Loop however many ticks are supposed to fit in a 1/120th of a second.
+                let loopcount = self.tick_rate as u32 / 120;
+                if self.tick_timer >= tick_time * loopcount {
+                    self.tick_timer -= tick_time * loopcount;
+                    for _ in 0..loopcount {
+                        self.tick();
+                    }
+                    self.perfmon.update();
                 } else {
                     // If no tick, sleep
                     thread::sleep(Duration::from_secs_f32(0.5 / self.tick_rate))
@@ -145,20 +146,14 @@ impl Emu {
             self.tick_timer += delta;
         }
         self.bus.pic.update_timer(delta);
-        self.mail_timer += delta;
     }
 
-    fn do_devices(&mut self) {
+    fn update_devices(&mut self) {
         self.bus.pic.update_status();
         self.cpu.set_sr_i(self.bus.pic.firing)
     }
 
     fn check_mail(&mut self) {
-        // check mail less often
-        if self.mail_timer < Duration::from_secs_f32(1. / 60.) {
-            return;
-        }
-        self.mail_timer = Duration::ZERO;
         // Loop until there are no messages, because messages may arrive faster than this is called.
         loop {
             if let Ok(msg) = self.rx.try_recv() {
@@ -222,10 +217,7 @@ impl Emu {
     }
 
     fn tick(&mut self) {
-        if !self.running {
-            return;
-        }
-        self.perfmon.tick();
+        self.update_devices();
         if self.cpu.debug_get_halt() {
             return;
         }
