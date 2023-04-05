@@ -9,4 +9,4 @@ If you intend to do something advanced, expect bugs and unfinished features. If 
 
 Check out the [wiki](https://github.com/sevonj/titomachine/wiki) for details on the system!
 
-![image](https://user-images.githubusercontent.com/100710152/218274322-0004823f-8435-48dd-aab8-73447b5d2580.png)
+![image](https://user-images.githubusercontent.com/100710152/230110624-c4e512e7-bed8-4f5e-9495-9f62e89f08a0.png)
