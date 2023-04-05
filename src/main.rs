@@ -69,9 +69,9 @@ pub struct TitoApp {
     #[serde(skip)]
     gui_memview: Vec<i32>, // Cached partial memory for gui
     #[serde(skip)]
-    gui_memview_off: i32, // Start offset
+    gui_memview_off: u32, // Start offset
     #[serde(skip)]
-    gui_memview_len: i32, // Size of cache
+    gui_memview_len: u32, // Size of cache
     #[serde(skip)]
     emu_mem_len: usize, // Size of cache
     #[serde(skip)]
@@ -138,7 +138,7 @@ impl Default for TitoApp {
             emu_mem_len: 0,
             gui_memview: vec![7; 16],
             gui_memview_off: 0,
-            gui_memview_len: 16 as i32,
+            gui_memview_len: 16,
             gui_memview_scroll: 0.,
             emu_waiting_for_in: false,
             emu_displayimage: None,

@@ -123,6 +123,7 @@ impl Emu {
                         self.tick();
                     }
                     self.perfmon.update();
+                    self.t_last_cpu_tick = Some(Instant::now());
                 } else {
                     // If no tick, sleep
                     thread::sleep(Duration::from_secs_f32(0.5 / self.tick_rate))
@@ -221,7 +222,6 @@ impl Emu {
         if self.cpu.debug_get_halt() {
             return;
         }
-        self.t_last_cpu_tick = Some(Instant::now());
         self.cpu.tick(&mut self.bus);
 
         if self.cpu.debug_is_on_fire() {

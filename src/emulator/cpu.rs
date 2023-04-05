@@ -72,9 +72,6 @@ impl CPU {
     }
 
     pub fn tick(&mut self, bus: &mut Bus) {
-        if self.burn {
-            return;
-        }
         self.exception_check(bus);
         self.cu_ir = self.memread(bus, self.cu_pc);
         self.cu_pc += 1;

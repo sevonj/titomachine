@@ -128,7 +128,7 @@ impl TitoApp {
              */
             let row_height = 23.;
             let height = ui.available_height() - 30.;
-            self.gui_memview_len = (height / row_height).to_i32().unwrap();
+            self.gui_memview_len = (height / row_height).to_u32().unwrap();
             let total_height = row_height * (self.emu_mem_len + 2) as f32 + 30.; // +2 because for some reason it fell short by that amount
             let view_height = height + 30.;
             self.gui_memview_scroll = egui::ScrollArea::vertical()
@@ -163,10 +163,10 @@ impl TitoApp {
                         .body(|mut body| {
                             //let rowcount = self.emu_memory_len;
                             for i in 0..self.gui_memview_len {
-                                if i >= self.gui_memview.len() as i32 {
+                                if i >= self.gui_memview.len() as u32 {
                                     break;
                                 }
-                                let adr = self.gui_memview_off + i;
+                                let adr = (self.gui_memview_off + i) as i32;
                                 let val: i32 = self.gui_memview[i as usize];
                                 let pc = self.emu_regs.pc;
                                 let sp = self.emu_regs.gpr[6];
@@ -255,7 +255,7 @@ impl TitoApp {
                 .state
                 .offset
                 .y;
-            self.gui_memview_off = (self.gui_memview_scroll / row_height) as i32;
+            self.gui_memview_off = (self.gui_memview_scroll / row_height) as u32;
         });
         //    });
         //});

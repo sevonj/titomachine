@@ -67,7 +67,7 @@ fn load(bus: &mut Bus, cpu: &mut CPU, prog: &str, org: usize) {
                         cpu.debug_clear_cu();
                         return;
                     }
-                    bus.write(mem_idx as i32, value).map_err(|err| println!("Loader memory write fail!\n{:?}", err)).ok();
+                    bus.write(mem_idx as u32, value).map_err(|err| println!("Loader memory write fail!\n{:?}", err)).ok();
                     mem_idx += 1;
                 }
                 Err(_e) => {
