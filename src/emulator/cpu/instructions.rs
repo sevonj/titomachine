@@ -252,18 +252,32 @@ impl CPU {
     }
 
     fn fetch_second_operand(&mut self, addr: i32, ri: i32, mode: i32, bus: &mut Bus) {
-        self.cu_tr = addr;
-
-        // Get Immediate operand
-        match self.cu_tr.checked_add(self.gpr[ri as usize]) {
-            Some(i) => self.cu_tr = i,
-            None => self.cu_sr |= SR_O,
-        }
-
-        // Direct:   if mode == 1, get from mem once
-        // Indirect: if mode == 2, get from mem twice
-        for _ in 1..=mode {
-            self.cu_tr = self.memread(bus, self.cu_tr);
+        self.cu_tr = match mode {
+            0 => match addr.checked_add(self.gpr[ri as usize]) {
+                Some(i) => i,
+                None => {
+                    self.cu_sr |= SR_O;
+                    0
+                }
+            },
+            1 => match addr.checked_add(self.gpr[ri as usize]) {
+                Some(i) => self.memread(bus, i),
+                None => {
+                    self.cu_sr |= SR_O;
+                    0
+                }
+            },
+            2 => match addr.checked_add(self.gpr[ri as usize]) {
+                Some(i) => {
+                    let addr = self.memread(bus, i);
+                    self.memread(bus, addr)
+                }
+                None => {
+                    self.cu_sr |= SR_O;
+                    0
+                }
+            },
+            _ => panic!("unknown addressing mode"),
         }
     }
 }
