@@ -3,3 +3,4 @@
 *.b91
 perf.data
 perf.data.old
+flamegraph.svg
