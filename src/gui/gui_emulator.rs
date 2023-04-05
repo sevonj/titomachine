@@ -312,32 +312,24 @@ impl TitoApp {
                         });
                     });
                 }
-                let sr_str = format!(
-                    "{}{}{}\n{}{}{}{}{}{}{}{}",
-                    if sr & (1 << 31) != 0 { "G" } else { "-" },
-                    if sr & (1 << 30) != 0 { "E" } else { "-" },
-                    if sr & (1 << 29) != 0 { "L" } else { "-" },
-                    if sr & (1 << 28) != 0 { "O" } else { "-" },
-                    if sr & (1 << 27) != 0 { "Z" } else { "-" },
-                    if sr & (1 << 26) != 0 { "U" } else { "-" },
-                    if sr & (1 << 25) != 0 { "M" } else { "-" },
-                    if sr & (1 << 24) != 0 { "I" } else { "-" },
-                    if sr & (1 << 23) != 0 { "S" } else { "-" },
-                    if sr & (1 << 22) != 0 { "P" } else { "-" },
-                    if sr & (1 << 21) != 0 { "D" } else { "-" },
-                );
-                body.row(40.0, |mut row| {
-                    row.col(|ui| {
-                        ui.label(format!(
-                            "Status:\n{}",
-                            if self.emu_halted { "HALT!" } else { "" }
-                        ));
-                    });
-                    row.col(|ui| {
-                        ui.label(RichText::new(sr_str).font(FONT_TBL.clone()));
-                    });
-                });
             });
+        let sr_str = format!(
+            "{}{}{}{}{}{}{}{}{}{}{}",
+            if sr & (1 << 31) != 0 { "G" } else { "-" },
+            if sr & (1 << 30) != 0 { "E" } else { "-" },
+            if sr & (1 << 29) != 0 { "L" } else { "-" },
+            if sr & (1 << 28) != 0 { "O" } else { "-" },
+            if sr & (1 << 27) != 0 { "Z" } else { "-" },
+            if sr & (1 << 26) != 0 { "U" } else { "-" },
+            if sr & (1 << 25) != 0 { "M" } else { "-" },
+            if sr & (1 << 24) != 0 { "I" } else { "-" },
+            if sr & (1 << 23) != 0 { "S" } else { "-" },
+            if sr & (1 << 22) != 0 { "P" } else { "-" },
+            if sr & (1 << 21) != 0 { "D" } else { "-" },
+        );
+        ui.label(format!("Status:"));
+        ui.label(RichText::new(sr_str).font(FONT_TBL.clone()));
+        ui.label(format!("{}", if self.emu_halted { "HALT!" } else { "" }));
     }
 
     fn ioview(&mut self, ctx: &Context, ui: &mut Ui) {
