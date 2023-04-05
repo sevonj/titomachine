@@ -18,5 +18,5 @@ chrono = "0.4.23"
 [build-dependencies]
 
 [profile.release]
-debug = true
-opt-level = 3
+debug = false
+opt-level = 2
