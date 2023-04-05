@@ -61,7 +61,7 @@ impl Default for DebugRegs {
 
 impl Emu {
     pub fn debug_sendstate(&mut self) {
-        let speed_percent = 1000. / self.tick_rate / self.perfmon.get_last_duration() * 100.;
+        let speed_percent = (1. / 120.) / self.perfmon.get_last_duration() * 100.;
         match self.tx.send(ReplyMSG::State(EmuState {
             playing: self.playing,
             running: self.running,
