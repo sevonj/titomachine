@@ -11,6 +11,7 @@ impl CPU {
     /// this does the base/limit address management.
     pub fn virtual2real(&mut self, addr: i32) -> Result<u32, ()> {
         if addr as u32 >= self.mmu_limit {
+            self.cu_sr |= SR_M;
             return Err(());
         }
         return Ok(addr as u32 + self.mmu_base);
