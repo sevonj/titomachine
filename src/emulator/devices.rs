@@ -52,7 +52,7 @@ impl Bus {
         }
     }
     /// MMIO access
-    pub(crate) fn read(&mut self, addr: i32) -> Result<i32, ()> {
+    pub(crate) fn read(&mut self, addr: u32) -> Result<i32, ()> {
         let addr = addr as usize;
         match addr {
             0x0000..=0x1fff => self.ram.read(addr),
@@ -63,7 +63,7 @@ impl Bus {
             }
         }
     }
-    pub(crate) fn write(&mut self, addr: i32, value: i32) -> Result<(), ()> {
+    pub(crate) fn write(&mut self, addr: u32, value: i32) -> Result<(), ()> {
         let addr = addr as usize;
         match addr {
             0x0000..=0x1fff => self.ram.write(addr, value),

@@ -16,7 +16,7 @@ pub enum CtrlMSG {
     SetTurbo(bool),
     GetState,
     GetRegs,
-    GetMem(Range<i32>),
+    GetMem(Range<u32>),
     GetDisp,
 }
 pub enum ReplyMSG {
@@ -73,7 +73,7 @@ impl Emu {
         }
     }
 
-    pub fn debug_sendmem(&mut self, range: Range<i32>) {
+    pub fn debug_sendmem(&mut self, range: Range<u32>) {
         let mut retvec: Vec<i32> = Vec::with_capacity(range.len());
         for i in range.clone() {
             if let Ok(val) = self.bus.read(i) {
