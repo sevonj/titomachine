@@ -5,7 +5,7 @@ Because my programs were too much for [Titokone](https://www.cs.helsinki.fi/grou
 ## What is this?
 TTK-91 is a hypothetical computer architecture used to teach computer organization at University of Helsinki. The goal of this project is to create a faster and more convenient emulator, and to extend the specification so that it could, for example run games, or even a full OS!
 
-This is work in progress, but for simple usage, such as TiTo course work, it should work fine. **However, please DO NOT rely solely on this for your course. I take no responsibility.** If you intend to do something advanced, you may come across unfinished features.
+This is work in progress, but for simple usage it should work fine; I used it for my TiTo course assignments. However, please don't rely solely on this for your course. I take no responsibility. If you intend to do something advanced, you may come across unfinished features.
 
 Check out the [wiki](https://github.com/sevonj/titomachine/wiki) for details on the system!
 
