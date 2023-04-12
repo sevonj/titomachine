@@ -34,35 +34,39 @@ use gui::{
 
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
+// TODO: Cleanup
 pub struct TitoApp {
+    // File, Status
     workdir: PathBuf,
     #[serde(skip)]
     filestatus: FileStatus,
     editorsettings: EditorSettings,
     #[serde(skip)]
     editor: Editor,
-    // Emulator
-    #[serde(skip)]
-    tx_ctrl: mpsc::Sender<CtrlMSG>,
-    #[serde(skip)]
-    rx_reply: mpsc::Receiver<ReplyMSG>,
 
+    // Devices
     #[serde(skip)]
     dev_legacyio: GUIDevLegacyIO,
     #[serde(skip)]
     dev_display: GUIDevDisplay,
 
+    // Emulator
+    #[serde(skip)]
+    tx_ctrl: mpsc::Sender<CtrlMSG>,
+    #[serde(skip)]
+    rx_reply: mpsc::Receiver<ReplyMSG>,
     current_prog: String,
 
+    // Emu status, settings
     emu_running: bool,
     emu_halted: bool,
     emu_playing: bool,
     emu_cpuspeedmul: FreqMagnitude,
     emu_speed: f32,
     #[serde(skip)]
-    emu_achieved_speed: f32,
-    #[serde(skip)]
     emu_turbo: bool,
+    #[serde(skip)]
+    emu_achieved_speed: f32,
     #[serde(skip)]
     emu_regs: DebugRegs,
     #[serde(skip)]
@@ -76,7 +80,7 @@ pub struct TitoApp {
     #[serde(skip)]
     gui_memview_scroll: f32,
 
-    //GUI
+    // GUI settings
     #[serde(skip)]
     guimode: GuiMode,
     emugui_display: bool,
