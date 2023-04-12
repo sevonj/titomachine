@@ -42,7 +42,7 @@ pub mod emu_debug;
 mod perfmon;
 
 use self::cpu::CPU;
-use self::devices::{Bus, MMIO};
+use self::devices::{Bus, MMIO, Device};
 use self::emu_debug::{CtrlMSG, ReplyMSG};
 use self::perfmon::PerfMonitor;
 mod cpu;
@@ -213,8 +213,8 @@ impl Emu {
 
     fn clearmem(&mut self) {
         self.stop();
-        self.bus.ram.clear();
-        self.bus.display.clear();
+        self.bus.ram.reset();
+        self.bus.display.reset();
     }
 
     fn tick(&mut self) {

@@ -23,7 +23,6 @@ pub(crate) trait Device {
 pub(crate) trait MMIO {
     fn read(&mut self, addr: usize) -> Result<i32, ()>;
     fn write(&mut self, addr: usize, value: i32) -> Result<(), ()>;
-    fn clear(&mut self);
 }
 
 pub(crate) trait PMIO {

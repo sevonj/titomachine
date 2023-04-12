@@ -49,7 +49,4 @@ impl MMIO for DevDisplayClassic {
         self.framebuffer[addr] = color;
         Ok(())
     }
-    fn clear(&mut self) {
-        self.framebuffer = vec![image::Rgba([0, 0, 0, 255,]); 120 * 160];
-    }
 }
