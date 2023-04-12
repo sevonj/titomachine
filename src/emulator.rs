@@ -194,6 +194,7 @@ impl Emu {
     fn stop(&mut self) {
         self.t_last_update = None;
         self.running = false;
+        self.playing = false;
     }
 
     fn playpause(&mut self, p: bool) {
