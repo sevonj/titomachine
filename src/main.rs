@@ -20,21 +20,22 @@
 ///
 #[macro_use]
 extern crate num_derive;
-use std::{env, path::PathBuf, sync::mpsc, thread};
+use std::{sync::mpsc, thread};
 pub mod editor;
 pub mod emulator;
 pub mod gui;
-use editor::*;
+use editor::{Editor, EditorSettings};
 use egui_extras::RetainedImage;
 use emulator::emu_debug::{CtrlMSG, DebugRegs, ReplyMSG};
-use gui::{Base, GuiMode};
+use gui::{file_actions::FileStatus, Base, GuiMode};
 use image::{ImageBuffer, Rgba};
 
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub struct TitoApp {
-    working_dir: PathBuf,
-    // Editor
+    #[serde(skip)]
+    filestatus: FileStatus,
+    editorsettings: EditorSettings,
     #[serde(skip)]
     editor: Editor,
     // Emulator
@@ -114,8 +115,8 @@ impl Default for TitoApp {
             emulator::run(tx_reply, rx_control, tx_devcrt, rx_devkbd, tx_devkbdreq);
         });
         TitoApp {
-            working_dir: env::current_dir().unwrap(),
-            // Editor
+            filestatus: FileStatus::default(),
+            editorsettings: EditorSettings::default(),
             editor: Editor::default(),
             // Emulator
             tx_ctrl: tx_control,
