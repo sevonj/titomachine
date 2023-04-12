@@ -7,7 +7,7 @@
 
 use std::str::Lines;
 
-use crate::emulator::devices::MMIO;
+use crate::emulator::devices::Device;
 
 use super::{cpu::CPU, devices::Bus};
 
@@ -63,7 +63,7 @@ fn load(bus: &mut Bus, cpu: &mut CPU, prog: &str, org: usize) {
                 Ok(value) => {
                     if mem_idx > 0x1fff {
                         println!("ERR: Program does not fit in memory!\nConsider increasing memory size or making smaller programs.\nRan out at address {}.", mem_idx);
-                        bus.ram.clear();
+                        bus.ram.reset();
                         cpu.debug_clear_cu();
                         return;
                     }
@@ -72,7 +72,7 @@ fn load(bus: &mut Bus, cpu: &mut CPU, prog: &str, org: usize) {
                 }
                 Err(_e) => {
                     println!("ERR: Failed to parse \"{}\" as a 32bit integer.", line);
-                    bus.ram.clear();
+                    bus.ram.reset();
                     return;
                 }
             },
