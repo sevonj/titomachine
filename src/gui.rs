@@ -246,7 +246,7 @@ impl TitoApp {
         if ui.input_mut().consume_shortcut(&SHORTCUT_OPEN) {
             self.file_open()
         }
-        if ui.input_mut().consume_shortcut(&SHORTCUT_SAVE) && self.editor.source_path != None {
+        if ui.input_mut().consume_shortcut(&SHORTCUT_SAVE) {
             self.file_save()
         }
         if ui.input_mut().consume_shortcut(&SHORTCUT_SAVEAS) {

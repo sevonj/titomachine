@@ -28,17 +28,25 @@ impl TitoApp {
     }
 
     pub fn file_save(&mut self) {
+        println!("save called");
+        // If new file, use save as because there's no filename yet.
+        if self.filestatus.currentfile == None {
+            self.file_saveas();
+            return;
+        }
         self.editor.save_file(None);
         self.filestatus.on_save();
     }
 
     pub fn file_saveas(&mut self) {
-        self.editor.save_file(
-            FileDialog::new()
-                .add_filter("TTK Source files", &["k91"])
-                .set_directory(&self.workdir)
-                .save_file(),
-        );
+        let path = FileDialog::new()
+            .add_filter("TTK Source files", &["k91"])
+            .set_directory(&self.workdir)
+            .save_file();
+        if path == None {
+            return;
+        }
+        self.editor.save_file(path);
         self.filestatus.on_save();
         self.workdir = current_dir().unwrap();
     }
