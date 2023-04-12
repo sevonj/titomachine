@@ -10,12 +10,24 @@ use std::{
 const DEFAULT_OS: &str = include_str!("../programs/default/default_os.k91");
 const DEFAULT_PROGRAM: &str = include_str!("../programs/default/default_program.k91");
 
-pub struct Editor {
-    pub source_path: Option<String>,
-    pub source_code: String,
-    pub line_no: String,
-    pub linecnt: i32,
-    pub compiler: Compiler,
+#[derive(serde::Deserialize, serde::Serialize)]
+pub(crate) struct EditorSettings {
+    pub(crate) compile_default_os: bool,
+}
+impl Default for EditorSettings {
+    fn default() -> Self {
+        Self {
+            compile_default_os: true,
+        }
+    }
+}
+
+pub(crate) struct Editor {
+    pub(crate) source_path: Option<String>,
+    pub(crate) source_code: String,
+    pub(crate) line_no: String,
+    pub(crate) linecnt: i32,
+    pub(crate) compiler: Compiler,
 }
 
 impl Default for Editor {

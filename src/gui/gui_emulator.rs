@@ -24,8 +24,7 @@ impl TitoApp {
             self.emu_playing = false;
             self.tx_ctrl.send(CtrlMSG::PlaybackPlayPause(false));
             if self.emu_running {
-                self.emu_running = false;
-                self.tx_ctrl.send(CtrlMSG::PlaybackStop);
+                self.stop_emulation();
             } else {
                 self.emu_running = true;
                 self.tx_ctrl.send(CtrlMSG::PlaybackStart);
