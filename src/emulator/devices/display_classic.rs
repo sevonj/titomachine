@@ -44,9 +44,12 @@ impl DevDisplayClassic {
         let frame_time = Duration::from_secs(1) / self.frame_rate;
         if self.frame_timer >= frame_time {
             self.frame_timer -= frame_time;
-            if let Some(tx) = &self.tx {
-                tx.send(self.framebuffer.clone());
-            }
+            self.send();
+        }
+    }
+    pub(crate) fn send(&mut self) {
+        if let Some(tx) = &self.tx {
+            tx.send(self.framebuffer.clone());
         }
     }
 }

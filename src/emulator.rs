@@ -203,6 +203,8 @@ impl Emu {
         self.t_last_update = None;
         self.running = false;
         self.playing = false;
+        // Send framebuffer to avoid incomplete picture
+        self.bus.display.send();
     }
 
     fn playpause(&mut self, p: bool) {
@@ -239,8 +241,7 @@ impl Emu {
         self.cpu.tick(&mut self.bus);
 
         if self.cpu.debug_is_on_fire() {
-            self.playing = false;
-            self.running = false;
+            self.stop()
         }
     }
 }
