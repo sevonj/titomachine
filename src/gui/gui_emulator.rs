@@ -57,9 +57,8 @@ impl TitoApp {
 
         ui.separator();
 
-        if ui.button("Reload").clicked() {
-            self.tx_ctrl
-                .send(CtrlMSG::LoadProg(self.current_prog.clone()));
+        if ui.button("Reset").clicked() {
+            self.tx_ctrl.send(CtrlMSG::Reset());
         }
 
         ui.separator();

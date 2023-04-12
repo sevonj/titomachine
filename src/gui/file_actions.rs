@@ -15,7 +15,7 @@ impl TitoApp {
     pub fn file_open(&mut self) {
         let path = FileDialog::new()
             .add_filter("TTK Source files", &["k91"])
-            .set_directory(current_dir().unwrap())
+            .set_directory(&self.workdir)
             .pick_file();
         if path == None {
             return;
@@ -24,6 +24,7 @@ impl TitoApp {
         self.filestatus.update_title();
         self.editor.open_file(path);
         self.guimode = GuiMode::Editor;
+        self.workdir = current_dir().unwrap();
     }
 
     pub fn file_save(&mut self) {
@@ -40,13 +41,14 @@ impl TitoApp {
     pub fn file_saveas(&mut self) {
         let path = FileDialog::new()
             .add_filter("TTK Source files", &["k91"])
-            .set_directory(current_dir().unwrap())
+            .set_directory(&self.workdir)
             .save_file();
         if path == None {
             return;
         }
         self.editor.save_file(path);
         self.filestatus.on_save();
+        self.workdir = current_dir().unwrap();
     }
 
     pub fn file_compile(&mut self) {
