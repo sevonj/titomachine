@@ -36,8 +36,11 @@ impl TitoApp {
             FileDialog::new()
                 .add_filter("TTK Source files", &["k91"])
                 .set_directory(current_dir().unwrap())
-                .save_file(),
-        );
+            .save_file();
+        if path == None {
+            return;
+        }
+        self.editor.save_file(path);
         self.filestatus.on_save();
     }
 
