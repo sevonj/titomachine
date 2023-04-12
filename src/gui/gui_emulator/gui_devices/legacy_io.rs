@@ -54,9 +54,6 @@ impl GUIPanel for GUIDevLegacyIO {
         // CRT Panel
 
         ui.label("=CRT");
-        if let Ok(n) = self.rx_crt.try_recv() {
-            self.crt_out(n)
-        }
         Frame::side_top_panel(&ctx.style())
             .fill(Color32::BLACK)
             .show(ui, |ui| {
@@ -66,10 +63,6 @@ impl GUIPanel for GUIDevLegacyIO {
         ui.separator();
 
         // KBD Panel
-
-        if let Ok(_) = self.rx_kbdreq.try_recv() {
-            self.waiting_for_in = true
-        }
         ui.add_enabled_ui(self.waiting_for_in, |ui| {
             ui.label(
                 RichText::new("=KBD")
@@ -95,5 +88,14 @@ impl GUIPanel for GUIDevLegacyIO {
         self.buf_kbd = String::new();
         self.buf_crt = "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n".to_owned();
         self.clear_kbd();
+    }
+
+    fn update(&mut self) {
+        if let Ok(n) = self.rx_crt.try_recv() {
+            self.crt_out(n)
+        }
+        if let Ok(_) = self.rx_kbdreq.try_recv() {
+            self.waiting_for_in = true
+        }
     }
 }

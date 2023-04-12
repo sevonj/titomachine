@@ -11,4 +11,5 @@ use egui::{Context, Ui};
 pub(crate) trait GUIPanel {
     fn gui_panel(&mut self, ctx: &Context, ui: &mut Ui);
     fn reset(&mut self);
+    fn update(&mut self);
 }

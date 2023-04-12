@@ -25,11 +25,6 @@ impl GUIDevDisplay {
             image: None,
         }
     }
-    pub(crate) fn update(&mut self) {
-        while let Ok(vec) = self.rx.try_recv() {
-            self.framebuffer = vec;
-        }
-    }
 }
 impl GUIPanel for GUIDevDisplay {
     fn gui_panel(&mut self, ctx: &Context, ui: &mut Ui) {
@@ -70,5 +65,10 @@ impl GUIPanel for GUIDevDisplay {
 
     fn reset(&mut self) {
         self.framebuffer = vec![image::Rgba([0, 0, 0, 255,]); 120 * 160];
+    }
+    fn update(&mut self) {
+        while let Ok(vec) = self.rx.try_recv() {
+            self.framebuffer = vec;
+        }
     }
 }
