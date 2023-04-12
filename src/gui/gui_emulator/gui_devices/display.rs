@@ -1,6 +1,6 @@
 ///
-/// LegacyIO
-/// CRT and KBD
+/// Display
+/// Gui component for the screen
 ///
 use super::GUIDevice;
 use egui::{Context, Layout, Ui};
