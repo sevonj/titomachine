@@ -33,12 +33,6 @@ impl Device for DevDisplayClassic {
     }
 }
 
-impl Device for DevDisplayClassic {
-    fn reset(&mut self) {
-        self.framebuffer = vec![image::Rgba([0, 0, 0, 255,]); 120 * 160];
-    }
-}
-
 impl DevDisplayClassic {
     pub fn connect(&mut self, tx: Sender<Vec<Rgba<u8>>>) {
         self.tx = Some(tx);
