@@ -1,11 +1,14 @@
+use self::gui_devices::GUIDevice;
+
 use super::Base;
 use crate::{emulator::emu_debug::CtrlMSG, TitoApp};
+pub(crate) mod gui_devices;
 pub mod instruction_parser;
 use eframe::emath::format_with_decimals_in_range;
-use egui::{Button, Color32, Context, FontId, Frame, Layout, RichText, TextEdit, Ui};
-use egui_extras::{Column, RetainedImage, TableBuilder};
+use egui::{Button, Color32, Context, FontId, RichText, Ui};
+use egui_extras::{Column, TableBuilder};
 use instruction_parser::*;
-use num_traits::{clamp, ToPrimitive};
+use num_traits::ToPrimitive;
 
 const FONT_TBL: FontId = FontId::monospace(12.0);
 const FONT_TBLH: FontId = FontId::proportional(12.5);
@@ -59,6 +62,8 @@ impl TitoApp {
 
         if ui.button("Reset").clicked() {
             self.tx_ctrl.send(CtrlMSG::Reset());
+            self.dev_legacyio.reset();
+            self.dev_display.reset();
         }
 
         ui.separator();
@@ -86,7 +91,7 @@ impl TitoApp {
                 .resizable(false)
                 .max_width(128.0)
                 .show(ctx, |ui| {
-                    self.ioview(ctx, ui);
+                    self.dev_legacyio.gui_panel(ctx, ui);
                     ui.separator();
                 });
             egui::CentralPanel::default().show(ctx, |ui| {
@@ -94,8 +99,7 @@ impl TitoApp {
                     egui::TopBottomPanel::top("display")
                         .resizable(true)
                         .show(ctx, |ui| {
-                            self.display(ctx, ui);
-                            self.tx_ctrl.send(CtrlMSG::GetDisp);
+                            self.dev_display.gui_panel(ctx, ui);
                         });
                 }
                 self.memview(ctx, ui);
@@ -330,89 +334,9 @@ impl TitoApp {
         ui.label(format!("{}", if self.emu_halted { "HALT!" } else { "" }));
     }
 
-    fn ioview(&mut self, ctx: &Context, ui: &mut Ui) {
-        ui.label("=CRT");
-        match self.rx_devcrt.try_recv() {
-            Ok(n) => self.devcrt_out(n),
-            Err(_) => (),
-        }
-        Frame::side_top_panel(&ctx.style())
-            .fill(Color32::BLACK)
-            .show(ui, |ui| {
-                ui.label(self.buf_out.as_str());
-                ui.allocate_space(egui::vec2(ui.available_width(), 0.0))
-            });
-
-        ui.separator();
-
-        match self.rx_devkbdreq.try_recv() {
-            Ok(_) => self.emu_waiting_for_in = true,
-            Err(_) => (),
-        }
-        ui.add_enabled_ui(self.emu_waiting_for_in, |ui| {
-            ui.label(
-                RichText::new("=KBD")
-                    .font(FONT_TBL.clone())
-                    .color(Color32::WHITE),
-            );
-            TextEdit::singleline(&mut self.buf_in)
-                .hint_text("Type a number")
-                .show(ui);
-            if ui.button("Send").clicked() {
-                if self.buf_in.parse::<i32>().is_ok() {
-                    self.tx_devkbd.send(self.buf_in.parse::<i32>().unwrap());
-                    self.buf_in = String::new();
-                    self.emu_waiting_for_in = false;
-                } else {
-                    self.buf_in = "Invalid input!".to_owned();
-                }
-            }
-        });
-    }
-
-    fn display(&mut self, ctx: &Context, ui: &mut Ui) {
-        // Determine image size based on available w / h, whichever fits a smaller image
-        let target_h = clamp(ui.available_height(), 120., 400.); // size limited for performance
-        let target_w = clamp(ui.available_width(), 160., f32::INFINITY);
-        let w;
-        let h;
-        if target_w > target_h * (160. / 120.) {
-            w = (target_h * (160. / 120.)) as u32;
-            h = target_h as u32;
-        } else {
-            w = target_w as u32;
-            h = (target_w * (120. / 160.)) as u32;
-        }
-        ui.with_layout(Layout::top_down(egui::Align::Center), |ui| {
-            self.emu_displaybuffer = Some(image::ImageBuffer::new(w, h));
-            // This is a terribly inefficient way to make the image
-            // TODO: figure out how to just rescale the original res pic.
-            for (x, y, pixels) in self
-                .emu_displaybuffer
-                .as_mut()
-                .unwrap()
-                .enumerate_pixels_mut()
-            {
-                // px_off = px_x + px_y * 160
-                let px_off = (x * 160 / w) + (y * 120 / h) * 160;
-                *pixels = self.framebuffer[px_off as usize];
-            }
-            let color_image = egui::ColorImage::from_rgba_unmultiplied(
-                [w as usize, h as usize],
-                &self.emu_displaybuffer.as_ref().unwrap(),
-            );
-            let render_result = RetainedImage::from_color_image("0.png", color_image);
-            self.emu_displayimage = Some(render_result);
-            if let Some(img) = &self.emu_displayimage {
-                img.show(ui);
-            }
-        });
-    }
-
     // Refresh cached regs and memory
     fn refresh_emu_state(&mut self) {
         self.tx_ctrl.send(CtrlMSG::GetState);
-        self.tx_ctrl.send(CtrlMSG::GetRegs);
         self.tx_ctrl.send(CtrlMSG::GetMem(
             self.gui_memview_off..self.gui_memview_off + self.gui_memview_len,
         ));

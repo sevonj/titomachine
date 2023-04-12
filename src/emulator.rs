@@ -41,8 +41,10 @@ mod devices;
 pub mod emu_debug;
 mod perfmon;
 
+use image::Rgba;
+
 use self::cpu::CPU;
-use self::devices::{Bus, Device, MMIO};
+use self::devices::{Bus, Device};
 use self::emu_debug::{CtrlMSG, ReplyMSG};
 use self::perfmon::PerfMonitor;
 mod cpu;
@@ -54,8 +56,9 @@ pub fn run(
     tx_devcrt: Sender<i32>,
     rx_devkbd: Receiver<i32>,
     tx_devkbdreq: Sender<()>,
+    tx_devdisplay: Sender<Vec<Rgba<u8>>>,
 ) {
-    let mut emu = Emu::new(tx, rx, tx_devcrt, rx_devkbd, tx_devkbdreq);
+    let mut emu = Emu::new(tx, rx, tx_devcrt, rx_devkbd, tx_devkbdreq, tx_devdisplay);
     loop {
         emu.update();
     }
@@ -72,6 +75,7 @@ pub struct Emu {
     tick_rate: f32,
     turbo: bool,
     tick_timer: Duration,
+    t_delta: Duration,
     t_last_update: Option<Instant>,
     t_last_cpu_tick: Option<Instant>,
     perfmon: PerfMonitor,
@@ -84,6 +88,7 @@ impl Emu {
         tx_devcrt: Sender<i32>,
         rx_devkbd: Receiver<i32>,
         tx_devkbdreq: Sender<()>,
+        tx_devdisplay: Sender<Vec<Rgba<u8>>>
     ) -> Self {
         let mut emu = Emu {
             bus: Bus::new(),
@@ -96,12 +101,14 @@ impl Emu {
             tick_rate: 10.,
             turbo: false,
             tick_timer: Duration::ZERO,
+            t_delta: Duration::ZERO,
             t_last_update: None,
             t_last_cpu_tick: None,
             perfmon: PerfMonitor::default(),
         };
         emu.bus.crt.connect(tx_devcrt);
         emu.bus.kbd.connect(rx_devkbd, tx_devkbdreq);
+        emu.bus.display.connect(tx_devdisplay);
         emu
     }
 
@@ -137,21 +144,22 @@ impl Emu {
 
     fn timekeeper(&mut self) {
         let now = Instant::now();
-        let delta;
+        self.t_delta;
         match self.t_last_update {
-            Some(last) => delta = now - last,
-            None => delta = Duration::ZERO,
+            Some(last) => self.t_delta = now - last,
+            None => self.t_delta = Duration::ZERO,
         }
         self.t_last_update = Some(now);
         if self.playing {
-            self.tick_timer += delta;
+            self.tick_timer += self.t_delta;
         }
-        self.bus.pic.update_timer(delta);
+        self.bus.pic.update_timer(self.t_delta);
     }
 
     fn update_devices(&mut self) {
         self.bus.pic.update_status();
-        self.cpu.set_sr_i(self.bus.pic.firing)
+        self.cpu.set_sr_i(self.bus.pic.firing);
+        self.bus.display.update(self.t_delta);
     }
 
     fn check_mail(&mut self) {
@@ -174,8 +182,6 @@ impl Emu {
                     // Debug
                     CtrlMSG::GetState => self.debug_sendstate(),
                     CtrlMSG::GetMem(range) => self.debug_sendmem(range),
-                    CtrlMSG::GetRegs => self.debug_sendregs(),
-                    CtrlMSG::GetDisp => self.debug_senddisp(),
                 }
             } else {
                 break;
@@ -196,6 +202,8 @@ impl Emu {
         self.t_last_update = None;
         self.running = false;
         self.playing = false;
+        // Send framebuffer to avoid incomplete picture
+        self.bus.display.send();
     }
 
     fn playpause(&mut self, p: bool) {
@@ -209,7 +217,6 @@ impl Emu {
         loader::load_program(&mut self.bus, &mut self.cpu, &self.loaded_prog);
     }
     fn reset(&mut self) {
-        println!("reset");
         self.stop();
         self.bus.reset_devices();
         self.reload();
@@ -233,8 +240,7 @@ impl Emu {
         self.cpu.tick(&mut self.bus);
 
         if self.cpu.debug_is_on_fire() {
-            self.playing = false;
-            self.running = false;
+            self.stop()
         }
     }
 }

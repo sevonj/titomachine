@@ -20,52 +20,54 @@
 ///
 #[macro_use]
 extern crate num_derive;
-use std::{sync::mpsc, thread, path::PathBuf, env::current_dir};
+use std::{env::current_dir, path::PathBuf, sync::mpsc, thread};
 pub mod editor;
 pub mod emulator;
 pub mod gui;
 use editor::{Editor, EditorSettings};
-use egui_extras::RetainedImage;
+
 use emulator::emu_debug::{CtrlMSG, DebugRegs, ReplyMSG};
-use gui::{file_actions::FileStatus, Base, GuiMode};
-use image::{ImageBuffer, Rgba};
+use gui::{
+    file_actions::FileStatus,
+    gui_emulator::gui_devices::{display::GUIDevDisplay, legacy_io::GUIDevLegacyIO, GUIDevice},
+    Base, GuiMode,
+};
 
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
+// TODO: Cleanup
 pub struct TitoApp {
+    // File, Status
     workdir: PathBuf,
     #[serde(skip)]
     filestatus: FileStatus,
     editorsettings: EditorSettings,
     #[serde(skip)]
     editor: Editor,
+
+    // Devices
+    #[serde(skip)]
+    dev_legacyio: GUIDevLegacyIO,
+    #[serde(skip)]
+    dev_display: GUIDevDisplay,
+
     // Emulator
     #[serde(skip)]
     tx_ctrl: mpsc::Sender<CtrlMSG>,
     #[serde(skip)]
     rx_reply: mpsc::Receiver<ReplyMSG>,
-    #[serde(skip)]
-    rx_devcrt: mpsc::Receiver<i32>,
-    #[serde(skip)]
-    tx_devkbd: mpsc::Sender<i32>,
-    #[serde(skip)]
-    rx_devkbdreq: mpsc::Receiver<()>,
-    #[serde(skip)]
-    buf_in: String,
-    #[serde(skip)]
-    buf_out: String,
-
     current_prog: String,
 
+    // Emu status, settings
     emu_running: bool,
     emu_halted: bool,
     emu_playing: bool,
     emu_cpuspeedmul: FreqMagnitude,
     emu_speed: f32,
     #[serde(skip)]
-    emu_achieved_speed: f32,
-    #[serde(skip)]
     emu_turbo: bool,
+    #[serde(skip)]
+    emu_achieved_speed: f32,
     #[serde(skip)]
     emu_regs: DebugRegs,
     #[serde(skip)]
@@ -78,16 +80,8 @@ pub struct TitoApp {
     emu_mem_len: usize, // Size of cache
     #[serde(skip)]
     gui_memview_scroll: f32,
-    #[serde(skip)]
-    emu_waiting_for_in: bool,
-    #[serde(skip)]
-    emu_displayimage: Option<RetainedImage>,
-    #[serde(skip)]
-    emu_displaybuffer: Option<ImageBuffer<Rgba<u8>, Vec<u8>>>,
-    #[serde(skip)]
-    framebuffer: Vec<Rgba<u8>>,
 
-    //GUI
+    // GUI settings
     #[serde(skip)]
     guimode: GuiMode,
     emugui_display: bool,
@@ -111,9 +105,20 @@ impl Default for TitoApp {
         let (tx_devcrt, rx_devcrt) = mpsc::channel();
         let (tx_devkbd, rx_devkbd) = mpsc::channel();
         let (tx_devkbdreq, rx_devkbdreq) = mpsc::channel();
+        let (tx_devdisplay, rx_devdisplay) = mpsc::channel();
+
+        let dev_legacyio = GUIDevLegacyIO::new(rx_devcrt, tx_devkbd, rx_devkbdreq);
+        let dev_display = GUIDevDisplay::new(rx_devdisplay);
 
         thread::spawn(move || {
-            emulator::run(tx_reply, rx_control, tx_devcrt, rx_devkbd, tx_devkbdreq);
+            emulator::run(
+                tx_reply,
+                rx_control,
+                tx_devcrt,
+                rx_devkbd,
+                tx_devkbdreq,
+                tx_devdisplay,
+            );
         });
         TitoApp {
             workdir: current_dir().unwrap(),
@@ -123,11 +128,8 @@ impl Default for TitoApp {
             // Emulator
             tx_ctrl: tx_control,
             rx_reply,
-            rx_devcrt,
-            tx_devkbd,
-            rx_devkbdreq,
-            buf_in: String::new(),
-            buf_out: "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n".to_owned(),
+            dev_legacyio,
+            dev_display,
             current_prog: String::new(),
 
             emu_running: false,
@@ -143,10 +145,6 @@ impl Default for TitoApp {
             gui_memview_off: 0,
             gui_memview_len: 16,
             gui_memview_scroll: 0.,
-            emu_waiting_for_in: false,
-            emu_displayimage: None,
-            emu_displaybuffer: None,
-            framebuffer: vec![image::Rgba([0, 0, 0, 255,]); 120 * 160],
 
             // GUI
             guimode: GuiMode::Editor,
@@ -192,25 +190,11 @@ impl TitoApp {
                     ReplyMSG::Regs(regs) => self.emu_regs = regs,
                     ReplyMSG::Mem(vec) => self.gui_memview = vec,
                     ReplyMSG::MemSize(s) => self.emu_mem_len = s,
-                    ReplyMSG::Display(vec) => {
-                        self.framebuffer = vec;
-                    }
                 }
             } else {
                 break;
             }
         }
-    }
-
-    fn devcrt_out(&mut self, n: i32) {
-        self.buf_out = n.to_string() + "\n" + self.buf_out.as_str();
-        // Add a line to beginning
-        self.buf_out = self // Remove last line
-            .buf_out
-            .lines()
-            .take(16)
-            .map(|s| s.to_string() + "\n")
-            .collect();
     }
 
     fn send_settings(&mut self) {
@@ -226,11 +210,13 @@ impl TitoApp {
     }
     fn stop_emulation(&mut self) {
         self.emu_running = false;
-        if self.emu_waiting_for_in {
-            // send some input to unfreeze emu thread
-            self.tx_devkbd.send(0);
-        }
+        self.dev_legacyio.clear_kbd();
         self.tx_ctrl.send(CtrlMSG::PlaybackStop);
+    }
+
+    fn update_devices(&mut self) {
+        self.dev_legacyio.update();
+        self.dev_display.update();
     }
 }
 
@@ -241,6 +227,8 @@ impl eframe::App for TitoApp {
 
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         // 60fps gui update when emulator is running
+        self.update_devices();
+
         if self.emu_running && self.emu_playing {
             ctx.request_repaint_after(std::time::Duration::from_secs(1 / 60))
         }
