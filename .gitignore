@@ -1,4 +1,7 @@
 /target
 /build
 *.b91
+perf.data
+perf.data.old
+flamegraph.svg
 *.sf2.pcm

@@ -74,7 +74,8 @@ impl TitoApp {
                         )
                         .changed()
                     {
-                        self.editor.update_linecount()
+                        self.editor.update_linecount();
+                        self.filestatus.code_changed();
                     }
                 });
             });

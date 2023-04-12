@@ -4,7 +4,7 @@ pub mod file_actions;
 pub mod gui_editor;
 pub mod gui_emulator;
 
-use egui::{Align, Button, DragValue, Layout, Modifiers};
+use egui::{Align, Button, Color32, DragValue, Layout, Modifiers, RichText};
 
 #[derive(PartialEq)]
 pub enum GuiMode {
@@ -77,6 +77,33 @@ impl TitoApp {
                         }
                     });
                 });
+            // Bottom bar
+            egui::TopBottomPanel::bottom("bottombar")
+                .exact_height(24.0)
+                .show(ctx, |ui| {
+                    ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
+                        // Filename
+                        ui.label(&self.filestatus.displayname);
+                        // Compile Status
+                        match self.guimode {
+                            GuiMode::Editor => {
+                                if self.filestatus.compilefail {
+                                    ui.label(RichText::new("Could not compile!")
+                                    .color(Color32::RED),);
+                                }
+                            }
+                            GuiMode::Emulator => {
+                                if self.filestatus.uncompiled {
+                                    ui.label(
+                                        RichText::new("File has uncompiled changes!")
+                                            .color(Color32::YELLOW),
+                                    );
+                                }
+                            }
+                        }
+                    });
+                });
+
             egui::CentralPanel::default().show(ctx, |ui| {
                 if self.guimode == GuiMode::Emulator {
                     self.emulator_panel(ctx, ui);
@@ -127,6 +154,15 @@ impl TitoApp {
         });
 
         ui.menu_button("Options", |ui| {
+            ui.label("Editor");
+            ui.menu_button("Compiler", |ui| {
+                ui.checkbox(
+                    &mut self.editorsettings.compile_default_os,
+                    "Use default SVCs",
+                );
+            });
+            ui.separator();
+            ui.label("Emulator");
             ui.menu_button("Memory View", |ui| {
                 ui.checkbox(&mut self.emugui_follow_pc, "Follow PC");
                 ui.label("Memview Address base");
@@ -151,20 +187,22 @@ impl TitoApp {
                         .speed(0.1)
                         .clamp_range(1..=9999),
                 );
-                match self.emu_use_khz {
-                    true => ui.label("KHz"),
-                    false => ui.label("Hz"),
+                match self.emu_cpuspeedmul {
+                    crate::FreqMagnitude::Hz =>  ui.label("Hz"),
+                    crate::FreqMagnitude::KHz => ui.label("KHz"),
+                    crate::FreqMagnitude::MHz => ui.label("MHz"),
                 }
             });
             ui.with_layout(Layout::left_to_right(Align::TOP), |ui| {
-                ui.radio_value(&mut self.emu_use_khz, false, "Hz");
-                if ui.radio_value(&mut self.emu_use_khz, true, "KHz").changed() {
-                    if self.emu_use_khz {
-                        self.tx_ctrl.send(CtrlMSG::SetRate(self.emu_speed * 1000.));
-                    } else {
-                        self.tx_ctrl.send(CtrlMSG::SetRate(self.emu_speed));
-                    }
-                };
+                if ui.radio_value(&mut self.emu_cpuspeedmul, crate::FreqMagnitude::Hz, "Hz").clicked(){
+                    self.send_settings();
+                }
+                if ui.radio_value(&mut self.emu_cpuspeedmul, crate::FreqMagnitude::KHz, "KHz").clicked(){
+                    self.send_settings();
+                }
+                if ui.radio_value(&mut self.emu_cpuspeedmul, crate::FreqMagnitude::MHz, "MHz").clicked(){
+                    self.send_settings();
+                }
             });
             if ui.checkbox(&mut self.emu_turbo, "Turbo Mode").changed() {
                 self.tx_ctrl.send(CtrlMSG::SetTurbo(self.emu_turbo));
@@ -208,7 +246,7 @@ impl TitoApp {
         if ui.input_mut().consume_shortcut(&SHORTCUT_OPEN) {
             self.file_open()
         }
-        if ui.input_mut().consume_shortcut(&SHORTCUT_SAVE) && self.editor.source_path != None {
+        if ui.input_mut().consume_shortcut(&SHORTCUT_SAVE) {
             self.file_save()
         }
         if ui.input_mut().consume_shortcut(&SHORTCUT_SAVEAS) {

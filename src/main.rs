@@ -20,21 +20,23 @@
 ///
 #[macro_use]
 extern crate num_derive;
-use std::{env, path::PathBuf, sync::mpsc, thread};
+use std::{sync::mpsc, thread, path::PathBuf, env::current_dir};
 pub mod editor;
 pub mod emulator;
 pub mod gui;
-use editor::*;
+use editor::{Editor, EditorSettings};
 use egui_extras::RetainedImage;
 use emulator::emu_debug::{CtrlMSG, DebugRegs, ReplyMSG};
-use gui::{Base, GuiMode};
+use gui::{file_actions::FileStatus, Base, GuiMode};
 use image::{ImageBuffer, Rgba};
 
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub struct TitoApp {
-    working_dir: PathBuf,
-    // Editor
+    workdir: PathBuf,
+    #[serde(skip)]
+    filestatus: FileStatus,
+    editorsettings: EditorSettings,
     #[serde(skip)]
     editor: Editor,
     // Emulator
@@ -58,7 +60,7 @@ pub struct TitoApp {
     emu_running: bool,
     emu_halted: bool,
     emu_playing: bool,
-    emu_use_khz: bool,
+    emu_cpuspeedmul: FreqMagnitude,
     emu_speed: f32,
     #[serde(skip)]
     emu_achieved_speed: f32,
@@ -69,9 +71,9 @@ pub struct TitoApp {
     #[serde(skip)]
     gui_memview: Vec<i32>, // Cached partial memory for gui
     #[serde(skip)]
-    gui_memview_off: i32, // Start offset
+    gui_memview_off: u32, // Start offset
     #[serde(skip)]
-    gui_memview_len: i32, // Size of cache
+    gui_memview_len: u32, // Size of cache
     #[serde(skip)]
     emu_mem_len: usize, // Size of cache
     #[serde(skip)]
@@ -95,6 +97,13 @@ pub struct TitoApp {
     regs_base: Base,
 }
 
+#[derive(serde::Deserialize, serde::Serialize, PartialEq)]
+pub(crate) enum FreqMagnitude {
+    Hz,
+    KHz,
+    MHz,
+}
+
 impl Default for TitoApp {
     fn default() -> Self {
         let (tx_control, rx_control) = mpsc::channel();
@@ -107,8 +116,9 @@ impl Default for TitoApp {
             emulator::run(tx_reply, rx_control, tx_devcrt, rx_devkbd, tx_devkbdreq);
         });
         TitoApp {
-            working_dir: env::current_dir().unwrap(),
-            // Editor
+            workdir: current_dir().unwrap(),
+            filestatus: FileStatus::default(),
+            editorsettings: EditorSettings::default(),
             editor: Editor::default(),
             // Emulator
             tx_ctrl: tx_control,
@@ -125,13 +135,13 @@ impl Default for TitoApp {
             emu_playing: false,
             emu_speed: 10.,
             emu_achieved_speed: 0.,
-            emu_use_khz: false,
+            emu_cpuspeedmul: FreqMagnitude::Hz,
             emu_turbo: false,
             emu_regs: DebugRegs::default(),
             emu_mem_len: 0,
             gui_memview: vec![7; 16],
             gui_memview_off: 0,
-            gui_memview_len: 16 as i32,
+            gui_memview_len: 16,
             gui_memview_scroll: 0.,
             emu_waiting_for_in: false,
             emu_displayimage: None,
@@ -204,17 +214,23 @@ impl TitoApp {
     }
 
     fn send_settings(&mut self) {
-        if self.emu_use_khz {
-            match self.tx_ctrl.send(CtrlMSG::SetRate(self.emu_speed * 1000.)) {
-                Ok(_) => (),
-                Err(_) => todo!(),
-            }
-        } else {
-            match self.tx_ctrl.send(CtrlMSG::SetRate(self.emu_speed)) {
-                Ok(_) => (),
-                Err(_) => todo!(),
-            }
+        let speed = match self.emu_cpuspeedmul {
+            FreqMagnitude::Hz => self.emu_speed,
+            FreqMagnitude::KHz => self.emu_speed * 1000.,
+            FreqMagnitude::MHz => self.emu_speed * 1000000.,
+        };
+        match self.tx_ctrl.send(CtrlMSG::SetRate(speed)) {
+            Ok(_) => (),
+            Err(_) => todo!(),
         }
+    }
+    fn stop_emulation(&mut self) {
+        self.emu_running = false;
+        if self.emu_waiting_for_in {
+            // send some input to unfreeze emu thread
+            self.tx_devkbd.send(0);
+        }
+        self.tx_ctrl.send(CtrlMSG::PlaybackStop);
     }
 }
 

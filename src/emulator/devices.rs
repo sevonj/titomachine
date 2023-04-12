@@ -23,7 +23,6 @@ pub(crate) trait Device {
 pub(crate) trait MMIO {
     fn read(&mut self, addr: usize) -> Result<i32, ()>;
     fn write(&mut self, addr: usize, value: i32) -> Result<(), ()>;
-    fn clear(&mut self);
 }
 
 pub(crate) trait PMIO {
@@ -52,7 +51,7 @@ impl Bus {
         }
     }
     /// MMIO access
-    pub(crate) fn read(&mut self, addr: i32) -> Result<i32, ()> {
+    pub(crate) fn read(&mut self, addr: u32) -> Result<i32, ()> {
         let addr = addr as usize;
         match addr {
             0x0000..=0x1fff => self.ram.read(addr),
@@ -63,7 +62,7 @@ impl Bus {
             }
         }
     }
-    pub(crate) fn write(&mut self, addr: i32, value: i32) -> Result<(), ()> {
+    pub(crate) fn write(&mut self, addr: u32, value: i32) -> Result<(), ()> {
         let addr = addr as usize;
         match addr {
             0x0000..=0x1fff => self.ram.write(addr, value),
@@ -112,5 +111,6 @@ impl Bus {
 
     pub(crate) fn reset_devices(&mut self){
         self.pic.reset();
+        self.display.reset();
     }
 }

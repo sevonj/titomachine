@@ -24,8 +24,7 @@ impl TitoApp {
             self.emu_playing = false;
             self.tx_ctrl.send(CtrlMSG::PlaybackPlayPause(false));
             if self.emu_running {
-                self.emu_running = false;
-                self.tx_ctrl.send(CtrlMSG::PlaybackStop);
+                self.stop_emulation();
             } else {
                 self.emu_running = true;
                 self.tx_ctrl.send(CtrlMSG::PlaybackStart);
@@ -58,9 +57,8 @@ impl TitoApp {
 
         ui.separator();
 
-        if ui.button("Reload").clicked() {
-            self.tx_ctrl
-                .send(CtrlMSG::LoadProg(self.current_prog.clone()));
+        if ui.button("Reset").clicked() {
+            self.tx_ctrl.send(CtrlMSG::Reset());
         }
 
         ui.separator();
@@ -128,7 +126,7 @@ impl TitoApp {
              */
             let row_height = 23.;
             let height = ui.available_height() - 30.;
-            self.gui_memview_len = (height / row_height).to_i32().unwrap();
+            self.gui_memview_len = (height / row_height).to_u32().unwrap();
             let total_height = row_height * (self.emu_mem_len + 2) as f32 + 30.; // +2 because for some reason it fell short by that amount
             let view_height = height + 30.;
             self.gui_memview_scroll = egui::ScrollArea::vertical()
@@ -163,10 +161,10 @@ impl TitoApp {
                         .body(|mut body| {
                             //let rowcount = self.emu_memory_len;
                             for i in 0..self.gui_memview_len {
-                                if i >= self.gui_memview.len() as i32 {
+                                if i >= self.gui_memview.len() as u32 {
                                     break;
                                 }
-                                let adr = self.gui_memview_off + i;
+                                let adr = (self.gui_memview_off + i) as i32;
                                 let val: i32 = self.gui_memview[i as usize];
                                 let pc = self.emu_regs.pc;
                                 let sp = self.emu_regs.gpr[6];
@@ -255,7 +253,7 @@ impl TitoApp {
                 .state
                 .offset
                 .y;
-            self.gui_memview_off = (self.gui_memview_scroll / row_height) as i32;
+            self.gui_memview_off = (self.gui_memview_scroll / row_height) as u32;
         });
         //    });
         //});
@@ -312,32 +310,24 @@ impl TitoApp {
                         });
                     });
                 }
-                let sr_str = format!(
-                    "{}{}{}\n{}{}{}{}{}{}{}{}",
-                    if sr & (1 << 31) != 0 { "G" } else { "-" },
-                    if sr & (1 << 30) != 0 { "E" } else { "-" },
-                    if sr & (1 << 29) != 0 { "L" } else { "-" },
-                    if sr & (1 << 28) != 0 { "O" } else { "-" },
-                    if sr & (1 << 27) != 0 { "Z" } else { "-" },
-                    if sr & (1 << 26) != 0 { "U" } else { "-" },
-                    if sr & (1 << 25) != 0 { "M" } else { "-" },
-                    if sr & (1 << 24) != 0 { "I" } else { "-" },
-                    if sr & (1 << 23) != 0 { "S" } else { "-" },
-                    if sr & (1 << 22) != 0 { "P" } else { "-" },
-                    if sr & (1 << 21) != 0 { "D" } else { "-" },
-                );
-                body.row(40.0, |mut row| {
-                    row.col(|ui| {
-                        ui.label(format!(
-                            "Status:\n{}",
-                            if self.emu_halted { "HALT!" } else { "" }
-                        ));
-                    });
-                    row.col(|ui| {
-                        ui.label(RichText::new(sr_str).font(FONT_TBL.clone()));
-                    });
-                });
             });
+        let sr_str = format!(
+            "{}{}{}{}{}{}{}{}{}{}{}",
+            if sr & (1 << 31) != 0 { "G" } else { "-" },
+            if sr & (1 << 30) != 0 { "E" } else { "-" },
+            if sr & (1 << 29) != 0 { "L" } else { "-" },
+            if sr & (1 << 28) != 0 { "O" } else { "-" },
+            if sr & (1 << 27) != 0 { "Z" } else { "-" },
+            if sr & (1 << 26) != 0 { "U" } else { "-" },
+            if sr & (1 << 25) != 0 { "M" } else { "-" },
+            if sr & (1 << 24) != 0 { "I" } else { "-" },
+            if sr & (1 << 23) != 0 { "S" } else { "-" },
+            if sr & (1 << 22) != 0 { "P" } else { "-" },
+            if sr & (1 << 21) != 0 { "D" } else { "-" },
+        );
+        ui.label(format!("Status:"));
+        ui.label(RichText::new(sr_str).font(FONT_TBL.clone()));
+        ui.label(format!("{}", if self.emu_halted { "HALT!" } else { "" }));
     }
 
     fn ioview(&mut self, ctx: &Context, ui: &mut Ui) {

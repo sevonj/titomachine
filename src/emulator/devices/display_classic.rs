@@ -1,4 +1,4 @@
-/// 
+///
 /// devices/display_classic.rs
 ///
 /// Color screen with memory mapped framebuffer.
@@ -7,7 +7,7 @@
 /// Reading from the framebuffer is allowed.
 /// When writing, information outside RGB bytes is lost.
 ///
-use super::MMIO;
+use super::{Device, MMIO};
 use image::Rgba;
 
 pub(crate) struct DevDisplayClassic {
@@ -19,6 +19,11 @@ impl Default for DevDisplayClassic {
         DevDisplayClassic {
             framebuffer: vec![image::Rgba([0, 0, 0, 255,]); 120 * 160],
         }
+    }
+}
+impl Device for DevDisplayClassic {
+    fn reset(&mut self) {
+        self.framebuffer = vec![image::Rgba([0, 0, 0, 255,]); 120 * 160];
     }
 }
 
@@ -43,8 +48,5 @@ impl MMIO for DevDisplayClassic {
         let color = Rgba([(value >> 4) as u8, (value) as u8, (value << 4) as u8, 255]);
         self.framebuffer[addr] = color;
         Ok(())
-    }
-    fn clear(&mut self) {
-        self.framebuffer = vec![image::Rgba([0, 0, 0, 255,]); 120 * 160];
     }
 }

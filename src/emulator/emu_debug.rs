@@ -11,12 +11,13 @@ pub enum CtrlMSG {
     PlaybackPlayPause(bool),
     PlaybackTick,
     LoadProg(String),
+    Reset(),
     ClearMem,
     SetRate(f32),
     SetTurbo(bool),
     GetState,
     GetRegs,
-    GetMem(Range<i32>),
+    GetMem(Range<u32>),
     GetDisp,
 }
 pub enum ReplyMSG {
@@ -61,18 +62,19 @@ impl Default for DebugRegs {
 
 impl Emu {
     pub fn debug_sendstate(&mut self) {
+        let speed_percent = (1. / 120.) / self.perfmon.get_last_duration() * 100.;
         match self.tx.send(ReplyMSG::State(EmuState {
             playing: self.playing,
             running: self.running,
             halted: self.cpu.debug_get_halt(),
-            speed_percent: self.perfmon.get_percent(),
+            speed_percent,
         })) {
             Ok(_) => (),
             Err(_) => todo!(),
         }
     }
 
-    pub fn debug_sendmem(&mut self, range: Range<i32>) {
+    pub fn debug_sendmem(&mut self, range: Range<u32>) {
         let mut retvec: Vec<i32> = Vec::with_capacity(range.len());
         for i in range.clone() {
             if let Ok(val) = self.bus.read(i) {

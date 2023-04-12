@@ -42,7 +42,7 @@ pub mod emu_debug;
 mod perfmon;
 
 use self::cpu::CPU;
-use self::devices::{Bus, MMIO};
+use self::devices::{Bus, Device, MMIO};
 use self::emu_debug::{CtrlMSG, ReplyMSG};
 use self::perfmon::PerfMonitor;
 mod cpu;
@@ -107,7 +107,6 @@ impl Emu {
 
     pub fn update(&mut self) {
         self.timekeeper();
-        self.do_devices();
         self.check_mail();
         if self.playing {
             let tick_time = Duration::from_secs_f32(1. / self.tick_rate);
@@ -116,10 +115,15 @@ impl Emu {
                 self.tick_timer = Duration::ZERO;
                 self.tick();
             } else {
-                // Normomode: Wait for tick timer
-                if self.tick_timer >= tick_time {
-                    self.tick_timer -= tick_time;
-                    self.tick();
+                // Loop however many ticks are supposed to fit in a 1/120th of a second.
+                let loopcount = self.tick_rate as u32 / 120;
+                if self.tick_timer >= tick_time * loopcount {
+                    self.tick_timer -= tick_time * loopcount;
+                    for _ in 0..loopcount {
+                        self.tick();
+                    }
+                    self.perfmon.update();
+                    self.t_last_cpu_tick = Some(Instant::now());
                 } else {
                     // If no tick, sleep
                     thread::sleep(Duration::from_secs_f32(0.5 / self.tick_rate))
@@ -142,17 +146,16 @@ impl Emu {
         if self.playing {
             self.tick_timer += delta;
         }
-        self.perfmon.set_rate(self.tick_rate);
-        self.bus.pic.update_timer(delta)
+        self.bus.pic.update_timer(delta);
     }
 
-    fn do_devices(&mut self) {
+    fn update_devices(&mut self) {
         self.bus.pic.update_status();
         self.cpu.set_sr_i(self.bus.pic.firing)
     }
 
     fn check_mail(&mut self) {
-        // Loop until there are no messages, because messages may arrive faster than update.
+        // Loop until there are no messages, because messages may arrive faster than this is called.
         loop {
             if let Ok(msg) = self.rx.try_recv() {
                 match msg {
@@ -162,6 +165,7 @@ impl Emu {
                     CtrlMSG::PlaybackPlayPause(p) => self.playpause(p),
                     CtrlMSG::PlaybackTick => self.tick(),
                     // Loader
+                    CtrlMSG::Reset() => self.reset(),
                     CtrlMSG::LoadProg(fname) => self.loadprog(fname),
                     CtrlMSG::ClearMem => self.clearmem(),
                     // Settings
@@ -191,6 +195,7 @@ impl Emu {
     fn stop(&mut self) {
         self.t_last_update = None;
         self.running = false;
+        self.playing = false;
     }
 
     fn playpause(&mut self, p: bool) {
@@ -203,23 +208,28 @@ impl Emu {
         self.loaded_prog = prog;
         loader::load_program(&mut self.bus, &mut self.cpu, &self.loaded_prog);
     }
-    fn reload(&mut self) {
+    fn reset(&mut self) {
+        println!("reset");
+        self.stop();
         self.bus.reset_devices();
+        self.reload();
+    }
+    fn reload(&mut self) {
+        self.stop();
         loader::load_program(&mut self.bus, &mut self.cpu, &self.loaded_prog);
     }
 
     fn clearmem(&mut self) {
         self.stop();
-        self.bus.ram.clear();
-        self.bus.display.clear();
+        self.bus.ram.reset();
+        self.bus.display.reset();
     }
 
     fn tick(&mut self) {
-        if self.cpu.input_wait != None || self.cpu.debug_get_halt() || !self.running {
+        self.update_devices();
+        if self.cpu.debug_get_halt() {
             return;
         }
-        self.perfmon.tick();
-        self.t_last_cpu_tick = Some(Instant::now());
         self.cpu.tick(&mut self.bus);
 
         if self.cpu.debug_is_on_fire() {
