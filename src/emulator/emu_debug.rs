@@ -16,7 +16,6 @@ pub enum CtrlMSG {
     SetRate(f32),
     SetTurbo(bool),
     GetState,
-    GetRegs,
     GetMem(Range<u32>),
 }
 pub enum ReplyMSG {
@@ -70,6 +69,7 @@ impl Emu {
             Ok(_) => (),
             Err(_) => todo!(),
         }
+        self.debug_sendregs()
     }
 
     pub fn debug_sendmem(&mut self, range: Range<u32>) {
@@ -91,7 +91,7 @@ impl Emu {
         }
     }
 
-    pub fn debug_sendregs(&mut self) {
+    fn debug_sendregs(&mut self) {
         let cu = self.cpu.debug_get_cu();
         let mmu = self.cpu.debug_get_mmu();
         match self.tx.send(ReplyMSG::Regs(DebugRegs {

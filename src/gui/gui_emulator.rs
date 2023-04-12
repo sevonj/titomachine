@@ -337,7 +337,6 @@ impl TitoApp {
     // Refresh cached regs and memory
     fn refresh_emu_state(&mut self) {
         self.tx_ctrl.send(CtrlMSG::GetState);
-        self.tx_ctrl.send(CtrlMSG::GetRegs);
         self.tx_ctrl.send(CtrlMSG::GetMem(
             self.gui_memview_off..self.gui_memview_off + self.gui_memview_len,
         ));

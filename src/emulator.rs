@@ -182,7 +182,6 @@ impl Emu {
                     // Debug
                     CtrlMSG::GetState => self.debug_sendstate(),
                     CtrlMSG::GetMem(range) => self.debug_sendmem(range),
-                    CtrlMSG::GetRegs => self.debug_sendregs(),
                 }
             } else {
                 break;
