@@ -2,7 +2,7 @@
 /// LegacyIO
 /// CRT and KBD
 ///
-use super::GUIPanel;
+use super::GUIDevice;
 use egui::{Context, Layout, Ui};
 use egui_extras::RetainedImage;
 use image::{ImageBuffer, Rgba};
@@ -26,7 +26,7 @@ impl GUIDevDisplay {
         }
     }
 }
-impl GUIPanel for GUIDevDisplay {
+impl GUIDevice for GUIDevDisplay {
     fn gui_panel(&mut self, ctx: &Context, ui: &mut Ui) {
         {
             // Determine image size based on available w / h, whichever fits a smaller image

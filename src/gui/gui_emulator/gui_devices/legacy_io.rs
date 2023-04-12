@@ -2,7 +2,7 @@
 /// LegacyIO
 /// CRT and KBD
 ///
-use super::GUIPanel;
+use super::GUIDevice;
 use egui::{Color32, Context, FontId, Frame, RichText, TextEdit, Ui};
 use std::sync::mpsc::{self, Receiver, Sender};
 const FONT_PANELNAME: FontId = FontId::monospace(12.0);
@@ -49,7 +49,7 @@ impl GUIDevLegacyIO {
         self.tx_kbd.send(0);
     }
 }
-impl GUIPanel for GUIDevLegacyIO {
+impl GUIDevice for GUIDevLegacyIO {
     fn gui_panel(&mut self, ctx: &Context, ui: &mut Ui) {
         // CRT Panel
 

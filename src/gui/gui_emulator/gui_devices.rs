@@ -8,7 +8,7 @@ use egui::{Context, Ui};
 /// GUI side of devices
 ///
 
-pub(crate) trait GUIPanel {
+pub(crate) trait GUIDevice {
     fn gui_panel(&mut self, ctx: &Context, ui: &mut Ui);
     fn reset(&mut self);
     fn update(&mut self);

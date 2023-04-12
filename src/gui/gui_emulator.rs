@@ -1,4 +1,4 @@
-use self::gui_devices::GUIPanel;
+use self::gui_devices::GUIDevice;
 
 use super::Base;
 use crate::{emulator::emu_debug::CtrlMSG, TitoApp};
