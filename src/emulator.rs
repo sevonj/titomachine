@@ -42,7 +42,7 @@ pub mod emu_debug;
 mod perfmon;
 
 use self::cpu::CPU;
-use self::devices::{Bus, MMIO, Device};
+use self::devices::{Bus, Device, MMIO};
 use self::emu_debug::{CtrlMSG, ReplyMSG};
 use self::perfmon::PerfMonitor;
 mod cpu;
@@ -165,6 +165,7 @@ impl Emu {
                     CtrlMSG::PlaybackPlayPause(p) => self.playpause(p),
                     CtrlMSG::PlaybackTick => self.tick(),
                     // Loader
+                    CtrlMSG::Reset() => self.reset(),
                     CtrlMSG::LoadProg(fname) => self.loadprog(fname),
                     CtrlMSG::ClearMem => self.clearmem(),
                     // Settings
@@ -207,8 +208,14 @@ impl Emu {
         self.loaded_prog = prog;
         loader::load_program(&mut self.bus, &mut self.cpu, &self.loaded_prog);
     }
-    fn reload(&mut self) {
+    fn reset(&mut self) {
+        println!("reset");
+        self.stop();
         self.bus.reset_devices();
+        self.reload();
+    }
+    fn reload(&mut self) {
+        self.stop();
         loader::load_program(&mut self.bus, &mut self.cpu, &self.loaded_prog);
     }
 

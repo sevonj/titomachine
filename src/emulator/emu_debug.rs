@@ -11,6 +11,7 @@ pub enum CtrlMSG {
     PlaybackPlayPause(bool),
     PlaybackTick,
     LoadProg(String),
+    Reset(),
     ClearMem,
     SetRate(f32),
     SetTurbo(bool),
