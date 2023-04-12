@@ -207,7 +207,6 @@ impl TitoApp {
             Ok(_) => (),
             Err(_) => todo!(),
         }
-        self.tx_ctrl.send(CtrlMSG::PlaybackStop);
     }
     fn stop_emulation(&mut self) {
         self.emu_running = false;
