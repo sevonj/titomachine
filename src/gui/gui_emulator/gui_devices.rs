@@ -1,0 +1,14 @@
+pub(crate) mod display;
+pub(crate) mod legacy_io;
+
+use egui::{Context, Ui};
+///
+/// gui/gui_emulator/gui_devices.rs
+///
+/// GUI side of devices
+///
+
+pub(crate) trait GUIPanel {
+    fn gui_panel(&mut self, ctx: &Context, ui: &mut Ui);
+    fn reset(&mut self);
+}

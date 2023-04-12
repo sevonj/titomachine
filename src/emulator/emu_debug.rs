@@ -18,14 +18,12 @@ pub enum CtrlMSG {
     GetState,
     GetRegs,
     GetMem(Range<u32>),
-    GetDisp,
 }
 pub enum ReplyMSG {
     State(EmuState),
     Regs(DebugRegs),
     Mem(Vec<i32>),
     MemSize(usize),
-    Display(Vec<image::Rgba<u8>>),
 }
 pub struct EmuState {
     pub playing: bool,
@@ -107,18 +105,6 @@ impl Emu {
             mar: mmu[2],
             mbr: mmu[3],
         })) {
-            Ok(_) => (),
-            Err(_) => todo!(),
-        }
-    }
-
-    pub fn debug_senddisp(&mut self) {
-        //let range = 8192..8192 + 120 * 160;
-        //let retvec = self.cpu.debug_memread_range(range).to_vec();
-        match self
-            .tx
-            .send(ReplyMSG::Display(self.bus.display.debug_get_framebuf()))
-        {
             Ok(_) => (),
             Err(_) => todo!(),
         }

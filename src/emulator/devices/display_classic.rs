@@ -1,3 +1,5 @@
+use std::{sync::mpsc::Sender, time::Duration};
+
 ///
 /// devices/display_classic.rs
 ///
@@ -11,16 +13,22 @@ use super::{Device, MMIO};
 use image::Rgba;
 
 pub(crate) struct DevDisplayClassic {
+    tx: Option<Sender<Vec<Rgba<u8>>>>,
     framebuffer: Vec<Rgba<u8>>,
+    frame_timer: Duration,
+    frame_rate: u32,
 }
-
 impl Default for DevDisplayClassic {
     fn default() -> Self {
-        DevDisplayClassic {
+        Self {
+            tx: None,
             framebuffer: vec![image::Rgba([0, 0, 0, 255,]); 120 * 160],
+            frame_timer: Duration::ZERO,
+            frame_rate: 60,
         }
     }
 }
+
 impl Device for DevDisplayClassic {
     fn reset(&mut self) {
         self.framebuffer = vec![image::Rgba([0, 0, 0, 255,]); 120 * 160];
@@ -28,8 +36,18 @@ impl Device for DevDisplayClassic {
 }
 
 impl DevDisplayClassic {
-    pub(crate) fn debug_get_framebuf(&mut self) -> Vec<Rgba<u8>> {
-        self.framebuffer.clone()
+    pub fn connect(&mut self, tx: Sender<Vec<Rgba<u8>>>) {
+        self.tx = Some(tx);
+    }
+    pub fn update(&mut self, t_delta: Duration) {
+        self.frame_timer += t_delta;
+        let frame_time = Duration::from_secs(1) / self.frame_rate;
+        if self.frame_timer >= frame_time {
+            self.frame_timer -= frame_time;
+            if let Some(tx) = &self.tx {
+                tx.send(self.framebuffer.clone());
+            }
+        }
     }
 }
 

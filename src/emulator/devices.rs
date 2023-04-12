@@ -110,6 +110,7 @@ impl Bus {
     }
 
     pub(crate) fn reset_devices(&mut self){
+        self.ram.reset();
         self.pic.reset();
         self.display.reset();
     }
