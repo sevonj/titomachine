@@ -7,7 +7,7 @@
 
 use std::str::Lines;
 
-use crate::emulator::devices::{MMIO, Device};
+use crate::emulator::devices::Device;
 
 use super::{cpu::CPU, devices::Bus};
 
