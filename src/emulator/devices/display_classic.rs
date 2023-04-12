@@ -1,5 +1,3 @@
-use std::{sync::mpsc::Sender, time::Duration};
-
 ///
 /// devices/display_classic.rs
 ///
@@ -10,6 +8,7 @@ use std::{sync::mpsc::Sender, time::Duration};
 /// When writing, information outside RGB bytes is lost.
 ///
 use super::{Device, MMIO};
+use std::{sync::mpsc::Sender, time::Duration};
 use image::Rgba;
 
 pub(crate) struct DevDisplayClassic {
@@ -26,6 +25,11 @@ impl Default for DevDisplayClassic {
             frame_timer: Duration::ZERO,
             frame_rate: 60,
         }
+    }
+}
+impl Device for DevDisplayClassic {
+    fn reset(&mut self) {
+        self.framebuffer = vec![image::Rgba([0, 0, 0, 255,]); 120 * 160];
     }
 }
 

@@ -25,6 +25,7 @@ pub mod editor;
 pub mod emulator;
 pub mod gui;
 use editor::{Editor, EditorSettings};
+
 use emulator::emu_debug::{CtrlMSG, DebugRegs, ReplyMSG};
 use gui::{
     file_actions::FileStatus,
@@ -206,6 +207,7 @@ impl TitoApp {
             Ok(_) => (),
             Err(_) => todo!(),
         }
+        self.tx_ctrl.send(CtrlMSG::PlaybackStop);
     }
     fn stop_emulation(&mut self) {
         self.emu_running = false;
