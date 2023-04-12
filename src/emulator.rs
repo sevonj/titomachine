@@ -44,7 +44,7 @@ mod perfmon;
 use image::Rgba;
 
 use self::cpu::CPU;
-use self::devices::{Bus, Device, MMIO};
+use self::devices::{Bus, Device};
 use self::emu_debug::{CtrlMSG, ReplyMSG};
 use self::perfmon::PerfMonitor;
 mod cpu;
