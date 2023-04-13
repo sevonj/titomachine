@@ -78,7 +78,6 @@ impl CPU {
         self.exec_instruction(bus);
     }
 
-    // This will replace sr_handler
     fn exception_check(&mut self, bus: &mut Bus) {
         /*
          * SR    | IVT entry
@@ -121,24 +120,6 @@ impl CPU {
         if self.cu_sr & SR_M != 0 {
             self.enter_interrupt_handler(bus, 3);
         }
-        if self.cu_sr & SR_I != 0 {
-            /*
-            // idk how this is supposed to work.
-            // I assume it goes to tr.
-            match self.cu_tr {
-                5 => self.enter_interrupt_handler(bus, 5),
-                6 => self.enter_interrupt_handler(bus, 6),
-                7 => self.enter_interrupt_handler(bus, 7),
-                8 => self.enter_interrupt_handler(bus, 8),
-                9 => self.enter_interrupt_handler(bus, 9),
-                10 => self.enter_interrupt_handler(bus, 10),
-                _ => panic!("interrupt id wtf {}", self.cu_tr),
-            }
-            */
-
-            // Temporary solution: don't check tr at all. We only have a timer interrupt anyway.
-            self.enter_interrupt_handler(bus, 6);
-        }
         if self.cu_sr & SR_S != 0 {
             // Clear Interrupt flag
             self.cu_sr ^= SR_S;
@@ -152,6 +133,36 @@ impl CPU {
             }
         }
     }
+
+    /// Exception handler for traps
+    pub(crate) fn exception_trap(&mut self, bus: &mut Bus) {}
+
+    /// Exception handler for device interrupts 
+    pub(crate) fn exception_irq(&mut self, bus: &mut Bus) {
+        // Interrupts disabled.
+        if self.cu_sr & SR_D != 0 {
+            return;
+        }
+        /*
+        // idk how this is supposed to work.
+        // I assume it goes to tr.
+        match self.cu_tr {
+            5 => self.enter_interrupt_handler(bus, 5),
+            6 => self.enter_interrupt_handler(bus, 6),
+            7 => self.enter_interrupt_handler(bus, 7),
+            8 => self.enter_interrupt_handler(bus, 8),
+            9 => self.enter_interrupt_handler(bus, 9),
+            10 => self.enter_interrupt_handler(bus, 10),
+            _ => panic!("interrupt id wtf {}", self.cu_tr),
+        }
+        */
+
+        // Temporary solution: don't check tr at all. We only have a timer interrupt anyway.
+        self.enter_interrupt_handler(bus, 6);
+    }
+
+    /// Exception handler for service calls
+    pub(crate) fn exception_svc(&mut self, bus: &mut Bus) {}
 
     // Common bookkeeping for interrupt handlers
     fn enter_interrupt_handler(&mut self, bus: &mut Bus, handler_idx: i32) {
