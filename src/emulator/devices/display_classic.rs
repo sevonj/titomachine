@@ -8,22 +8,20 @@
 /// When writing, information outside RGB bytes is lost.
 ///
 use super::{Device, MMIO};
-use std::{sync::mpsc::Sender, time::Duration};
 use image::Rgba;
+use std::sync::mpsc::Sender;
 
 pub(crate) struct DevDisplayClassic {
     tx: Option<Sender<Vec<Rgba<u8>>>>,
     framebuffer: Vec<Rgba<u8>>,
-    frame_timer: Duration,
-    frame_rate: u32,
+    pub(crate) interrupt: bool, // Sending a frame sets a pin on PIC
 }
 impl Default for DevDisplayClassic {
     fn default() -> Self {
         Self {
             tx: None,
             framebuffer: vec![image::Rgba([0, 0, 0, 255,]); 120 * 160],
-            frame_timer: Duration::ZERO,
-            frame_rate: 60,
+            interrupt: false,
         }
     }
 }
@@ -37,15 +35,8 @@ impl DevDisplayClassic {
     pub fn connect(&mut self, tx: Sender<Vec<Rgba<u8>>>) {
         self.tx = Some(tx);
     }
-    pub fn update(&mut self, t_delta: Duration) {
-        self.frame_timer += t_delta;
-        let frame_time = Duration::from_secs(1) / self.frame_rate;
-        if self.frame_timer >= frame_time {
-            self.frame_timer -= frame_time;
-            self.send();
-        }
-    }
     pub(crate) fn send(&mut self) {
+        self.interrupt = true;
         if let Some(tx) = &self.tx {
             tx.send(self.framebuffer.clone());
         }
