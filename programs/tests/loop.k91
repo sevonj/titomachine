@@ -1,0 +1,565 @@
+; loop.k91
+; 
+; This is tiles.k91 repurposed as a simple performance benchmark.
+; loops forever.
+
+
+scrX            EQU 160         ; H px count
+scrY            EQU 120         ; V px count
+scrXY           EQU 19200       ; Total Pixel count
+scrTilesX       EQU 20          ; H tile count
+scrTilesY       EQU 15          ; V tile count
+scrTilesXY      EQU 300         ; Total tile count
+scrClearColor   DC  7           ;
+
+tileCnt         EQU 10          ;
+
+memPalet        EQU 3996        ; Where palette should be loaded.
+
+memTileset      EQU 4000        ; Address of tileset stored in memory. 
+memSP           EQU 5000        ; Store SP here if need more registers
+memFP           EQU 5001        ; Store FP here if need more registers
+memI            EQU 5002        ; Iterator
+memJ            EQU 5003        ; Iterator 2
+memAttemptNo    EQU 6969        ; Run count. Increments every time the program is run.
+memScreen       EQU 8192        ; Screen address in memory.
+
+
+; Palette of four colours.
+Palet0  dc -1           ;
+Palet01 dc 4004         ;
+Palet02 dc 6006         ;
+Palet03 dc 8008         ;
+
+Palet1  dc -1           ;
+Palet11 dc -1           ;
+Palet12 dc 0            ;
+Palet13 dc 0            ;
+
+
+; Tile format: https://www.huderlem.com/demos/gameboy2bpp.html
+; Quick description:
+; - 8x8 px
+; - 4 colors
+; - 16B in size
+; I used this to make the tiles: https://spkelly.net/tilegen/
+; Because of titokone limitations, the tiles are divided into 4B slices.
+; Because of titokone limitations, each 4B slice has to be typed in as a signed integer (BE).
+
+; If you add a tile, remember to increment tileCnt
+
+; BGTile0
+Tile0  dc -16744705     ; rows 0 - 1
+Tile01 dc -2055108221   ; rows 2 - 3
+Tile02 dc -1819957877   ; rows 4 - 5
+Tile03 dc -912818433    ; rows 6 - 7
+
+; BGTile1
+Tile1  dc -2130689279   ;
+Tile12 dc 1057177347    ;
+Tile11 dc 1057177347    ;
+Tile13 dc 2134769534    ;
+
+; char T
+Tile2  dc 32382         ;
+Tile21 dc 1515853848    ;
+Tile22 dc 404232216     ;
+Tile23 dc 404241468     ;
+
+; char i
+Tile3  dc 6168          ;
+Tile31 dc 14392         ;
+Tile32 dc 404232216     ;
+Tile33 dc 404241468     ;
+
+; char t
+Tile4  dc 6168          ;
+Tile41 dc 1010571288    ;
+Tile42 dc 404232216     ;
+Tile43 dc 404233244     ;
+
+; char o
+Tile5  dc 0             ;
+Tile51 dc 15420         ;
+Tile52 dc 1717986918    ;
+Tile53 dc 1717976124    ;
+
+; char n
+Tile6  dc 0             ;
+Tile61 dc 60652         ;
+Tile62 dc 1987470950    ;
+Tile63 dc 1718019814    ;
+
+; char l
+Tile7  dc 14392         ;
+Tile71 dc 404232216     ;
+Tile72 dc 404232216     ;
+Tile73 dc 404241468     ;
+
+; char e
+Tile8  dc 0             ;
+Tile81 dc 15420         ;
+Tile82 dc 1717992572    ;
+Tile83 dc 1616919612    ;
+
+; char s
+Tile9  dc 0             ;
+Tile91 dc 15420         ;
+Tile92 dc 1616936060    ;
+Tile93 dc 202143864     ;
+
+; ----- Init ---------------------------------------
+
+                load r1,  @memAttemptNo ;
+                store r1, scrClearColor ; Clear color randomize.
+
+                call sp, ScrClear
+
+                ; Palette init
+                load    r1,  =Palet0    ;
+                add     r1, memAttemptNo; Shift palette read address by amount of times the program has run
+                                        ; in order to produce different random colors each time.
+                                        ; 
+                                        ; Directly after palettes there's tile data. This tends to give good colors and variation.
+                                        ; Reading palettes from program instructions (start from =0) gives dark tones.
+                push    sp, r1          ;
+                call    sp, LoadPalette ;
+
+
+                load    r1,  memAttemptNo       ;
+                ; add     r1,  =1                 ;
+                ; store   r1, memAttemptNo        ;
+
+                                        
+                
+
+                ; tile init - process tile images so they're easier to render later.
+begin           load r5, =0             ; iterator, tile_idx
+tileInitLoop    load r4, r5             ; tile_idx
+                mul  r4, =4             ; tile_idx * 16B = tile_offset
+
+                push sp, r5             ; param -3: tile_idx                    ; Index of output tile
+                push sp, =Tile0(r4)     ; param -2: unprocessed_tile_addr       ;
+                call sp, StoreTile      ; look at StoreTile for an explanation
+
+                add     r5, =1          ;
+                comp    r5, =tileCnt    ;
+                jles    tileInitLoop    ;
+
+; ------ Fill screen with tiles
+;
+                load r4, =0;            ; tile pos X
+                load r5, =0;            ; tile pos Y
+
+                load r3, =1;            ; bg tile id
+                ;load r3, memAttemptNo   ; Choose different BG image on odd/even runs.
+                ;and  r3, =1             ; Choose either tile index 0 or 1
+
+ fillLoop       nop;
+
+                ; quick skip for tile locations with text
+                comp r5, =6 ; Row <= 5, no text, draw tile
+                jles doTile ;
+                comp r5, =8 ; Row >= 8
+                jgre doTile ;
+                comp r4, =6 ; Col <= 5
+                jles doTile ;
+                comp r4, =10 ; Col >= 10
+                jgre doTile ;
+                comp r5, =7 ;
+                jgre fillLoopEnd;
+                comp r4, =9 ; Col >= 9
+                jgre doTile ;
+                comp r5, =7 ;
+                jles fillLoopEnd;
+
+
+doTile          push sp, =0             ; return -4:    screen_pos
+                push sp, r4             ; param -3:     tile pos X
+                push sp, r5             ; param -2:     tile pos Y
+                call sp, TilePos2ScrPos ; TilePos2ScrPos(x, y)
+                pop sp, r1              ; return -4:    screen_pos
+
+                push sp, r3             ; param -3: tile_index
+                push sp, r1             ; param -2: screen_pos
+                call sp, DrawTile       ; DrawTile(tile_idx, screen_pos)
+
+fillLoopEnd     add r4, =1              ; X++
+                comp r4, =scrTilesX     ; Next row check: if !(X == scrTilesX) continue;
+                jnequ fillLoop          ; 
+                load r4, =0             ; X = 0
+                add r5, =1              ; Y++
+                comp r5, =scrTilesY     ; Exit check: if !(Y == scrTilesY) continue;
+                jnequ fillLoop          ;
+
+; ------ Draw Text tiles
+
+        push    sp, =Palet1     ;
+        call    sp, LoadPalette ;
+
+        push sp, =0             ; ret value
+        push sp, =6             ; x
+        push sp, =6             ; y
+        call sp, TilePos2ScrPos ;
+        pop sp, r1              ; ret value
+        push sp, =2             ; tile id
+        push sp, r1             ; tile pos
+        call sp, DrawTile       ;
+
+        push sp, =0             ; ret value
+        push sp, =7             ; x
+        push sp, =6             ; y
+        call sp, TilePos2ScrPos ;
+        pop sp, r1              ; ret value
+        push sp, =3             ; tile id
+        push sp, r1             ; tile pos
+        call sp, DrawTile       ;
+
+        push sp, =0             ; ret value
+        push sp, =8             ; x
+        push sp, =6             ; y
+        call sp, TilePos2ScrPos ;
+        pop sp, r1              ; ret value
+        push sp, =4             ; tile id
+        push sp, r1             ; tile pos
+        call sp, DrawTile       ;
+
+        push sp, =0             ; ret value
+        push sp, =9             ; x
+        push sp, =6             ; y
+        call sp, TilePos2ScrPos ;
+        pop sp, r1              ; ret value
+        push sp, =5             ; tile id
+        push sp, r1             ; tile pos
+        call sp, DrawTile       ;
+
+
+
+        push sp, =0             ; ret value
+        push sp, =6             ; x
+        push sp, =8             ; y
+        call sp, TilePos2ScrPos ;
+        pop sp, r1              ; ret value
+        push sp, =2             ; tile id
+        push sp, r1             ; tile pos
+        call sp, DrawTile       ;
+
+        push sp, =0             ; ret value
+        push sp, =7             ; x
+        push sp, =8             ; y
+        call sp, TilePos2ScrPos ;
+        pop sp, r1              ; ret value
+        push sp, =3             ; tile id
+        push sp, r1             ; tile pos
+        call sp, DrawTile       ;
+
+        push sp, =0             ; ret value
+        push sp, =8             ; x
+        push sp, =8             ; y
+        call sp, TilePos2ScrPos ;
+        pop sp, r1              ; ret value
+        push sp, =7             ; tile id
+        push sp, r1             ; tile pos
+        call sp, DrawTile       ;
+
+        push sp, =0             ; ret value
+        push sp, =9             ; x
+        push sp, =8             ; y
+        call sp, TilePos2ScrPos ;
+        pop sp, r1              ; ret value
+        push sp, =8             ; tile id
+        push sp, r1             ; tile pos
+        call sp, DrawTile       ;
+
+        push sp, =0             ; ret value
+        push sp, =10            ; x
+        push sp, =8             ; y
+        call sp, TilePos2ScrPos ;
+        pop sp, r1              ; ret value
+        push sp, =9             ; tile id
+        push sp, r1             ; tile pos
+        call sp, DrawTile       ;
+
+        
+; ---------- the end ------------------ ;
+        jump begin      ;
+        svc     sp, =halt               ;
+
+
+;---------------- got some of them aliohjelmas for you
+;-----------------------------------------------------
+
+;-------------------------------------------------------------------------------------
+; ScrClear - Super optimized
+;       This approach nears one instruction per pixel!
+;-------------------------------------------------------------------------------------
+ScrClear        pushr sp                ;
+                store sp, memSP         ; We're using sp for this so gotta store its old value
+                load  r2, scrClearColor ;
+                load  sp, =memScreen    ;
+                sub   sp, =1            ;
+ScrClearLoop    push  sp, r2            ; We push r0 to the screen. This combines store and increment instructions.
+                push  sp, r2            ;
+                push  sp, r2            ; Loop size:
+                push  sp, r2            ; 1 1/32th instructions per px
+                push  sp, r2            ; not bad. This *could* be unrolled further that doesn't mean it should.
+                push  sp, r2            ;
+                push  sp, r2            ;
+                push  sp, r2            ; 7
+                push  sp, r2            ;
+                push  sp, r2            ;
+                push  sp, r2            ;
+                push  sp, r2            ;
+                push  sp, r2            ;
+                push  sp, r2            ;
+                push  sp, r2            ;
+                push  sp, r2            ; 15
+                push  sp, r2            ;
+                push  sp, r2            ;
+                push  sp, r2            ;
+                push  sp, r2            ;
+                push  sp, r2            ;
+                push  sp, r2            ;
+                push  sp, r2            ;
+                push  sp, r2            ; 23
+                push  sp, r2            ;
+                push  sp, r2            ;
+                push  sp, r2            ;
+                push  sp, r2            ;
+                push  sp, r2            ;
+                push  sp, r2            ;
+                push  sp, r2            ;
+                push  sp, r2            ; 31
+                push  sp, r2            ;
+                push  sp, r2            ;
+                push  sp, r2            ;
+                push  sp, r2            ;
+                push  sp, r2            ;
+                push  sp, r2            ;
+                push  sp, r2            ;
+                push  sp, r2            ; 39
+                push  sp, r2            ;
+                push  sp, r2            ;
+                push  sp, r2            ;
+                push  sp, r2            ;
+                push  sp, r2            ;
+                push  sp, r2            ;
+                push  sp, r2            ;
+                push  sp, r2            ; 47
+                push  sp, r2            ;
+                push  sp, r2            ;
+                push  sp, r2            ;
+                push  sp, r2            ;
+                push  sp, r2            ;
+                push  sp, r2            ;
+                push  sp, r2            ;
+                push  sp, r2            ; 55
+                push  sp, r2            ;
+                push  sp, r2            ;
+                push  sp, r2            ;
+                push  sp, r2            ;
+                push  sp, r2            ;
+                push  sp, r2            ;
+                push  sp, r2            ;
+                push  sp, r2            ; 63
+                comp  sp, =0x6aff       ; These two loop mgmt instructions are shared by 64 pixels,
+                jles  ScrClearLoop      ; making them 1/32th instructions per px.
+                load  sp, memSP         ;
+                popr  sp                ;
+                exit  sp, =0            ;
+
+;-------------------------------------------------------------------------------------
+; StoreTile - Process a tile and store it to memTileset
+; param -3: tile id (where to store result)
+; param -2: pointer to the tile to process
+;-------------------------------------------------------------------------------------
+storeTile       pushr sp                ;
+                ;store sp, memSP         ;
+                ;load  sp, memTileset    ;
+
+                load r1, =0             ;
+                load r4, -3(fp)         ;
+                mul  r4, =64            ;
+                add  r4, =memTileset    ; address of current pixel in tilemap
+                add  r4, =16            ; We iterate from 15 to 0 in a slica
+
+
+storeTileLoop   push sp, r1             ;
+                load r2, -2(fp)         ;
+                add  r2, r1             ;
+
+                load r1, 0(r2)          ; tile slice (not processed)
+                ;    r2,                ; temp bit from byte1
+                ;    r3,                ; temp bit from byte0
+                load r5, =16            ; iterator
+
+
+;   I decided to use nes/gameboy tile format. (in 8x8)
+;   For some reason the 2 bits for each pixel are not stored
+;   adjacent to each other, but in 2 different bytes.
+;   So this loop moves them next to each other before they're stored.
+
+;   Unlike before, this version does not cram all 16 px of a slice into one word.
+;   Instead, each px has it's own address. It multiplies the memory footprint
+;   of processed tileset by 16, but saves many instructions when rendering the tile.
+; 
+
+loop                load    r2, r1          ; Get last bit of byte 1
+                    and     r2, =1          ;
+
+                    load    r3, r1          ; Get last bit of byte 0
+                    shr     r3, =8          ;
+                    and     r3, =1          ;
+                    
+                    shl     r2, =1          ; Merge the bits
+                    add     r2, r3          ;
+
+                    sub     r4, =1          ;
+                    store   r2, @r4         ;
+
+                    shr r1, =1              ; shift to move next px to last
+                    sub r5, =1              ;
+
+                    comp r5, =8             ; row change check (triggered once since a slice has 2 rows)
+                    jnequ loop2;            ; skip below
+                    shr r1, =8              ; get rid of the already used byte of 1st row 
+loop2               jpos r5, loop           ;
+                    
+                    add r4, =32                 ; jump to the last px of next slice.
+                    pop sp, r1                  ; get slice no. (0 - 3)
+                    load r2 -3(fp)              ; tile no.
+                    mul  r2, =4                 ; tile no. * tilesize = offset of this tile
+                    add  r2, r1                 ; offset of this tile + slice no. = offset of this slice
+                    add r1, =1                  ;
+                    comp r1, =4                 ;
+                    jles storeTileLoop          ;
+
+                    popr sp;                    ;
+                    exit sp, =2                 ;
+
+
+
+;-------------------------------------------------------------------------------------
+; DrawTile - Draws a tile on screen
+; param -3: tile_idx
+; param -2: screen_pos
+;-------------------------------------------------------------------------------------
+DrawTile            pushr sp;
+                        store sp, memSP         ;
+                        load sp, -2(fp)         ; screen_pos
+
+                        add sp, =memScreen      ;
+                        sub sp, =1              ; because push iterates before storing the value
+
+                        load r1, =0             ; slice_idx as iterator
+DrawTileSlice           store r1, memI          ;
+
+                        load    r2, -3(fp)      ; Tile id
+                        mul     r2, =4          ; Number of slices from memTileset
+                        add     r2, r1          ; + current slice id 0 - 3
+                        mul     r2, =16         ; offset from memtileset
+                        add     r2, =memTileset ; Slice address
+                        
+                        ; First row of slice
+                        load    r4, @r2                 ; Load color_idx
+                        push    sp, memPalet(r4)        ; Push color_idx
+                        add     r2, =1                  ; Increment px address
+                        load    r4, @r2                 ; 
+                        push    sp, memPalet(r4)        ;
+                        add     r2, =1                  ;
+                        load    r4, @r2                 ;
+                        push    sp, memPalet(r4)        ;
+                        add     r2, =1                  ;
+                        load    r4, @r2                 ;
+                        push    sp, memPalet(r4)        ;
+                        add     r2, =1                  ;
+                        load    r4, @r2                 ;
+                        push    sp, memPalet(r4)        ;
+                        add     r2, =1                  ;
+                        load    r4, @r2                 ;
+                        push    sp, memPalet(r4)        ;
+                        add     r2, =1                  ;
+                        load    r4, @r2                 ;
+                        push    sp, memPalet(r4)        ;
+                        add     r2, =1                  ;
+                        load    r4, @r2                 ; px7
+                        push    sp, memPalet(r4)        ;
+                        add     r2, =1                  ; 
+
+                        add     sp, =152                ; Move SP to next row
+
+                        ; Second row of slice
+                        load    r4, @r2                 ; Load color_idx
+                        push    sp, memPalet(r4)        ; Push color_idx
+                        add     r2, =1                  ; Increment px address
+                        load    r4, @r2                 ;
+                        push    sp, memPalet(r4)        ;
+                        add     r2, =1                  ;
+                        load    r4, @r2                 ;
+                        push    sp, memPalet(r4)        ;
+                        add     r2, =1                  ;
+                        load    r4, @r2                 ;
+                        push    sp, memPalet(r4)        ;
+                        add     r2, =1                  ;
+                        load    r4, @r2                 ;
+                        push    sp, memPalet(r4)        ;
+                        add     r2, =1                  ;
+                        load    r4, @r2                 ;
+                        push    sp, memPalet(r4)        ;
+                        add     r2, =1                  ;
+                        load    r4, @r2                 ;
+                        push    sp, memPalet(r4)        ;
+                        add     r2, =1                  ;
+                        load    r4, @r2                 ; px15
+                        push    sp, memPalet(r4)        ;
+
+                        add sp, =152                    ; Move SP to next row
+
+
+                        load    r1, memI        ;
+                        add     r1, =1          ;
+                        comp    r1, =4          ;
+                        jles    DrawTileSlice   ;
+
+
+; ----- End of DrawTileLoop
+                        load sp, memSP;
+                        popr sp                         ;
+                        exit sp, =2                     ;
+
+
+;-------------------------------------------------------------------------------------
+; TilePos2ScrPos - Convert tile pos (x,y) to 1D screen memory offset
+; return -4: screen mem off
+; param -3: tile pos x
+; param -2: tile pos y
+;-------------------------------------------------------------------------------------
+TilePos2ScrPos  pushr   sp                      ;
+                load    r1, -3(fp)              ;
+                mul     r1, =8                  ;
+                load    r2, -2(fp)              ;
+                mul     r2, =1280               ;
+                add     r1, r2                  ;
+                store   r1, -4(fp)              ;
+                popr    sp                      ;
+                exit    sp, =2                  ;
+
+;-------------------------------------------------------------------------------------
+; LoadPalette - Change current palette
+; param -2: address of palette to load
+;-------------------------------------------------------------------------------------
+LoadPalette     pushr   sp                      ;
+                load    r5, -2(fp)              ;
+                load    r2, =memPalet           ;
+
+                load    r1, 0(r5)              ; Copy inputPalet(0)
+                store   r1, 0(r2)              ; to memPalet(0)
+                load    r1, 1(r5)              ; 
+                store   r1, 1(r2)              ;
+                load    r1, 2(r5)              ;
+                store   r1, 2(r2)              ;
+                load    r1, 3(r5)              ;
+                store   r1, 3(r2)              ;
+
+                popr    sp                      ;
+                exit    sp, =1                  ;
