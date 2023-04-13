@@ -116,30 +116,41 @@ impl Emu {
         self.timekeeper();
         self.check_mail();
         self.dev_update_slow();
-        if self.playing {
-            let tick_time = Duration::from_secs_f32(1. / self.tick_rate);
-            if self.turbo {
-                // Turbomode: No limits!
-                self.tick_timer = Duration::ZERO;
-                self.tick();
-            } else {
-                // Loop however many ticks are supposed to fit in a 1/120th of a second.
-                let loopcount = self.tick_rate as u32 / 120;
-                if self.tick_timer >= tick_time * loopcount {
-                    self.tick_timer -= tick_time * loopcount;
-                    for _ in 0..loopcount {
-                        self.tick();
+
+        let cyclecount = self.tick_rate as u32 / 60;
+        let duration = Duration::from_secs_f32(1. / self.tick_rate) * cyclecount;
+        match self.playing {
+            // Playing
+            true => {
+                match self.tick_timer >= duration {
+                    // Run
+                    true => {
+                        for _ in 0..cyclecount {
+                            self.dev_update();
+                            self.tick();
+                        }
+                        self.slow_checks();
+                        self.tick_timer -= duration;
                     }
-                    self.perfmon.update();
-                    self.t_last_cpu_tick = Some(Instant::now());
-                } else {
-                    // If no tick, sleep
-                    thread::sleep(Duration::from_secs_f32(0.5 / self.tick_rate))
+                    // Wait
+                    false => {
+                        if self.tick_rate < 10000000. {
+                            thread::sleep(Duration::from_secs_f32(1. / self.tick_rate));
+                        }
+                    }
                 }
             }
-        } else {
-            // Sleep longer when not playing
-            thread::sleep(Duration::from_secs_f32(1. / 60.));
+            // Not playing
+            false => thread::sleep(Duration::from_secs_f32(1. / 60.)),
+        }
+    }
+
+    /// Things that don't have to be done every cycle
+    fn slow_checks(&mut self) {
+        self.perfmon.update();
+        self.t_last_cpu_tick = Some(Instant::now());
+        if self.cpu.burn {
+            self.stop()
         }
     }
 
@@ -160,8 +171,7 @@ impl Emu {
     /// Fast update: every cpu tick
     fn dev_update(&mut self) {
         // Interrupts
-        self.bus.pic.update_status();
-        if self.bus.pic.firing{
+        if self.bus.pic.is_firing() {
             self.cpu.exception_irq(&mut self.bus);
         }
     }
@@ -245,14 +255,9 @@ impl Emu {
     }
 
     fn tick(&mut self) {
-        self.dev_update();
-        if self.cpu.debug_get_halt() {
+        if self.cpu.halt {
             return;
         }
         self.cpu.tick(&mut self.bus);
-
-        if self.cpu.debug_is_on_fire() {
-            self.stop()
-        }
     }
 }

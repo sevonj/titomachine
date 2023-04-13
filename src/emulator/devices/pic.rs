@@ -52,8 +52,6 @@ const DEFAULT_MASK: u8 = 0b_00000010;
 const MASK_TIMER: u8 = 0b_01000000;
 
 pub(crate) struct DevPIC {
-    pub(crate) firing: bool,
-
     enabled: bool,
     mask: u8,
     pub(crate) flag: u8,
@@ -65,8 +63,6 @@ pub(crate) struct DevPIC {
 impl Default for DevPIC {
     fn default() -> Self {
         DevPIC {
-            firing: false,
-
             enabled: true,
             mask: DEFAULT_MASK,
             flag: 0x00,
@@ -79,7 +75,6 @@ impl Default for DevPIC {
 
 impl Device for DevPIC {
     fn reset(&mut self) {
-        self.firing = false;
         self.enabled = true;
         self.mask = DEFAULT_MASK;
         self.flag = 0x00;
@@ -134,13 +129,8 @@ impl DevPIC {
         }
     }
 
-    /// Emulator shall call this to update PIC status
-    pub(crate) fn update_status(&mut self) {
-        if !self.enabled {
-            self.firing = false;
-            return;
-        }
-        self.firing = (self.flag & self.mask) != 0;
+    pub(crate) fn is_firing(&mut self) -> bool {
+        (self.flag & self.mask) != 0 && self.enabled
     }
 
     fn reset_timer(&mut self) {
