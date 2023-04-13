@@ -8,6 +8,7 @@ TTK-91 is a hypothetical computer architecture used to teach computer organizati
 Features:
 - Builtin code editor and compiler
 - Extended syntax with improvements such as hex support.
+- Fast emulation: At the time of writing this, the interpreted CPU reaches 180 MIPS on my laptop.
 
 This is work in progress, but for simple usage it should work fine; I used it for my TiTo course assignments. However, please don't rely solely on this for your course. I take no responsibility. If you intend to do something advanced, you may come across unfinished features.
 
