@@ -88,7 +88,7 @@ impl Emu {
         tx_devcrt: Sender<i32>,
         rx_devkbd: Receiver<i32>,
         tx_devkbdreq: Sender<()>,
-        tx_devdisplay: Sender<Vec<Rgba<u8>>>
+        tx_devdisplay: Sender<Vec<Rgba<u8>>>,
     ) -> Self {
         let mut emu = Emu {
             bus: Bus::new(),
@@ -115,6 +115,7 @@ impl Emu {
     pub fn update(&mut self) {
         self.timekeeper();
         self.check_mail();
+        self.dev_update_slow();
         if self.playing {
             let tick_time = Duration::from_secs_f32(1. / self.tick_rate);
             if self.turbo {
@@ -156,10 +157,23 @@ impl Emu {
         self.bus.pic.update_timer(self.t_delta);
     }
 
-    fn update_devices(&mut self) {
+    /// Fast update: every cpu tick
+    fn dev_update(&mut self) {
+        // Interrupts
         self.bus.pic.update_status();
-        self.cpu.set_sr_i(self.bus.pic.firing);
-        self.bus.display.update(self.t_delta);
+        if self.bus.pic.firing {
+            self.cpu.set_sr_i();
+        } else {
+            self.cpu.clr_sr_i();
+        }
+    }
+
+    /// Slow update: every frame or so
+    fn dev_update_slow(&mut self) {
+        self.bus.display.send();
+        if self.bus.display.interrupt{
+            self.bus.pic.flag |= 0b_0100;
+        }
     }
 
     fn check_mail(&mut self) {
@@ -233,7 +247,7 @@ impl Emu {
     }
 
     fn tick(&mut self) {
-        self.update_devices();
+        self.dev_update();
         if self.cpu.debug_get_halt() {
             return;
         }

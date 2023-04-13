@@ -45,9 +45,10 @@
 ///
 /// So far this only accounts for timer. TODO: ther rest of it.
 ///
-use super::{PMIO, Device};
+use super::{Device, PMIO};
 use std::time::Duration;
 
+const DEFAULT_MASK: u8 = 0b_00000010;
 const MASK_TIMER: u8 = 0b_01000000;
 
 pub(crate) struct DevPIC {
@@ -55,7 +56,7 @@ pub(crate) struct DevPIC {
 
     enabled: bool,
     mask: u8,
-    flag: u8,
+    pub(crate) flag: u8,
 
     timer: Duration,
     timer_reload: u32,
@@ -67,7 +68,7 @@ impl Default for DevPIC {
             firing: false,
 
             enabled: true,
-            mask: 0xff,
+            mask: DEFAULT_MASK,
             flag: 0x00,
 
             timer: Duration::ZERO,
@@ -80,7 +81,7 @@ impl Device for DevPIC {
     fn reset(&mut self) {
         self.firing = false;
         self.enabled = true;
-        self.mask = 0xff;
+        self.mask = DEFAULT_MASK;
         self.flag = 0x00;
         self.timer_reload = 0;
         self.reset_timer();
@@ -118,7 +119,7 @@ impl PMIO for DevPIC {
 impl DevPIC {
     /// Emulator shall call this to advance the timer
     pub(crate) fn update_timer(&mut self, d: Duration) {
-        if self.timer_reload == 0{
+        if self.timer_reload == 0 {
             return;
         }
         match self.timer.checked_sub(d) {
@@ -139,7 +140,7 @@ impl DevPIC {
             self.firing = false;
             return;
         }
-        self.firing = self.flag != 0;
+        self.firing = (self.flag & self.mask) != 0;
     }
 
     fn reset_timer(&mut self) {

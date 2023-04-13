@@ -166,13 +166,4 @@ impl CPU {
         // Jump to handler
         self.cu_pc = self.ivt[handler_idx as usize];
     }
-
-    pub fn input_handler(&mut self, input: i32) {
-        if self.input_wait == None {
-            panic!("input_handler(): Cpu is not waiting for io. Why did you call me?")
-        }
-        let rj = (self.cu_ir >> 21) & 0x7;
-        self.gpr[rj as usize] = input;
-        self.input_wait = None;
-    }
 }
