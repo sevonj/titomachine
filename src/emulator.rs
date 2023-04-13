@@ -161,17 +161,13 @@ impl Emu {
     fn dev_update(&mut self) {
         // Interrupts
         self.bus.pic.update_status();
-        if self.bus.pic.firing {
-            self.cpu.set_sr_i();
-        } else {
-            self.cpu.clr_sr_i();
-        }
+        self.cpu.set_sr_i(self.bus.pic.firing);
     }
 
     /// Slow update: every frame or so
     fn dev_update_slow(&mut self) {
         self.bus.display.send();
-        if self.bus.display.interrupt{
+        if self.bus.display.interrupt {
             self.bus.pic.flag |= 0b_0100;
         }
     }
