@@ -55,8 +55,9 @@ impl CPU {
         let addr = (self.cu_ir & 0xffff) as i16 as i32;
         // these casts catch the sign
 
-        if let ControlFlow::Break(_) = self.fetch_second_operand(mode, addr, ri, bus) {
-            return;
+        match self.fetch_second_operand(bus, mode, ri, addr) {
+            Ok(val) => self.cu_tr = val,
+            Err(_) => return,
         }
 
         match opcode {
@@ -319,40 +320,33 @@ impl CPU {
         }
     }
 
-    fn fetch_second_operand(&mut self, addr: i32, ri: i32, mode: i32, bus: &mut Bus ) -> ControlFlow<()> {
+    fn fetch_second_operand(
+        &mut self,
+        bus: &mut Bus,
+        mode: i32,
+        ri: i32,
+        addr: i32,
+    ) -> Result<i32, ()> {
         let ri_val = match ri {
             0 => 0,
             _ => self.gpr[ri as usize],
         };
-        self.cu_tr = match mode {
-            0 => match addr.checked_add(ri_val) 
-                Some(i) => i,
-                None => {
-                    self.exception_trap_o(bus);
-                    return ControlFlow::Break(());
-                }
-            },
-            1 => match addr.checked_add(ri_val) {
-                Some(i) => self.memread(bus, i),
-
-                None => {
-                    self.exception_trap_o(bus);
-                    return ControlFlow::Break(());
-                }
-            },
-            2 => match addr.checked_add(ri_val) {
-                Some(i) => {
-                    let addr = self.memread(bus, i);
-                    self.memread(bus, addr)
-                }
-
-                None => {
-                    self.exception_trap_o(bus);
-                    return ControlFlow::Break(());
-                }
-            },
-            _ => panic!("unknown addressing mode"),
+        let immediate = match addr.checked_add(ri_val) {
+            Some(i) => i,
+            None => {
+                self.exception_trap_o(bus);
+                return Err(());
+            }
         };
-        ControlFlow::Continue(())
+
+        match mode {
+            0 => Ok(immediate),
+            1 => Ok(self.memread(bus, immediate)?),
+            2 => {
+                let ptr = self.memread(bus, immediate)?;
+                Ok(self.memread(bus, ptr)?)
+            }
+            _ => panic!("unknown addressing mode"),
+        }
     }
 }

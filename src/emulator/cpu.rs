@@ -38,7 +38,7 @@ pub struct CPU {
     pub input_wait: Option<i32>,
     pub output: Option<(i32, i32)>,
     pub halt: bool,     //
-    burn: bool,     // CPU is disabled permanently.
+    pub burn: bool,     // CPU is disabled permanently.
 
     cu_pc: i32,     // Program Counter
     cu_ir: i32,     // Instruction Register
