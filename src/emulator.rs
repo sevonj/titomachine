@@ -40,6 +40,8 @@ use std::time::{Duration, Instant};
 mod devices;
 pub mod emu_debug;
 mod perfmon;
+#[cfg(test)]
+mod tests;
 
 use image::Rgba;
 

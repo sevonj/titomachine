@@ -319,54 +319,33 @@ impl CPU {
         }
     }
 
-    fn fetch_second_operand(
-        &mut self,
-        mode: i32,
-        addr: i32,
-        ri: i32,
-        bus: &mut Bus,
-    ) -> ControlFlow<()> {
+    fn fetch_second_operand(&mut self, addr: i32, ri: i32, mode: i32, bus: &mut Bus ) -> ControlFlow<()> {
+        let ri_val = match ri {
+            0 => 0,
+            _ => self.gpr[ri as usize],
+        };
         self.cu_tr = match mode {
-            // Immediate
-            0 => match addr.checked_add(self.gpr[ri as usize]) {
+            0 => match addr.checked_add(ri_val) 
                 Some(i) => i,
                 None => {
                     self.exception_trap_o(bus);
                     return ControlFlow::Break(());
                 }
             },
-            // Immediate
-            1 => match addr.checked_add(self.gpr[ri as usize]) {
-                // 1st Fetch
-                Some(i) => match self.memread(bus, i) {
-                    Ok(val) => val,
-                    Err(_) => {
-                        self.exception_trap_m(bus);
-                        return ControlFlow::Break(());
-                    }
-                },
+            1 => match addr.checked_add(ri_val) {
+                Some(i) => self.memread(bus, i),
+
                 None => {
                     self.exception_trap_o(bus);
                     return ControlFlow::Break(());
                 }
             },
-            // Immediate
-            2 => match addr.checked_add(self.gpr[ri as usize]) {
-                // 1st Fetch
-                Some(i) => match self.memread(bus, i) {
-                    // 2nd Fetch
-                    Ok(pointer) => match self.memread(bus, pointer) {
-                        Ok(val) => val,
-                        Err(_) => {
-                            self.exception_trap_m(bus);
-                            return ControlFlow::Break(());
-                        }
-                    },
-                    Err(_) => {
-                        self.exception_trap_m(bus);
-                        return ControlFlow::Break(());
-                    }
-                },
+            2 => match addr.checked_add(ri_val) {
+                Some(i) => {
+                    let addr = self.memread(bus, i);
+                    self.memread(bus, addr)
+                }
+
                 None => {
                     self.exception_trap_o(bus);
                     return ControlFlow::Break(());

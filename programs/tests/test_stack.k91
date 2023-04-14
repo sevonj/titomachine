@@ -1,0 +1,58 @@
+;
+; test_stack.k91
+;
+; Stack operations.
+; Success condition: 
+; R0 == 100
+; R1 == 101
+; R2 == 102
+; R3 == 103
+; R4 == 104
+; R5 == 105
+
+load r0, =10;
+load r1, =11;
+load r2, =12;
+load r3, =13;
+load r4, =14;
+load r5, =15;
+
+push sp, r0;
+push sp, r1;
+push sp, r2;
+push sp, r3;
+push sp, r4;
+push sp, r5;
+
+push sp, =100;
+push sp, =101;
+push sp, =102;
+push sp, =103;
+push sp, =104;
+push sp, =105;
+
+pop sp, r5;
+pop sp, r4;
+pop sp, r3;
+pop sp, r2;
+pop sp, r1;
+pop sp, r0;
+
+push sp, =999;
+push sp, =999;
+push sp, =999;
+
+pushr sp;
+load r0, =-1;
+load r1, =-1;
+load r2, =-1;
+load r3, =-1;
+load r4, =-1;
+load r5, =-1;
+popr sp;
+
+push sp, =333;
+push sp, =444;
+push sp, =555;
+
+hcf;

@@ -1,0 +1,20 @@
+verypositive dc 2147483644;
+
+load r1, =8;
+shr r1, =1;
+out r1, =crt; Result 4
+
+load r1, =-8;
+shr r1, =1;
+out r1, =crt; Result 2147483644
+
+load r1, =8;
+shl r1, =1;
+out r1, =crt; Result 16
+
+load r1, verypositive;
+shl r1, =1;
+out r1, =crt; Result -8
+
+
+svc sp, =halt;

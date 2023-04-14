@@ -1,0 +1,18 @@
+; Compiler test for variable declaration
+
+Variable_A   dc  0b110100  ; This is 52
+Variable_B   dc  0o64      ; This is also 52
+Variable_C   dc  52        ; This is also 52
+Variable_D   dc  0x34      ; This is also 52
+
+Variable_E   dc  -0b1      ; This is -1
+Variable_F   dc  -0o1      ; This is also -1
+Variable_G   dc  -1        ; This is also -1
+Variable_H   dc  -0x1      ; This is also -1
+
+; Values larger than MAX_INT32 (2147483647) will be interpreted as negative using two's complement:
+
+Variable_I   dc  0b11111111111111111111111111111111 ; This is also -1
+Variable_J   dc  0o37777777777                      ; This is also -1
+Variable_K   dc  4294967295                         ; This is also -1
+Variable_L   dc  0xffffffff                         ; This is also -1
