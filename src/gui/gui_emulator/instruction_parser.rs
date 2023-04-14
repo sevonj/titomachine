@@ -38,7 +38,10 @@ pub enum Opcode {
     POP = 0x34,
     PUSHR = 0x35,
     POPR = 0x36,
+    IEXIT = 0x39,
     SVC = 0x70,
+    HLT = 0x71,
+    HCF = 0x72,
 }
 
 fn addr2string(ri: i32, addr: i32) -> String {
@@ -97,8 +100,8 @@ pub fn instruction_to_string(input_instr: i32) -> String {
     let addr = (input_instr & 0xffff) as i16 as i32; // these casts catch the sign
 
     match addr == 0 {
-        true => mode = ((input_instr >> 19) & 0x3) + 1,
-        false => mode = (input_instr >> 19) & 0x3,
+        true => mode = ((input_instr >> 19) & 0x3),
+        false => mode = ((input_instr >> 19) & 0x3) - 1,
     }
 
     match FromPrimitive::from_i32(opcode) {
@@ -190,8 +193,6 @@ pub fn instruction_to_string(input_instr: i32) -> String {
         Some(Opcode::NOT) => {
             retstr += "NOT   ";
             retstr += rj2string(rj).as_str();
-            retstr += mode2string(mode).as_str();
-            retstr += addr2string(ri, addr).as_str();
         }
         Some(Opcode::SHRA) => {
             retstr += "SHRA  ";
@@ -211,26 +212,32 @@ pub fn instruction_to_string(input_instr: i32) -> String {
         }
         Some(Opcode::JNEG) => {
             retstr += "JNEG  ";
+            retstr += rj2string(rj).as_str();
             retstr += addr2string(ri, addr).as_str();
         }
         Some(Opcode::JZER) => {
             retstr += "JZER  ";
+            retstr += rj2string(rj).as_str();
             retstr += addr2string(ri, addr).as_str();
         }
         Some(Opcode::JPOS) => {
             retstr += "JPOS ";
+            retstr += rj2string(rj).as_str();
             retstr += addr2string(ri, addr).as_str();
         }
         Some(Opcode::JNNEG) => {
             retstr += "JNNEG ";
+            retstr += rj2string(rj).as_str();
             retstr += addr2string(ri, addr).as_str();
         }
         Some(Opcode::JNZER) => {
             retstr += "JNZER ";
+            retstr += rj2string(rj).as_str();
             retstr += addr2string(ri, addr).as_str();
         }
         Some(Opcode::JNPOS) => {
             retstr += "JNPOS ";
+            retstr += rj2string(rj).as_str();
             retstr += addr2string(ri, addr).as_str();
         }
         Some(Opcode::JLES) => {
@@ -260,7 +267,7 @@ pub fn instruction_to_string(input_instr: i32) -> String {
         Some(Opcode::CALL) => {
             retstr += "CALL  ";
             retstr += rj2string(rj).as_str();
-            retstr += mode2string(mode).as_str();
+            retstr += mode2string(mode + 1).as_str();
             retstr += addr2string(ri, addr).as_str();
         }
         Some(Opcode::EXIT) => {
@@ -278,7 +285,7 @@ pub fn instruction_to_string(input_instr: i32) -> String {
         Some(Opcode::POP) => {
             retstr += "POP   ";
             retstr += rj2string(rj).as_str();
-            retstr += mode2string(mode).as_str();
+            retstr += mode2string(mode + 1).as_str();
             retstr += addr2string(ri, addr).as_str();
         }
         Some(Opcode::PUSHR) => {
@@ -289,12 +296,21 @@ pub fn instruction_to_string(input_instr: i32) -> String {
             retstr += "POPR  ";
             retstr += rj2string(rj).as_str();
         }
+        Some(Opcode::IEXIT) => {
+            retstr += "IEXIT ";
+            retstr += rj2string(rj).as_str();
+            retstr += mode2string(mode).as_str();
+            retstr += addr2string(ri, addr).as_str();
+        }
         Some(Opcode::SVC) => {
             retstr += "SVC   ";
             retstr += rj2string(rj).as_str();
             retstr += mode2string(mode).as_str();
             retstr += addr2string(ri, addr).as_str();
         }
+        Some(Opcode::HLT) => retstr += "HLT   ",
+        Some(Opcode::HCF) => retstr += "HCF   ",
+
         None => retstr += "INVALID",
     }
 
