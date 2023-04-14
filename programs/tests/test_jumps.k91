@@ -1,0 +1,98 @@
+;
+; test_jumps.k91
+;
+; This tests every jump instruction.
+; Success can be determined by inspecting R2 after halt.
+; Expected value: 55
+;
+
+load r1, =0;
+
+; JUMP
+jump success0;
+err div r0, =0;
+
+success0 nop;
+
+; JGRE JEQU JLES
+comp r1, =-1;
+jequ err;
+jles err;
+jgre success1;
+jump err;
+
+success1 nop;
+
+comp r1, =0;
+jgre err;
+jles err;
+jequ success2;
+jump err;
+
+success2 nop;
+
+comp r1, =1;
+jgre err;
+jequ err;
+jles success3;
+jump err;
+
+success3 nop;
+
+; JNEG JZER JPOS
+load r1, =-1;
+jpos r1, err;
+jzer r1, err;
+jneg r1, success4;
+jump err;
+
+success4 nop;
+
+load r1, =0;
+jpos r1, err;
+jneg r1, err;
+jzer r1, success5;
+jump err;
+
+success5 nop;
+
+load r1, =1;
+jneg r1, err;
+jzer r1, err;
+jpos r1, success6;
+jump err;
+
+success6 nop;
+
+; JNNEG JNZER JNPOS
+load r1, =-1;
+jnneg r1, err;
+jnpos r1, success7a
+jump err;
+success7a nop;
+jnzer r1, success7b
+jump err;
+success7b nop;
+
+load r1, =0;
+jnzer r1, err;
+jnpos r1, success8a
+jump err;
+success8a nop;
+jnneg r1, success8b
+jump err;
+success8b nop;
+
+load r1 =1;
+jnpos r1, err;
+jnneg r1, success9a
+jump err;
+success9a nop;
+jnzer r1, success9b
+jump err;
+success9b nop;
+
+load r2, =55
+
+hcf;
+
