@@ -1,0 +1,48 @@
+;
+; test_opcodes.k91
+;
+; This file contains every opcode.
+; Used for testing compiler and disassembler.
+; This should compile, but is nonsensical and will crash.
+
+NOP
+STORE   r1, 0
+LOAD    r1, 0
+IN      r1, =0
+OUT     r1, =0
+ADD     r1, =0
+SUB     r1, =0
+MUL     r1, =0
+DIV     r1, =0
+MOD     r1, =0
+AND     r1, =0
+OR      r1, =0
+XOR     r1, =0
+SHL     r1, =0
+SHR     r1, =0
+NOT     r1
+SHRA    r1, =0
+COMP    r1, =0
+JUMP        0
+JNEG    r1, 0
+JZER    r1, 0
+JPOS    r1, 0
+JNNEG   r1, 0
+JNZER   r1, 0
+JNPOS   r1, 0
+JLES        0
+JEQU        0
+JGRE        0
+JNLES       0
+JNEQU       0
+JNGRE       0
+CALL    sp, 0
+EXIT    sp, =0
+PUSH    sp, =0
+POP     sp, r1
+PUSHR   sp
+POPR    sp
+IEXIT   sp, =0
+SVC     sp, =0
+HLT
+HCF
