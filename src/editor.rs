@@ -99,27 +99,31 @@ impl Editor {
 
 #[cfg(test)]
 mod test {
-    use super::compiler::Compiler;
-    use crate::gui::gui_emulator::instruction_parser;
+    use std::string;
 
-    const TEST_OPCODES: &str = include_str!("../programs/tests/test_opcodes.k91");
+    use super::compiler::Compiler;
+    use crate::gui::gui_emulator::disassembler;
 
     #[test]
+    fn test_compiler_disassembler() {
+        compile_disass_compile(include_str!("../programs/tests/test_opcodes.k91").into());
+        compile_disass_compile(include_str!("../programs/tests/test_addressing.k91").into());
+    }
     /// This function tests both the compiler and the disassmbler.
     /// Steps:
     /// 1. Compile test program
     /// 2. Disassemble the resulting binary
     /// 3. Compile disassembled code
     /// 4. Assert that both binaries are the same
-    fn test_compiler_dissassembler() {
+    fn compile_disass_compile(source: String) {
         println!("Source code:");
-        print_source(TEST_OPCODES.into());
+        print_source(source.clone());
 
-        let vec1 = compile(TEST_OPCODES.into());
+        let vec1 = compile(source);
         let mut disassembled = String::new();
 
         for i in 0..vec1.len() {
-            disassembled += instruction_parser::instruction_to_string(vec1[i]).as_str();
+            disassembled += disassembler::instruction_to_string(vec1[i]).as_str();
             disassembled += "\n";
         }
 
@@ -128,9 +132,9 @@ mod test {
 
         let vec2 = compile(disassembled);
         println!("Comparing binaries compiled from source and disassembly:\nSource    Disassembly");
-        for i in 0..vec1.len(){
+        for i in 0..vec1.len() {
             print!("{:08x}, {:08x}", vec1[i], vec2[i]);
-            if vec1[i] != vec2[i]{
+            if vec1[i] != vec2[i] {
                 println!(" <- Mismatch!");
                 print_instruction(vec1[i]);
                 print_instruction(vec2[i]);
@@ -174,12 +178,20 @@ mod test {
             i += 1;
         });
     }
-    fn print_instruction(ins: i32){
+    fn print_instruction(ins: i32) {
         let opcode = (ins >> 24) as u16;
         let rj = (ins >> 21) & 0x7;
         let mode = (ins >> 19) & 0x3;
         let ri = (ins >> 16) & 0x7;
         let addr = (ins & 0xffff) as i16 as i32;
-        println!("{:04x}-{:03b}-{:03b}-{:03b}-{:08x}  {}", opcode, rj, mode, ri, addr, instruction_parser::instruction_to_string(ins));
+        println!(
+            "{:04x}-{:03b}-{:03b}-{:03b}-{:08x}  {}",
+            opcode,
+            rj,
+            mode,
+            ri,
+            addr,
+            disassembler::instruction_to_string(ins)
+        );
     }
 }

@@ -3,11 +3,11 @@ use self::gui_devices::GUIDevice;
 use super::Base;
 use crate::{emulator::emu_debug::CtrlMSG, TitoApp};
 pub(crate) mod gui_devices;
-pub mod instruction_parser;
+pub mod disassembler;
 use eframe::emath::format_with_decimals_in_range;
 use egui::{Button, Color32, Context, FontId, RichText, Ui};
 use egui_extras::{Column, TableBuilder};
-use instruction_parser::*;
+use disassembler::*;
 use num_traits::ToPrimitive;
 
 const FONT_TBL: FontId = FontId::monospace(12.0);
