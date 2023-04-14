@@ -94,3 +94,92 @@ impl Editor {
         }
     }
 }
+
+// Tests
+
+#[cfg(test)]
+mod test {
+    use super::compiler::Compiler;
+    use crate::gui::gui_emulator::instruction_parser;
+
+    const TEST_OPCODES: &str = include_str!("../programs/tests/test_opcodes.k91");
+
+    #[test]
+    /// This function tests both the compiler and the disassmbler.
+    /// Steps:
+    /// 1. Compile test program
+    /// 2. Disassemble the resulting binary
+    /// 3. Compile disassembled code
+    /// 4. Assert that both binaries are the same
+    fn test_compiler_dissassembler() {
+        println!("Source code:");
+        print_source(TEST_OPCODES.into());
+
+        let vec1 = compile(TEST_OPCODES.into());
+        let mut disassembled = String::new();
+
+        for i in 0..vec1.len() {
+            disassembled += instruction_parser::instruction_to_string(vec1[i]).as_str();
+            disassembled += "\n";
+        }
+
+        println!("Disassembled code:");
+        print_source(disassembled.clone());
+
+        let vec2 = compile(disassembled);
+        println!("Comparing binaries compiled from source and disassembly:\nSource    Disassembly");
+        for i in 0..vec1.len(){
+            print!("{:08x}, {:08x}", vec1[i], vec2[i]);
+            if vec1[i] != vec2[i]{
+                println!(" <- Mismatch!");
+                print_instruction(vec1[i]);
+                print_instruction(vec2[i]);
+            }
+            println!();
+        }
+        assert_eq!(vec1, vec2);
+    }
+
+    /// Compile and return result as a Vec<i32>
+    fn compile(source: String) -> Vec<i32> {
+        let mut compiler = Compiler::default();
+        let compiled = match compiler.compile(source) {
+            Ok(res) => res,
+            Err(_) => {
+                panic!("Compiler failed:\n{}", compiler.output);
+            }
+        };
+        let mut vec: Vec<i32> = Vec::new();
+        let mut lines = compiled.lines();
+        loop {
+            match lines.next() {
+                None => break,
+                Some("___b91___") => {}
+                Some("___code___") => {
+                    lines.next();
+                }
+                Some("___data___") => {
+                    lines.next();
+                }
+                Some("___symboltable___") => break,
+                Some(val) => vec.push(val.parse::<i32>().unwrap()),
+            }
+        }
+        vec
+    }
+    fn print_source(source: String) {
+        let mut i = 1;
+        source.lines().for_each(|line| {
+            println!("line {}: {}", i, line);
+            i += 1;
+        });
+    }
+    fn print_instruction(ins: i32){
+        let opcode = (ins >> 24) as u16;
+        let rj = (ins >> 21) & 0x7;
+        let mode = (ins >> 19) & 0x3;
+        let ri = (ins >> 16) & 0x7;
+        let addr = (ins & 0xffff) as i16 as i32;
+        println!("{:04x}-{:03b}-{:03b}-{:03b}-{:08x}  {}", opcode, rj, mode, ri, addr, instruction_parser::instruction_to_string(ins));
+    }
+}
