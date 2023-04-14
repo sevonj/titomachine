@@ -40,6 +40,8 @@ use std::time::{Duration, Instant};
 mod devices;
 pub mod emu_debug;
 mod perfmon;
+#[cfg(test)]
+mod tests;
 
 use image::Rgba;
 
@@ -244,7 +246,7 @@ impl Emu {
 
     fn tick(&mut self) {
         self.dev_update();
-        if self.cpu.debug_get_halt() {
+        if self.cpu.halt {
             return;
         }
         self.cpu.tick(&mut self.bus);

@@ -1,5 +1,5 @@
-mod compiler;
-use compiler::*;
+pub(crate) mod compiler;
+use compiler::Compiler;
 use std::{
     env::set_current_dir,
     fs::{self, File},
@@ -101,6 +101,20 @@ impl Editor {
 mod test {
     use super::compiler::Compiler;
     use crate::gui::gui_emulator::disassembler;
+
+    /// Compile different values in all bases
+    #[test]
+    fn test_compiler_variables(){
+        let vec = compile(include_str!("../programs/tests/test_variables.k91").into());
+        for i in 0..=3{
+            let expected = 52;
+            assert_eq!(vec[i], expected)
+        }
+        for i in 4..=11{
+            let expected = -1;
+            assert_eq!(vec[i], expected)
+        }
+    }
 
     #[test]
     fn test_compiler_disassembler() {

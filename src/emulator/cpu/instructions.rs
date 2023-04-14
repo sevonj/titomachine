@@ -252,22 +252,26 @@ impl CPU {
     }
 
     fn fetch_second_operand(&mut self, addr: i32, ri: i32, mode: i32, bus: &mut Bus) {
+        let ri_val = match ri {
+            0 => 0,
+            _ => self.gpr[ri as usize],
+        };
         self.cu_tr = match mode {
-            0 => match addr.checked_add(self.gpr[ri as usize]) {
+            0 => match addr.checked_add(ri_val) {
                 Some(i) => i,
                 None => {
                     self.cu_sr |= SR_O;
                     0
                 }
             },
-            1 => match addr.checked_add(self.gpr[ri as usize]) {
+            1 => match addr.checked_add(ri_val) {
                 Some(i) => self.memread(bus, i),
                 None => {
                     self.cu_sr |= SR_O;
                     0
                 }
             },
-            2 => match addr.checked_add(self.gpr[ri as usize]) {
+            2 => match addr.checked_add(ri_val) {
                 Some(i) => {
                     let addr = self.memread(bus, i);
                     self.memread(bus, addr)
