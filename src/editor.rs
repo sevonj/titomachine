@@ -99,8 +99,6 @@ impl Editor {
 
 #[cfg(test)]
 mod test {
-    use std::string;
-
     use super::compiler::Compiler;
     use crate::gui::gui_emulator::disassembler;
 
