@@ -1,0 +1,21 @@
+;
+; test_addressing.k91
+;
+; This file contains variations of addressing modes.
+; Used for testing compiler and disassembler.
+; This should compile, but is nonsensical and will crash.
+
+
+add r1, =0      ;
+add r1,  0      ;
+add r1, @0      ;
+add r1, =(r1)   ;
+add r1,  (r1)   ;
+add r1, @(r1)   ;
+add r1,  r1     ;
+add r1, @r1     ;
+store r1,  0      ;
+store r1, @0      ;
+store r1,  (r1)   ;
+store r1, @(r1)   ;
+store r1, @r1     ;
