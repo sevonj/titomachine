@@ -1,5 +1,5 @@
 ;
-; test_opcodes.k91
+; test_compiler_opcodes.k91
 ;
 ; This file contains every opcode.
 ; Used for testing compiler and disassembler.

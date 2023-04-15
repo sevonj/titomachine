@@ -3,6 +3,8 @@
 ;
 ; Shifts should be looked at more carefully.
 ;
+; Success condition:
+; R2 == 55
 ;
 
 ; AND

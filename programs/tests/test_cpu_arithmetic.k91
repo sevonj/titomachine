@@ -2,7 +2,9 @@
 ; test_arithmetic.k91
 ;
 ; This one does arithmetic operations.
-; When this halts, R2 should contain 1.
+; 
+; Success condition:
+; R2 == 55
 ;
 
 ; 2+2=4

@@ -105,7 +105,7 @@ mod test {
     /// Compile different values in all bases
     #[test]
     fn test_compiler_variables(){
-        let vec = compile(include_str!("../programs/tests/test_variables.k91").into());
+        let vec = compile(include_str!("../programs/tests/test_compiler_variables.k91").into());
         for i in 0..=3{
             let expected = 52;
             assert_eq!(vec[i], expected)
@@ -118,10 +118,10 @@ mod test {
 
     #[test]
     fn test_compiler_disassembler() {
-        compile_disass_compile(include_str!("../programs/tests/test_opcodes.k91").into());
-        compile_disass_compile(include_str!("../programs/tests/test_addressing.k91").into());
+        compile_disass_compile(include_str!("../programs/tests/test_compiler_opcodes.k91").into());
+        compile_disass_compile(include_str!("../programs/tests/test_compiler_addressing.k91").into());
     }
-    /// This function tests both the compiler and the disassmbler.
+    /// This function tests the compiler and the disassmbler against each other.
     /// Steps:
     /// 1. Compile test program
     /// 2. Disassemble the resulting binary

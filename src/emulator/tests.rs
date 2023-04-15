@@ -8,7 +8,7 @@ use super::{cpu::CPU, devices::Bus, loader};
 
 #[test]
 fn test_cpu_arithmetic() {
-    let prog = compile(include_str!("../../programs/tests/test_arithmetic.k91").into());
+    let prog = compile(include_str!("../../programs/tests/test_cpu_arithmetic.k91").into());
     let mut cpu = CPU::new();
     let mut bus = Bus::new();
     loader::load_program(&mut bus, &mut cpu, &prog);
@@ -34,7 +34,7 @@ fn test_cpu_logical() {
 
 #[test]
 fn test_cpu_jumps() {
-    let prog = compile(include_str!("../../programs/tests/test_jumps.k91").into());
+    let prog = compile(include_str!("../../programs/tests/test_cpu_jumps.k91").into());
     let mut cpu = CPU::new();
     let mut bus = Bus::new();
     loader::load_program(&mut bus, &mut cpu, &prog);
@@ -47,7 +47,7 @@ fn test_cpu_jumps() {
 
 #[test]
 fn test_cpu_stack() {
-    let prog = compile(include_str!("../../programs/tests/test_stack.k91").into());
+    let prog = compile(include_str!("../../programs/tests/test_cpu_stack.k91").into());
     let mut cpu = CPU::new();
     let mut bus = Bus::new();
     loader::load_program(&mut bus, &mut cpu, &prog);
