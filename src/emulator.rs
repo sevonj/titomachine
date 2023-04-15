@@ -215,10 +215,8 @@ impl Emu {
 
     fn start(&mut self) {
         self.reload();
-        self.cpu.debug_clear_cu();
+        self.cpu.init();
         self.running = true;
-        self.cpu.debug_set_halt(false);
-        self.cpu.debug_clear_fire();
         self.t_last_update = None;
     }
 
@@ -243,6 +241,7 @@ impl Emu {
     fn reset(&mut self) {
         self.stop();
         self.bus.reset_devices();
+        self.cpu = CPU::new();
         self.reload();
     }
     fn reload(&mut self) {
