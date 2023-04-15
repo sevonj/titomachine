@@ -34,9 +34,6 @@ pub const SP: usize = 6;
 pub const FP: usize = 7;
 
 pub struct CPU {
-    // TODO: Do something to these two
-    pub input_wait: Option<i32>,
-    pub output: Option<(i32, i32)>,
     pub halt: bool,     //
     pub burn: bool,     // CPU is disabled permanently.
 
@@ -55,8 +52,6 @@ pub struct CPU {
 impl CPU {
     pub fn new() -> Self {
         CPU {
-            input_wait: None,
-            output: None,
             halt: false,
             burn: false,
             cu_pc: 0,
