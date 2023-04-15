@@ -40,5 +40,9 @@ out r2, =crt;
 div r2, =-3;
 out r2, =crt;
 
+; 155%100=55
+load r2, =155
+mod r2, =100
+
 hcf;
 

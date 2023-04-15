@@ -15,7 +15,7 @@ fn test_cpu_arithmetic() {
     while !cpu.halt {
         cpu.tick(&mut bus)
     }
-    let expected = 1;
+    let expected = 55;
     assert_eq!(cpu.debug_get_gprs()[2], expected) // The result is stored in R2.
 }
 
