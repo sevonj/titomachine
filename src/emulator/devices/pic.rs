@@ -49,7 +49,7 @@ use super::{Device, PMIO};
 use std::time::Duration;
 
 const DEFAULT_MASK: u8 = 0b_00000010;
-const MASK_TIMER: u8 = 0b_01000000;
+const MASK_TIMER: u8 = 0b_00000010;
 
 pub(crate) struct DevPIC {
     enabled: bool,
