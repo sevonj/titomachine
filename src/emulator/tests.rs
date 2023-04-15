@@ -20,6 +20,19 @@ fn test_cpu_arithmetic() {
 }
 
 #[test]
+fn test_cpu_logical() {
+    let prog = compile(include_str!("../../programs/tests/test_cpu_logical.k91").into());
+    let mut cpu = CPU::new();
+    let mut bus = Bus::new();
+    loader::load_program(&mut bus, &mut cpu, &prog);
+    while !cpu.halt {
+        cpu.tick(&mut bus)
+    }
+    let expected = 55;
+    assert_eq!(cpu.debug_get_gprs()[2], expected) // The result is stored in R2.
+}
+
+#[test]
 fn test_cpu_jumps() {
     let prog = compile(include_str!("../../programs/tests/test_jumps.k91").into());
     let mut cpu = CPU::new();
