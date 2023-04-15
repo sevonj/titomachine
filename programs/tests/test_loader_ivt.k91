@@ -1,0 +1,30 @@
+;
+; test_loader_ivt.k91
+; Test that the loader can identify and set up the Interrupt Vector Table correctly.
+;
+; Success condition: 
+; IVT values are ORG + entry_index
+; 
+; [0] == 0x1000
+; [1] == 0x1001
+; [2] == 0x1002
+; ...
+; [15] == 0x100f
+
+ORG 0x1000 ;
+__IVT_ENTRY_0__     HCF ;
+__IVT_ENTRY_1__     HCF ;
+__IVT_ENTRY_2__     HCF ;
+__IVT_ENTRY_3__     HCF ;
+__IVT_ENTRY_4__     HCF ;
+__IVT_ENTRY_5__     HCF ;
+__IVT_ENTRY_6__     HCF ;
+__IVT_ENTRY_7__     HCF ;
+__IVT_ENTRY_8__     HCF ;
+__IVT_ENTRY_9__     HCF ;
+__IVT_ENTRY_10__    HCF ;
+__IVT_ENTRY_11__    HCF ;
+__IVT_ENTRY_12__    HCF ;
+__IVT_ENTRY_13__    HCF ;
+__IVT_ENTRY_14__    HCF ;
+__IVT_ENTRY_15__    HCF ;
