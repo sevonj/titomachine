@@ -1,4 +1,5 @@
 ; Compiler test for variable declaration
+; This should compile, but is nonsensical and will crash.
 
 Variable_A   dc  0b110100  ; This is 52
 Variable_B   dc  0o64      ; This is also 52

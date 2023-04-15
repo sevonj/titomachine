@@ -1,7 +1,7 @@
 ;
-; test_stack.k91
+; test_cpu_stack.k91
+; Stack instructions.
 ;
-; Stack operations.
 ; Success condition: 
 ; R0 == 100
 ; R1 == 101

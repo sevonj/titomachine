@@ -115,8 +115,15 @@ impl CPU {
                 // This tactic worked in C, TODO: verify that it works here.
                 self.gpr[rj as usize] = (self.gpr[rj as usize] as u32 >> self.cu_tr) as i32;
             }
-            NOT => self.gpr[rj as usize] = !self.cu_tr,
-            SHRA => self.gpr[rj as usize] >>= self.cu_tr,
+            NOT => self.gpr[rj as usize] = !self.gpr[rj as usize],
+            SHRA => {
+                self.gpr[rj as usize] = self.gpr[rj as usize]
+                    .checked_shr(self.cu_tr as u32)
+                    .unwrap_or(match self.gpr[rj as usize] >= 0 {
+                        true => 0,
+                        false => -1,
+                    })
+            }
             COMP => {
                 if self.gpr[rj as usize] > self.cu_tr {
                     // Greater

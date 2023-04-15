@@ -1,0 +1,46 @@
+;
+; test_cpu_logical.k91
+;
+; Shifts should be looked at more carefully.
+;
+; Success condition:
+; R2 == 55
+;
+
+; AND
+LOAD    r1, =0x7f00;
+AND     r1, =0x0ff0;
+COMP    r1, =0x0f00;
+JNEQU       END
+; OR
+OR      r1, =0x000f
+COMP    r1, =0x0f0f;
+JNEQU       END
+; XOR
+XOR     r1, =0xffff
+COMP    r1, =0xf0f0;
+JNEQU       END
+; SHL
+SHL     r1, =3
+COMP    r1, =0x8780;
+JNEQU       END
+; SHR
+LOAD    r1, =0x0700
+SHR     r1, =4
+COMP    r1, =0x0070;
+JNEQU       END
+; NOT
+NOT     r1,
+COMP    r1, =0xFF8F;
+JNEQU       END
+; SHRA
+LOAD    r1, =-1
+SHRA    r1, =32
+COMP    r1, =-1;
+JNEQU       END
+SHRA    r1, =31
+COMP    r1, =-1;
+JNEQU       END
+
+LOAD R2, =55;
+END HCF;

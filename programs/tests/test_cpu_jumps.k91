@@ -1,9 +1,10 @@
 ;
 ; test_jumps.k91
 ;
-; This tests every jump instruction.
-; Success can be determined by inspecting R2 after halt.
-; Expected value: 55
+; This test goes through every condition for every jump instruction.
+; 
+; Success condition:
+; R2 == 55
 ;
 
 load r1, =0;
