@@ -63,7 +63,7 @@ impl Emu {
         match self.tx.send(ReplyMSG::State(EmuState {
             playing: self.playing,
             running: self.running,
-            halted: self.cpu.debug_get_halt(),
+            halted: self.cpu.halt,
             speed_percent,
         })) {
             Ok(_) => (),

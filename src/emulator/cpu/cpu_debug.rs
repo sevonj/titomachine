@@ -41,9 +41,6 @@ impl CPU {
         self.halt = false;
         self.burn = false;
     }
-    pub fn debug_get_halt(&mut self) -> bool {
-        self.halt
-    }
     pub fn debug_get_ivt(&mut self, idx: usize) -> i32 {
         self.ivt[idx]
     }
