@@ -147,6 +147,13 @@ impl Emu {
         }
     }
 
+    /// When user clicks step button
+    pub fn manual_tick(&mut self) {
+        self.dev_update();
+        self.tick();
+        self.slow_checks();
+    }
+
     /// Things that don't have to be done every cycle
     fn slow_checks(&mut self) {
         self.perfmon.update();
@@ -195,7 +202,7 @@ impl Emu {
                     CtrlMSG::PlaybackStart => self.start(),
                     CtrlMSG::PlaybackStop => self.stop(),
                     CtrlMSG::PlaybackPlayPause(p) => self.playpause(p),
-                    CtrlMSG::PlaybackTick => self.tick(),
+                    CtrlMSG::PlaybackTick => self.manual_tick(),
                     // Loader
                     CtrlMSG::Reset() => self.reset(),
                     CtrlMSG::LoadProg(fname) => self.loadprog(fname),
