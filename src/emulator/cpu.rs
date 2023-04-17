@@ -97,10 +97,14 @@ impl CPU {
 
     /// Exception handler for device interrupts
     pub(crate) fn exception_irq(&mut self, bus: &mut Bus) {
-        /*// Interrupts disabled.
-        //if self.cu_sr & SR_D != 0 {
-        //    return;
-        //}
+        // Interrupts disabled.
+        if self.cu_sr & SR_D != 0 {
+            return;
+        }
+        self.halt = false;
+
+        
+        /*
         
         // idk how this is supposed to work.
         // I assume it goes to tr.

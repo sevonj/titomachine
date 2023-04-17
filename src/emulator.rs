@@ -152,7 +152,7 @@ impl Emu {
         self.perfmon.update();
         self.t_last_cpu_tick = Some(Instant::now());
         if self.cpu.burn {
-            self.stop()
+            self.stop();
         }
     }
 
