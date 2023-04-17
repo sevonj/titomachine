@@ -4,7 +4,7 @@
  * emu debug to pass values to gui.
  */
 
-use super::{CPU, FP, SP, SR_I};
+use super::{CPU, FP, SP};
 
 impl CPU {
     pub fn debug_get_gprs(&mut self) -> [i32; 8] {
@@ -21,9 +21,6 @@ impl CPU {
             self.mmu_mbr,
         ]
     }
-    pub fn debug_setgpr(&mut self, index: usize, value: i32) {
-        self.gpr[index] = value;
-    }
     pub fn debug_get_sp(&mut self) -> i32 {
         self.gpr[SP]
     }
@@ -36,42 +33,19 @@ impl CPU {
     pub fn debug_set_fp(&mut self, value: i32) {
         self.gpr[FP] = value;
     }
-    pub fn debug_clear_cu(&mut self) {
+    pub fn init(&mut self) {
         self.cu_pc = 0;
         self.cu_ir = 0;
         self.cu_tr = 0;
         self.cu_sr = 0;
-    }
-    pub fn debug_clear_gprs(&mut self) {
-        for i in &mut self.gpr {
-            *i = 0;
-        }
-    }
-    pub fn debug_clear_all_regs(&mut self) {
-        self.cu_pc = 0;
-        self.cu_ir = 0;
-        self.cu_tr = 0;
-        self.cu_sr = 0;
-        for i in &mut self.gpr {
-            *i = 0;
-        }
+        self.halt = false;
+        self.burn = false;
     }
     pub fn debug_get_halt(&mut self) -> bool {
         self.halt
     }
-    pub fn debug_set_halt(&mut self, halt: bool) {
-        self.halt = halt
-    }
-    pub fn set_sr_i(&mut self, int: bool) {
-        if self.burn {
-            return;
-        }
-        if int {
-            self.cu_sr |= SR_I;
-            self.halt = false;
-        } else {
-            self.cu_sr &= !SR_I;
-        }
+    pub fn debug_get_ivt(&mut self, idx: usize) -> i32 {
+        self.ivt[idx]
     }
     pub fn debug_set_ivt(&mut self, idx: usize, value: i32) {
         self.ivt[idx] = value
@@ -87,11 +61,5 @@ impl CPU {
         for (i, val) in self.ivt.into_iter().enumerate() {
             println!(" {:2}: {:x}", i, val);
         }
-    }
-    pub fn debug_is_on_fire(&mut self) -> bool {
-        self.burn
-    }
-    pub fn debug_clear_fire(&mut self) {
-        self.burn = false;
     }
 }

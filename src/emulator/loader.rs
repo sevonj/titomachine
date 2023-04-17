@@ -64,10 +64,12 @@ fn load(bus: &mut Bus, cpu: &mut CPU, prog: &str, org: usize) {
                     if mem_idx > 0x1fff {
                         println!("ERR: Program does not fit in memory!\nConsider increasing memory size or making smaller programs.\nRan out at address {}.", mem_idx);
                         bus.ram.reset();
-                        cpu.debug_clear_cu();
+                        cpu.init();
                         return;
                     }
-                    bus.write(mem_idx as u32, value).map_err(|err| println!("Loader memory write fail!\n{:?}", err)).ok();
+                    bus.write(mem_idx as u32, value)
+                        .map_err(|err| println!("Loader memory write fail!\n{:?}", err))
+                        .ok();
                     mem_idx += 1;
                 }
                 Err(_e) => {
@@ -94,24 +96,23 @@ fn symbols(cpu: &mut CPU, lines: &mut Lines) {
                         },
                         None => break,
                     }
-                    println!("matching {:?}", s);
                     match s {
-                        "EXCEPTIONHANDLER0" => cpu.debug_set_ivt(0, value),
-                        "EXCEPTIONHANDLER1" => cpu.debug_set_ivt(1, value),
-                        "EXCEPTIONHANDLER2" => cpu.debug_set_ivt(2, value),
-                        "EXCEPTIONHANDLER3" => cpu.debug_set_ivt(3, value),
-                        "EXCEPTIONHANDLER4" => cpu.debug_set_ivt(4, value),
-                        "INTERRUPTHANDLER5" => cpu.debug_set_ivt(5, value),
-                        "INTERRUPTHANDLER6" => cpu.debug_set_ivt(6, value),
-                        "INTERRUPTHANDLER7" => cpu.debug_set_ivt(7, value),
-                        "INTERRUPTHANDLER8" => cpu.debug_set_ivt(8, value),
-                        "INTERRUPTHANDLER9" => cpu.debug_set_ivt(9, value),
-                        "INTERRUPTHANDLER10" => cpu.debug_set_ivt(10, value),
-                        "SVC11" => cpu.debug_set_ivt(11, value),
-                        "SVC12" => cpu.debug_set_ivt(12, value),
-                        "SVC13" => cpu.debug_set_ivt(13, value),
-                        "SVC14" => cpu.debug_set_ivt(14, value),
-                        "SVC15" => cpu.debug_set_ivt(15, value),
+                        "__IVT_ENTRY_0__" => cpu.debug_set_ivt(0, value),
+                        "__IVT_ENTRY_1__" => cpu.debug_set_ivt(1, value),
+                        "__IVT_ENTRY_2__" => cpu.debug_set_ivt(2, value),
+                        "__IVT_ENTRY_3__" => cpu.debug_set_ivt(3, value),
+                        "__IVT_ENTRY_4__" => cpu.debug_set_ivt(4, value),
+                        "__IVT_ENTRY_5__" => cpu.debug_set_ivt(5, value),
+                        "__IVT_ENTRY_6__" => cpu.debug_set_ivt(6, value),
+                        "__IVT_ENTRY_7__" => cpu.debug_set_ivt(7, value),
+                        "__IVT_ENTRY_8__" => cpu.debug_set_ivt(8, value),
+                        "__IVT_ENTRY_9__" => cpu.debug_set_ivt(9, value),
+                        "__IVT_ENTRY_10__" => cpu.debug_set_ivt(10, value),
+                        "__IVT_ENTRY_11__" => cpu.debug_set_ivt(11, value),
+                        "__IVT_ENTRY_12__" => cpu.debug_set_ivt(12, value),
+                        "__IVT_ENTRY_13__" => cpu.debug_set_ivt(13, value),
+                        "__IVT_ENTRY_14__" => cpu.debug_set_ivt(14, value),
+                        "__IVT_ENTRY_15__" => cpu.debug_set_ivt(15, value),
                         _ => continue,
                     }
                 }

@@ -1,0 +1,109 @@
+;
+; test_cpu_exceptions.k91
+;
+; Now this is a fun one.
+; This test sample triggers all (possible) exception types, and uses them as jumps to reach the finish.
+;
+; Current version tests all traps and SVCs.
+;
+; Success condition: 
+; R2 == 55
+
+NOT_AN_INSTRUCTION DC -1;
+maximum dc 0x7fffffff   ;
+TIMER   equ 0x22        ;
+PIC     equ 0x20        ;
+
+; Begin:
+LOAD    R1, maximum     ;
+ADD     R1, =1          ;
+
+HCF ;
+
+; Flag 1: Overflow trap
+__IVT_ENTRY_0__     nop ; 
+LOAD    R1, =1          ;
+DIV     R1, =0          ;
+
+HCF ;
+
+; Flag 2: Zerodiv trap
+__IVT_ENTRY_1__     nop ;
+JUMP NOT_AN_INSTRUCTION ;
+
+HCF ;
+
+; Flag 3: Unknown instruction trap
+__IVT_ENTRY_2__     nop ;
+LOAD R1, -1             ;
+HLT                     ;
+jump finish             ;
+
+HCF ;
+
+; Flag 4: Memory trap
+__IVT_ENTRY_3__     nop ;
+SVC SP, =HALT           ;
+
+HCF ; 
+
+; TODO: Fix device interrupts.
+
+;LOAD R1, =1000          ;
+;OUT  R1, =TIMER         ;
+;LOAD R1, =0             ;
+;STORE R1, -1(SP)        ;
+;IEXIT SP, =0            ;
+;
+;
+;HCF ;
+
+__IVT_ENTRY_4__     HCF ; inaccessible
+__IVT_ENTRY_5__     HCF ; inaccessible
+
+; Flag 5: Device Interrupt
+__IVT_ENTRY_6__     nop ; 
+;LOAD R1, =0             ;
+;OUT  R1, =TIMER         ;
+;OUT  R1, =PIC           ;
+;
+;
+;jump finish
+__IVT_ENTRY_7__     HCF ; inaccessible
+__IVT_ENTRY_8__     HCF ; inaccessible
+__IVT_ENTRY_9__     HCF ; inaccessible
+__IVT_ENTRY_10__    HCF ; inaccessible
+
+; SVC 11 =HALT
+__IVT_ENTRY_11__    nop ;
+SVC SP, =READ           ;
+
+HCF ;
+
+; SVC 12 =READ
+__IVT_ENTRY_12__    nop ;
+SVC SP, =WRITE          ;
+
+HCF ;
+
+; SVC 13 =WRITE
+__IVT_ENTRY_13__    nop ;
+SVC SP, =TIME           ;
+
+HCF ;
+
+; SVC 14 =TIME
+__IVT_ENTRY_14__    nop ;
+SVC SP, =DATE           ;
+
+HCF ;
+
+
+; SVC 15 =DATE
+__IVT_ENTRY_15__    nop ;
+JUMP FINISH             ;
+
+HCF ;
+
+FINISH LOAD R2, =55 ;
+HCF                 ;

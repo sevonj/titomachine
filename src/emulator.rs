@@ -119,7 +119,7 @@ impl Emu {
         self.check_mail();
         self.dev_update_slow();
 
-        let cyclecount = self.tick_rate as u32 / 60;
+        let cyclecount = self.tick_rate as u32 / 60 + 1;
         let duration = Duration::from_secs_f32(1. / self.tick_rate) * cyclecount;
         match self.playing {
             // Playing
@@ -147,12 +147,19 @@ impl Emu {
         }
     }
 
+    /// When user clicks step button
+    pub fn manual_tick(&mut self) {
+        self.dev_update();
+        self.tick();
+        self.slow_checks();
+    }
+
     /// Things that don't have to be done every cycle
     fn slow_checks(&mut self) {
         self.perfmon.update();
         self.t_last_cpu_tick = Some(Instant::now());
         if self.cpu.burn {
-            self.stop()
+            self.stop();
         }
     }
 
@@ -195,7 +202,7 @@ impl Emu {
                     CtrlMSG::PlaybackStart => self.start(),
                     CtrlMSG::PlaybackStop => self.stop(),
                     CtrlMSG::PlaybackPlayPause(p) => self.playpause(p),
-                    CtrlMSG::PlaybackTick => self.tick(),
+                    CtrlMSG::PlaybackTick => self.manual_tick(),
                     // Loader
                     CtrlMSG::Reset() => self.reset(),
                     CtrlMSG::LoadProg(fname) => self.loadprog(fname),
@@ -215,10 +222,8 @@ impl Emu {
 
     fn start(&mut self) {
         self.reload();
-        self.cpu.debug_clear_cu();
+        self.cpu.init();
         self.running = true;
-        self.cpu.debug_set_halt(false);
-        self.cpu.debug_clear_fire();
         self.t_last_update = None;
     }
 
@@ -243,6 +248,7 @@ impl Emu {
     fn reset(&mut self) {
         self.stop();
         self.bus.reset_devices();
+        self.cpu = CPU::new();
         self.reload();
     }
     fn reload(&mut self) {

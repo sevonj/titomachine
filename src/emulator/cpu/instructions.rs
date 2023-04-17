@@ -353,7 +353,10 @@ impl CPU {
                 let ptr = self.memread(bus, immediate)?;
                 Ok(self.memread(bus, ptr)?)
             }
-            _ => panic!("unknown addressing mode"),
+            _ => {
+                self.exception_trap_u(bus);
+                Err(())
+            }
         }
     }
 }
