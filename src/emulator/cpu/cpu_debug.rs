@@ -21,17 +21,11 @@ impl CPU {
             self.mmu_mbr,
         ]
     }
-    pub fn debug_get_sp(&mut self) -> i32 {
-        self.gpr[SP]
+    pub fn debug_get_gpr(&mut self, idx: usize) -> i32 {
+        self.gpr[idx]
     }
-    pub fn debug_set_sp(&mut self, value: i32) {
-        self.gpr[SP] = value;
-    }
-    pub fn debug_get_fp(&mut self) -> i32 {
-        self.gpr[FP]
-    }
-    pub fn debug_set_fp(&mut self, value: i32) {
-        self.gpr[FP] = value;
+    pub fn debug_set_gpr(&mut self, idx: usize, value: i32) {
+        self.gpr[idx] = value;
     }
     pub fn init(&mut self) {
         self.cu_pc = 0;
@@ -40,9 +34,8 @@ impl CPU {
         self.cu_sr = 0;
         self.halt = false;
         self.burn = false;
-    }
-    pub fn debug_get_halt(&mut self) -> bool {
-        self.halt
+        self.mmu_base = 0;
+        self.mmu_limit = u32::MAX;
     }
     pub fn debug_get_ivt(&mut self, idx: usize) -> i32 {
         self.ivt[idx]

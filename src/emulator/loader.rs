@@ -5,6 +5,9 @@
  * Accessing memory through cpu is dumb
  */
 
+const SP: usize = 6;
+const FP: usize = 7;
+
 use std::str::Lines;
 
 use crate::emulator::devices::Device;
@@ -36,7 +39,7 @@ fn load(bus: &mut Bus, cpu: &mut CPU, prog: &str, org: usize) {
                     }
                     match ln.split_whitespace().nth(1) {
                         Some(word) => match word.parse::<i32>() {
-                            Ok(n) => cpu.debug_set_fp(n),
+                            Ok(n) => cpu.debug_set_gpr(FP, n),
                             Err(_) => break,
                         },
                         None => break,
@@ -47,7 +50,7 @@ fn load(bus: &mut Bus, cpu: &mut CPU, prog: &str, org: usize) {
             "___data___" => match lines.next() {
                 Some(ln) => match ln.split_whitespace().nth(1) {
                     Some(word) => match word.parse::<i32>() {
-                        Ok(n) => cpu.debug_set_sp(n),
+                        Ok(n) => cpu.debug_set_gpr(SP, n),
                         Err(_) => break,
                     },
                     None => break,

@@ -58,12 +58,39 @@ impl Default for DebugRegs {
 }
 
 impl Emu {
+    pub(crate) fn check_mail(&mut self) {
+        // Loop until there are no messages, because messages may arrive faster than this is called.
+        loop {
+            if let Ok(msg) = self.rx.try_recv() {
+                match msg {
+                    // Playback control
+                    CtrlMSG::PlaybackStart => self.start(),
+                    CtrlMSG::PlaybackStop => self.stop(),
+                    CtrlMSG::PlaybackPlayPause(p) => self.playpause(p),
+                    CtrlMSG::PlaybackTick => self.manual_tick(),
+                    // Loader
+                    CtrlMSG::Reset() => self.reset(),
+                    CtrlMSG::LoadProg(fname) => self.loadprog(fname),
+                    CtrlMSG::ClearMem => self.clearmem(),
+                    // Settings
+                    CtrlMSG::SetRate(rate) => self.tick_rate = rate,
+                    CtrlMSG::SetTurbo(t) => self.turbo = t,
+                    // Debug
+                    CtrlMSG::GetState => self.debug_sendstate(),
+                    CtrlMSG::GetMem(range) => self.debug_sendmem(range),
+                }
+            } else {
+                break;
+            }
+        }
+    }
+
     pub fn debug_sendstate(&mut self) {
         let speed_percent = (1. / 60.) / self.perfmon.get_last_duration() * 100.;
         match self.tx.send(ReplyMSG::State(EmuState {
             playing: self.playing,
             running: self.running,
-            halted: self.cpu.debug_get_halt(),
+            halted: self.cpu.halt,
             speed_percent,
         })) {
             Ok(_) => (),

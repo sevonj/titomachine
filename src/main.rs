@@ -28,7 +28,7 @@ use editor::{Editor, EditorSettings};
 
 use emulator::emu_debug::{CtrlMSG, DebugRegs, ReplyMSG};
 use gui::{
-    file_actions::FileStatus,
+    gui_editor::file_actions::FileStatus,
     gui_emulator::gui_devices::{display::GUIDevDisplay, legacy_io::GUIDevLegacyIO, GUIDevice},
     Base, GuiMode,
 };

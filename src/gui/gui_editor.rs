@@ -1,3 +1,5 @@
+pub mod file_actions;
+
 use crate::TitoApp;
 use egui::{Color32, FontId, RichText};
 

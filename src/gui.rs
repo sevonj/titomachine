@@ -1,6 +1,5 @@
 use crate::{emulator::emu_debug::CtrlMSG, TitoApp};
 use serde;
-pub mod file_actions;
 pub mod gui_editor;
 pub mod gui_emulator;
 
