@@ -34,6 +34,8 @@ impl CPU {
         self.cu_sr = 0;
         self.halt = false;
         self.burn = false;
+        self.mmu_base = 0;
+        self.mmu_limit = u32::MAX;
     }
     pub fn debug_get_ivt(&mut self, idx: usize) -> i32 {
         self.ivt[idx]
