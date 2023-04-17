@@ -12,7 +12,7 @@ fn test_cpu_arithmetic() {
     let mut cpu = CPU::new();
     let mut bus = Bus::new();
     loader::load_program(&mut bus, &mut cpu, &prog);
-    while !cpu.halt {
+    while !cpu.burn {
         cpu.tick(&mut bus)
     }
     let expected = 55;
@@ -25,33 +25,35 @@ fn test_cpu_logical() {
     let mut cpu = CPU::new();
     let mut bus = Bus::new();
     loader::load_program(&mut bus, &mut cpu, &prog);
-    while !cpu.halt {
+    while !cpu.burn {
         cpu.tick(&mut bus)
     }
     let expected = 55;
     assert_eq!(cpu.debug_get_gprs()[2], expected) // The result is stored in R2.
 }
 
+/// Exhaustive test of all jumps and conditions
 #[test]
 fn test_cpu_jumps() {
     let prog = compile(include_str!("../../programs/tests/test_cpu_jumps.k91").into());
     let mut cpu = CPU::new();
     let mut bus = Bus::new();
     loader::load_program(&mut bus, &mut cpu, &prog);
-    while !cpu.halt {
+    while !cpu.burn {
         cpu.tick(&mut bus)
     }
     let expected = 55;
     assert_eq!(cpu.debug_get_gprs()[2], expected) // The result is stored in R2.
 }
 
+/// Stack instructions
 #[test]
 fn test_cpu_stack() {
     let prog = compile(include_str!("../../programs/tests/test_cpu_stack.k91").into());
     let mut cpu = CPU::new();
     let mut bus = Bus::new();
     loader::load_program(&mut bus, &mut cpu, &prog);
-    while !cpu.halt {
+    while !cpu.burn {
         cpu.tick(&mut bus)
     }
     let expected_r0 = 100;
@@ -67,6 +69,20 @@ fn test_cpu_stack() {
     assert_eq!(regs[3], expected_r3);
     assert_eq!(regs[4], expected_r4);
     assert_eq!(regs[5], expected_r5);
+}
+
+/// Tests most exception types.
+#[test]
+fn test_cpu_exceptions() {
+    let prog = compile(include_str!("../../programs/tests/test_cpu_exceptions.k91").into());
+    let mut cpu = CPU::new();
+    let mut bus = Bus::new();
+    loader::load_program(&mut bus, &mut cpu, &prog);
+    while !cpu.burn {
+        cpu.tick(&mut bus)
+    }
+    let expected = 55;
+    assert_eq!(cpu.debug_get_gprs()[2], expected) // The result is stored in R2.
 }
 
 /// Verify that IVT entries are loaded correctly
@@ -85,3 +101,4 @@ fn compile(source: String) -> String {
     let mut compiler = Compiler::default();
     compiler.compile(source).unwrap()
 }
+

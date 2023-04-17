@@ -64,10 +64,12 @@ fn load(bus: &mut Bus, cpu: &mut CPU, prog: &str, org: usize) {
                     if mem_idx > 0x1fff {
                         println!("ERR: Program does not fit in memory!\nConsider increasing memory size or making smaller programs.\nRan out at address {}.", mem_idx);
                         bus.ram.reset();
-                        cpu.debug_clear_cu();
+                        cpu.init();
                         return;
                     }
-                    bus.write(mem_idx as u32, value).map_err(|err| println!("Loader memory write fail!\n{:?}", err)).ok();
+                    bus.write(mem_idx as u32, value)
+                        .map_err(|err| println!("Loader memory write fail!\n{:?}", err))
+                        .ok();
                     mem_idx += 1;
                 }
                 Err(_e) => {
@@ -94,7 +96,6 @@ fn symbols(cpu: &mut CPU, lines: &mut Lines) {
                         },
                         None => break,
                     }
-                    println!("matching {:?}", s);
                     match s {
                         "__IVT_ENTRY_0__" => cpu.debug_set_ivt(0, value),
                         "__IVT_ENTRY_1__" => cpu.debug_set_ivt(1, value),
