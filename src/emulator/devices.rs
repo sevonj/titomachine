@@ -15,6 +15,8 @@ mod kbd;
 mod ram;
 mod rtc;
 mod pic;
+#[cfg(test)]
+mod tests;
 
 pub(crate) trait Device {
     fn reset(&mut self);

@@ -1,4 +1,4 @@
-use super::GuiMode;
+use super::super::GuiMode;
 use crate::{emulator::emu_debug::CtrlMSG, TitoApp};
 use rfd::FileDialog;
 use std::{env::current_dir, path::PathBuf};
