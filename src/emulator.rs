@@ -119,7 +119,7 @@ impl Emu {
         self.check_mail();
         self.dev_update_slow();
 
-        let cyclecount = self.tick_rate as u32 / 60;
+        let cyclecount = self.tick_rate as u32 / 60 + 1;
         let duration = Duration::from_secs_f32(1. / self.tick_rate) * cyclecount;
         match self.playing {
             // Playing
