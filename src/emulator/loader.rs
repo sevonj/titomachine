@@ -2,17 +2,14 @@
  * Funcs here will
  * - Load a program to memory (and set up control regs)
  *
- * Accessing memory through cpu is dumb
  */
 
 const SP: usize = 6;
 const FP: usize = 7;
 
-use std::str::Lines;
-
-use crate::emulator::devices::Device;
-
 use super::{cpu::CPU, devices::Bus};
+use crate::emulator::devices::Device;
+use std::str::Lines;
 
 pub fn load_program(bus: &mut Bus, cpu: &mut CPU, prog: &str) {
     load(bus, cpu, prog, 0);
@@ -57,11 +54,11 @@ fn load(bus: &mut Bus, cpu: &mut CPU, prog: &str, org: usize) {
                 },
                 None => break,
             },
-            "___symboltable___" => symbols(cpu, &mut lines),
-            "___end___" => {
-                // Shouldn't even reach this.
+            "___symboltable___" => {
+                symbols(cpu, &mut lines);
                 break;
             }
+            "___end___" => panic!("Loader reached ___end___, but it should have stopped before."),
             _ => match line.parse::<i32>() {
                 Ok(value) => {
                     if mem_idx > 0x1fff {
@@ -86,6 +83,8 @@ fn load(bus: &mut Bus, cpu: &mut CPU, prog: &str, org: usize) {
     cpu.debug_print_regs();
 }
 
+/// This fn looks for special symbols.
+/// Current usage is IVT entries.
 fn symbols(cpu: &mut CPU, lines: &mut Lines) {
     loop {
         match lines.next() {

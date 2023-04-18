@@ -1,8 +1,5 @@
-use std::ops::ControlFlow;
-
-use crate::emulator::Bus;
-
 use super::{CPU, FP, SP, SR_D, SR_E, SR_G, SR_I, SR_L, SR_M, SR_O, SR_P, SR_S, SR_U, SR_Z};
+use crate::emulator::Bus;
 
 const NOP: u16 = 0x00;
 const STORE: u16 = 0x01;
@@ -47,7 +44,7 @@ const HLT: u16 = 0x71;
 const HCF: u16 = 0x72;
 
 impl CPU {
-    pub fn exec_instruction(&mut self, bus: &mut Bus) {
+    pub(crate) fn exec_instruction(&mut self, bus: &mut Bus) -> Result<(), ()> {
         let opcode = (self.cu_ir >> 24) as u16;
         let rj = (self.cu_ir >> 21) & 0x7;
         let mode = (self.cu_ir >> 19) & 0x3;
@@ -55,74 +52,51 @@ impl CPU {
         let addr = (self.cu_ir & 0xffff) as i16 as i32;
         // these casts catch the sign
 
-        match self.fetch_second_operand(bus, mode, ri, addr) {
-            Ok(val) => self.cu_tr = val,
-            Err(_) => return,
-        }
+        self.cu_tr = self.fetch_second_operand(bus, mode, ri, addr)?;
 
         match opcode {
-            NOP => {}
-            STORE => {
-                if let Err(_) = self.memwrite(bus, self.cu_tr, self.gpr[rj as usize]) {
-                    self.exception_trap_m(bus);
-                    return;
-                }
-            }
-            LOAD => self.gpr[rj as usize] = self.cu_tr,
-            IN => {
-                if let Ok(val) = bus.read_port(self.cu_tr) {
-                    self.gpr[rj as usize] = val
-                } else {
-                    self.exception_trap_m(bus);
-                    return;
-                }
-            }
-            OUT => {
-                if let Err(_) = bus.write_port(self.cu_tr, self.gpr[rj as usize]) {
-                    self.exception_trap_m(bus);
-                    return;
-                }
-            }
+            NOP => Ok(()),
+            STORE => self.memwrite(bus, self.cu_tr, self.gpr[rj as usize]),
+            LOAD => Ok(self.gpr[rj as usize] = self.cu_tr),
+            IN => Ok(self.gpr[rj as usize] = bus.read_port(self.cu_tr)?),
+            OUT => bus.write_port(self.cu_tr, self.gpr[rj as usize]),
             ADD => match self.gpr[rj as usize].checked_add(self.cu_tr) {
-                Some(i) => self.gpr[rj as usize] = i,
-                None => self.exception_trap_o(bus),
+                Some(i) => Ok(self.gpr[rj as usize] = i),
+                None => Err(self.exception_trap_o(bus)),
             },
             SUB => match self.gpr[rj as usize].checked_sub(self.cu_tr) {
-                Some(i) => self.gpr[rj as usize] = i,
-                None => self.exception_trap_o(bus),
+                Some(i) => Ok(self.gpr[rj as usize] = i),
+                None => Err(self.exception_trap_o(bus)),
             },
             MUL => match self.gpr[rj as usize].checked_mul(self.cu_tr) {
-                Some(i) => self.gpr[rj as usize] = i,
-                None => self.exception_trap_o(bus),
+                Some(i) => Ok(self.gpr[rj as usize] = i),
+                None => Err(self.exception_trap_o(bus)),
             },
             DIV => {
                 if self.cu_tr == 0 {
-                    self.exception_trap_z(bus);
-                    return;
+                    return Err(self.exception_trap_z(bus));
                 }
                 match self.gpr[rj as usize].checked_div(self.cu_tr) {
                     Some(i) => self.gpr[rj as usize] = i,
                     None => self.exception_trap_o(bus),
                 }
+                Ok(())
             }
-            MOD => self.gpr[rj as usize] %= self.cu_tr,
-            AND => self.gpr[rj as usize] &= self.cu_tr,
-            OR => self.gpr[rj as usize] |= self.cu_tr,
-            XOR => self.gpr[rj as usize] ^= self.cu_tr,
-            SHL => self.gpr[rj as usize] <<= self.cu_tr,
-            SHR => {
-                // Casting to unsigned because signed int defaults to arithmetic shift.
-                // This tactic worked in C, TODO: verify that it works here.
-                self.gpr[rj as usize] = (self.gpr[rj as usize] as u32 >> self.cu_tr) as i32;
-            }
-            NOT => self.gpr[rj as usize] = !self.gpr[rj as usize],
+            MOD => Ok(self.gpr[rj as usize] %= self.cu_tr),
+            AND => Ok(self.gpr[rj as usize] &= self.cu_tr),
+            OR => Ok(self.gpr[rj as usize] |= self.cu_tr),
+            XOR => Ok(self.gpr[rj as usize] ^= self.cu_tr),
+            SHL => Ok(self.gpr[rj as usize] <<= self.cu_tr),
+            SHR => Ok(self.gpr[rj as usize] = (self.gpr[rj as usize] as u32 >> self.cu_tr) as i32),
+            NOT => Ok(self.gpr[rj as usize] = !self.gpr[rj as usize]),
             SHRA => {
                 self.gpr[rj as usize] = self.gpr[rj as usize]
                     .checked_shr(self.cu_tr as u32)
                     .unwrap_or(match self.gpr[rj as usize] >= 0 {
                         true => 0,
                         false => -1,
-                    })
+                    });
+                Ok(())
             }
             COMP => {
                 if self.gpr[rj as usize] > self.cu_tr {
@@ -141,130 +115,116 @@ impl CPU {
                     self.cu_sr &= !SR_E;
                     self.cu_sr |= SR_L;
                 }
+                Ok(())
             }
             // Branching instructions
-            JUMP => {
-                self.cu_pc = self.cu_tr;
-            }
+            JUMP => Ok(self.cu_pc = self.cu_tr),
             // Jumps that use GPR
             JNEG => {
                 if self.gpr[rj as usize] < 0 {
                     self.cu_pc = self.cu_tr;
                 }
+                Ok(())
             }
             JZER => {
                 if self.gpr[rj as usize] == 0 {
                     self.cu_pc = self.cu_tr;
                 }
+                Ok(())
             }
             JPOS => {
                 if self.gpr[rj as usize] > 0 {
                     self.cu_pc = self.cu_tr;
                 }
+                Ok(())
             }
             JNNEG => {
                 if self.gpr[rj as usize] >= 0 {
                     self.cu_pc = self.cu_tr;
                 }
+                Ok(())
             }
             JNZER => {
                 if self.gpr[rj as usize] != 0 {
                     self.cu_pc = self.cu_tr;
                 }
+                Ok(())
             }
             JNPOS => {
                 if self.gpr[rj as usize] <= 0 {
                     self.cu_pc = self.cu_tr;
                 }
+                Ok(())
             }
             // Jumps that use SR
             JLES => {
                 if self.cu_sr & SR_L == SR_L {
                     self.cu_pc = self.cu_tr;
                 }
+                Ok(())
             }
             JEQU => {
                 if self.cu_sr & SR_E == SR_E {
                     self.cu_pc = self.cu_tr;
                 }
+                Ok(())
             }
             JGRE => {
                 if self.cu_sr & SR_G == SR_G {
                     self.cu_pc = self.cu_tr;
                 }
+                Ok(())
             }
             JNLES => {
                 if self.cu_sr & SR_L == 0 {
                     self.cu_pc = self.cu_tr;
                 }
+                Ok(())
             }
             JNEQU => {
                 if self.cu_sr & SR_E == 0 {
                     self.cu_pc = self.cu_tr;
                 }
+                Ok(())
             }
             JNGRE => {
                 if self.cu_sr & SR_G == 0 {
                     self.cu_pc = self.cu_tr;
                 }
+                Ok(())
             }
             // Subroutine instructions
             CALL => {
-                if let Err(_) = self.memwrite(bus, self.gpr[SP] + 1, self.cu_pc) {
-                    self.exception_trap_m(bus);
-                    return;
-                }
-                if let Err(_) = self.memwrite(bus, self.gpr[SP] + 2, self.gpr[FP]) {
-                    self.exception_trap_m(bus);
-                    return;
-                }
+                self.memwrite(bus, self.gpr[SP] + 1, self.cu_pc)?;
+                self.memwrite(bus, self.gpr[SP] + 2, self.gpr[FP])?;
                 self.gpr[SP] += 2;
                 self.cu_pc = self.cu_tr;
                 self.gpr[FP] = self.gpr[SP];
+                Ok(())
             }
             EXIT => {
                 self.gpr[SP] = self.gpr[FP] - 2 - self.cu_tr;
-                match self.memread(bus, self.gpr[FP] - 1) {
-                    Ok(val) => self.cu_pc = val,
-                    Err(_) => {
-                        self.exception_trap_m(bus);
-                        return;
-                    }
-                }
-                match self.memread(bus, self.gpr[FP]) {
-                    Ok(val) => self.gpr[FP] = val,
-                    Err(_) => {
-                        self.exception_trap_m(bus);
-                        return;
-                    }
-                }
+                self.cu_pc = self.memread(bus, self.gpr[FP] - 1)?;
+                self.gpr[FP] = self.memread(bus, self.gpr[FP])?;
+                Ok(())
             }
             // Stack instructions
             PUSH => {
                 self.gpr[SP] += 1;
-                if let Err(_) = self.memwrite(bus, self.gpr[SP], self.cu_tr) {
-                    self.exception_trap_m(bus);
-                    return;
-                }
+                self.memwrite(bus, self.gpr[SP], self.cu_tr)?;
+                Ok(())
             }
             POP => {
-                match self.memread(bus, self.gpr[SP]) {
-                    Ok(val) => self.gpr[ri as usize] = val,
-                    Err(_) => {
-                        self.exception_trap_m(bus);
-                        return;
-                    }
-                }
+                self.gpr[ri as usize] = self.memread(bus, self.gpr[SP])?;
                 self.gpr[SP] -= 1;
+                Ok(())
             }
             PUSHR => {
                 for i in 0..7 {
                     self.gpr[SP] += 1;
-                    if let Err(_) = self.memwrite(bus, self.gpr[SP], self.gpr[i]) {
-                        self.exception_trap_m(bus);
-                        return;
-                    }
+                    self.memwrite(bus, self.gpr[SP], self.gpr[i])?;
                 }
+                Ok(())
             }
             POPR => {
                 let old_sp = self.gpr[SP];
@@ -273,57 +233,36 @@ impl CPU {
                     match old_sp.checked_sub(6) {
                         Some(n) => match n.checked_add(i) {
                             Some(n) => addr = n,
-                            None => todo!(),
+                            None => return Err(()),
                         },
-                        None => todo!(),
+                        None => return Err(()),
                     }
-                    match self.memread(bus, addr) {
-                        Ok(val) => self.gpr[i as usize] = val,
-                        Err(_) => {
-                            self.exception_trap_m(bus);
-                            return;
-                        }
-                    }
+                    self.gpr[i as usize] = self.memread(bus, addr)?;
                     self.gpr[SP] -= 1;
                 }
+                Ok(())
             }
             IEXIT => {
                 // Pop FP, PC, SR
-                match self.memread(bus, self.gpr[SP]) {
-                    Ok(val) => self.gpr[FP] = val,
-                    Err(_) => {
-                        self.exception_trap_m(bus);
-                        return;
-                    }
-                }
-                match self.memread(bus, self.gpr[SP] - 1) {
-                    Ok(val) => self.cu_pc = val,
-                    Err(_) => {
-                        self.exception_trap_m(bus);
-                        return;
-                    }
-                }
-                match self.memread(bus, self.gpr[SP] - 2) {
-                    Ok(val) => self.cu_sr = val,
-                    Err(_) => {
-                        self.exception_trap_m(bus);
-                        return;
-                    }
-                }
+                self.gpr[FP] = self.memread(bus, self.gpr[SP])?;
+                self.cu_pc = self.memread(bus, self.gpr[SP] - 1)?;
+                self.cu_sr = self.memread(bus, self.gpr[SP] - 2)?;
                 self.gpr[SP] -= 3;
                 // Pop params
                 self.gpr[SP] -= self.cu_tr;
+                Ok(())
             }
             // Syscalls
-            SVC => self.exception_svc(bus),
-            HLT => self.halt = true,
+            SVC => Ok(self.exception_svc(bus)),
+            HLT => Ok(self.halt = true),
             HCF => {
                 self.halt = true;
                 self.burn = true;
                 println!("Execution has ended.");
                 self.debug_print_regs();
+                Ok(())
             }
-            _ => self.exception_trap_u(bus),
+            _ => Err(self.exception_trap_u(bus)),
         }
     }
 

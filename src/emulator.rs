@@ -120,36 +120,35 @@ impl Emu {
         self.dev_update_slow();
 
         let cyclecount = self.tick_rate as u32 / 60 + 1;
-        let duration = Duration::from_secs_f32(1. / self.tick_rate) * cyclecount;
-        match self.playing {
-            // Playing
-            true => {
-                match self.tick_timer >= duration {
-                    // Run
-                    true => {
-                        for _ in 0..cyclecount {
-                            self.dev_update();
-                            self.tick();
-                        }
-                        self.slow_checks();
-                        self.tick_timer -= duration;
-                    }
-                    // Wait
-                    false => {
-                        if self.tick_rate < 10000000. {
-                            thread::sleep(Duration::from_secs_f32(1. / self.tick_rate));
-                        }
-                    }
+        if self.playing {
+            if self.time_to_run(cyclecount) {
+                for _ in 0..cyclecount {
+                    self.tick();
+                }
+                self.slow_checks();
+            } else {
+                if self.tick_rate < 10000000. {
+                    thread::sleep(Duration::from_secs_f32(1. / self.tick_rate));
                 }
             }
-            // Not playing
-            false => thread::sleep(Duration::from_secs_f32(1. / 60.)),
+        } else {
+            thread::sleep(Duration::from_secs_f32(1. / 60.))
+        }
+    }
+
+    fn time_to_run(&mut self, cyclecount: u32) -> bool {
+        let duration = Duration::from_secs_f32(1. / self.tick_rate) * cyclecount;
+        match self.tick_timer >= duration {
+            true => {
+                self.tick_timer -= duration;
+                true
+            }
+            false => false,
         }
     }
 
     /// When user clicks step button
     pub fn manual_tick(&mut self) {
-        self.dev_update();
         self.tick();
         self.slow_checks();
     }
@@ -236,6 +235,7 @@ impl Emu {
     }
 
     fn tick(&mut self) {
+        self.dev_update();
         if self.cpu.halt {
             return;
         }
