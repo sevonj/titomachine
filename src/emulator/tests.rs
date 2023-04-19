@@ -7,6 +7,32 @@ use super::{cpu::CPU, devices::Bus, loader};
 ///
 
 #[test]
+/// Tests load / store
+fn test_cpu_mmio() {
+    let mut cpu = CPU::new();
+    let mut bus = Bus::new();
+    bus.write(0, 0x02200037).unwrap(); // LOAD  R1, =55
+    bus.write(1, 0x01200200).unwrap(); // STORE R1, 0x200
+    bus.write(2, 0x02480200).unwrap(); // LOAD  R2, 0x200
+    cpu.tick(&mut bus);
+    cpu.tick(&mut bus);
+    cpu.tick(&mut bus);
+    let expected = 55;
+
+    println!(
+        "Memory:\n{:08x}\n{:08x}\n{:08x}\n..\n{:08x}\nCPU:\n{:08x}\n{:08x}",
+        bus.read(0).unwrap(),
+        bus.read(1).unwrap(),
+        bus.read(2).unwrap(),
+        bus.read(0x200).unwrap(),
+        cpu.debug_get_gpr(1),
+        cpu.debug_get_gpr(2),
+    );
+
+    assert_eq!(cpu.debug_get_gpr(2), expected);
+}
+
+#[test]
 fn test_cpu_arithmetic() {
     let prog = compile(include_str!("../../programs/tests/test_cpu_arithmetic.k91").into());
     let mut cpu = CPU::new();
@@ -46,6 +72,20 @@ fn test_cpu_jumps() {
     assert_eq!(cpu.debug_get_gprs()[2], expected) // The result is stored in R2.
 }
 
+/// Execute a simple subroutine.
+#[test]
+fn test_cpu_subroutines() {
+    let prog = compile(include_str!("../../programs/tests/test_cpu_subroutines.k91").into());
+    let mut cpu = CPU::new();
+    let mut bus = Bus::new();
+    loader::load_program(&mut bus, &mut cpu, &prog);
+    while !cpu.burn {
+        cpu.tick(&mut bus)
+    }
+    let expected = 55;
+    assert_eq!(cpu.debug_get_gprs()[2], expected) // The result is stored in R2.
+}
+
 /// Stack instructions
 #[test]
 fn test_cpu_stack() {
@@ -69,6 +109,27 @@ fn test_cpu_stack() {
     assert_eq!(regs[3], expected_r3);
     assert_eq!(regs[4], expected_r4);
     assert_eq!(regs[5], expected_r5);
+}
+/// Test hlt hcf
+#[test]
+fn test_cpu_halt() {
+    let mut cpu = CPU::new();
+    let mut bus = Bus::new();
+
+    assert!(!cpu.halt);
+    assert!(!cpu.burn);
+
+    bus.write(0, 0x71000000).unwrap(); // HLT
+    cpu.tick(&mut bus);
+    assert!(cpu.halt);
+    assert!(!cpu.burn);
+
+    cpu = CPU::new();
+
+    bus.write(0, 0x72000000).unwrap(); // HCF
+    cpu.tick(&mut bus);
+    assert!(cpu.halt);
+    assert!(cpu.burn);
 }
 
 /// Tests most exception types.
@@ -101,4 +162,3 @@ fn compile(source: String) -> String {
     let mut compiler = Compiler::default();
     compiler.compile(source).unwrap()
 }
-

@@ -1,0 +1,24 @@
+;
+; test_cpu_subroutines.k91
+; CALL, EXIT
+;
+; Success condition: 
+; R2 == 55
+
+ret   equ -4
+a     equ -3
+b     equ -2
+
+    PUSH SP, =0     ; return
+    PUSH SP, =10    ; a
+    PUSH SP, =45    ; b
+    CALL SP, FUN    ; return = a + b
+    POP  SP, R2     ;
+    HCF     ;
+
+
+FUN PUSHR SP
+    LOAD  R1, a(FP)
+    ADD   R1, b(FP)
+    STORE R1, ret(FP)
+    EXIT SP, =2
