@@ -1,9 +1,11 @@
 # Titomachine is a TTK-91 Emulator
 
+![build badge](https://github.com/sevonj/titomachine/actions/workflows/rust.yml/badge.svg)
+
 Because my programs were too much for [Titokone](https://www.cs.helsinki.fi/group/titokone/).
 
 ## What is this?
-TTK-91 is a hypothetical computer architecture used to teach computer organization at University of Helsinki. The goal of this project is to create a faster and more convenient emulator, and to extend the specification so that it could, for example run games, or even a full OS!
+TTK-91 is a hypothetical computer architecture used to teach computer organization at University of Helsinki. The goal of this project is to create a faster and more convenient emulator, and to extend the specification so that it could, for examplhttps://github.com/<OWNER>/<REPOSITORY>/actions/workflows/<WORKFLOW_FILE>/badge.svge run games, or even a full OS!
 
 Features:
 - Builtin code editor and compiler
