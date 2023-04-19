@@ -3,10 +3,10 @@ name: Build
 on:
   push:
     branches: [ "master" ]
-    paths: ["src/**"]
+    paths: ["src/**", "Cargo.toml"]
   pull_request:
     branches: [ "master" ]
-    paths: ["src/**"]
+    paths: ["src/**", "Cargo.toml"]
 
 env:
   CARGO_TERM_COLOR: always
