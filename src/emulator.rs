@@ -52,6 +52,7 @@ use self::perfmon::PerfMonitor;
 mod cpu;
 mod loader;
 
+// There has to be a cleaner way to pass the channels.
 pub fn run(
     tx: Sender<ReplyMSG>,
     rx: Receiver<CtrlMSG>,
