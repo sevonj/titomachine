@@ -2,6 +2,8 @@
 
 This directory houses all TTK-91 code (.k91 and .b91 files) in the project.
 
+All .k91 source files within this directory are free to use without copyright restrictions.
+
 ## Subdirectories
 
 ### default
