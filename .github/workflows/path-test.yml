@@ -3,10 +3,10 @@ name: path-test
 on: workflow_dispatch
 
 jobs:
-  build:
+  path:
     runs-on: ubuntu-latest
     steps:
     - name: pwd
-      run: $ echo "$PWD"
+      run: echo "$PWD"
     - name: tree
       run: tree
