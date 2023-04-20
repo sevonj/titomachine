@@ -1,0 +1,12 @@
+name: path-test
+
+on: workflow-dispatch
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: pwd
+      run: $ echo "$PWD"
+    - name: tree
+      run: tree
