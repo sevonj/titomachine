@@ -1,6 +1,6 @@
 name: path-test
 
-on: workflow-dispatch
+on: workflow_dispatch
 
 jobs:
   build:
