@@ -6,6 +6,7 @@ jobs:
   path:
     runs-on: ubuntu-latest
     steps:
+    - uses: actions/checkout@v3
     - name: pwd
       run: echo "$PWD"
     - name: tree
