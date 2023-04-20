@@ -23,9 +23,9 @@ jobs:
       uses: Roang-zero1/github-create-release-action@v2
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    - name: Upload release artifacts
+    - name: Upload artifact
       uses: Roang-zero1/github-upload-release-artifacts-action@v2
       with:
-        args: "dist/bin/ dist/shell/compiled.sh"
+        args: "target/x86_64-unknown-linux-gnu/release/titomachine"
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
