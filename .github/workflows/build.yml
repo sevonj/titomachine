@@ -1,14 +1,14 @@
-name: Build
+name: CI
 
 on:
   push:
-    branches: [ "master" ]
+    branches: '**'
     paths:
     - "src/**"
     - "Cargo.toml"
     - "programs/tests"
   pull_request:
-    branches: [ "master" ]
+    branches: '**'
     paths:
     - "src/**"
     - "Cargo.toml"
@@ -19,14 +19,12 @@ env:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
-
     steps:
     - uses: actions/checkout@v3
     - name: Install dependencies
       run: sudo apt update && sudo apt install libgtk-3-dev
     - name: Build
       run: cargo build --verbose
-    - name: Run tests
+    - name: Unit tests
       run: cargo test --verbose
