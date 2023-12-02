@@ -1,11 +1,12 @@
-///
-/// devices.rs
-///
-/// This file handles devices, both memory mapped and port mapped.
-/// Every device except CPU is accessible from the Bus struct.
-///
-///
-///
+//!
+//! This module contains device traits, and the Bus struct, which parents all devices.
+//!
+//! A device means a piece of hardware that is made accessible to the program via IO calls.
+//!
+//! Every device is accessible from the Bus struct.
+//!
+//! If you're writing a new device, it must implement the Device trait, and also one of, or both MMIO and PMIO traits.
+
 use self::{
     crt::DevCRT, display_classic::DevDisplayClassic, kbd::DevKBD, ram::DevRAM, rtc::DevRTC, pic::DevPIC,
 };
@@ -18,20 +19,34 @@ mod pic;
 #[cfg(test)]
 mod tests;
 
+/// All devices should implement this trait.
 pub(crate) trait Device {
+    /// Completely reset the state of the device.
     fn reset(&mut self);
+    /// Turns this device on.
+    fn on(&mut self);
+    /// Turns this device off (but might not fully clear its state).
+    fn off(&mut self);
 }
 
+/// Memory Mapped IO: Any device that occupies memory addresses shall implement this trait.
 pub(crate) trait MMIO {
+    /// MMIO read. In implementation, address is **relative to device offset**, not global. So your first addr is always 0x0.
     fn read(&mut self, addr: usize) -> Result<i32, ()>;
+    /// MMIO write. In implementation, address is **relative to device offset**, not global. So your first addr is always 0x0.
     fn write(&mut self, addr: usize, value: i32) -> Result<(), ()>;
 }
 
+/// Port Mapped IO: Any device that occupies ports shall implement this trait.
 pub(crate) trait PMIO {
+    /// PMIO read. In implementation, port index is **relative to device offset**, not global. So your first port is always 0x0.
     fn read_port(&mut self, port: u8) -> Result<i32, ()>;
+    /// PMIO write. In implementation, port index is **relative to device offset**, not global. So your first port is always 0x0.
     fn write_port(&mut self, port: u8, value: i32) -> Result<(), ()>;
 }
 
+/// The Bus struct is the parent of all devices, and maps IO calls to them.
+/// Essentially it determines the hardware configuration of the machine.
 pub struct Bus {
     pub(crate) ram: DevRAM,
     pub(crate) display: DevDisplayClassic,
@@ -111,7 +126,7 @@ impl Bus {
         }
     }
 
-    pub(crate) fn reset_devices(&mut self){
+    pub(crate) fn reset_devices(&mut self) {
         self.ram.reset();
         self.pic.reset();
         self.display.reset();

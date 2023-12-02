@@ -29,6 +29,8 @@ impl Device for DevDisplayClassic {
     fn reset(&mut self) {
         self.framebuffer = vec![image::Rgba([0, 0, 0, 255,]); 120 * 160];
     }
+    fn on(&mut self) {}
+    fn off(&mut self) {}
 }
 
 impl DevDisplayClassic {

@@ -81,6 +81,8 @@ impl Device for DevPIC {
         self.timer_reload = 0;
         self.reset_timer();
     }
+    fn on(&mut self) {}
+    fn off(&mut self) {}
 }
 
 impl PMIO for DevPIC {
