@@ -8,14 +8,15 @@
 //! If you're writing a new device, it must implement the Device trait, and also one of, or both MMIO and PMIO traits.
 
 use self::{
-    crt::DevCRT, display_classic::DevDisplayClassic, kbd::DevKBD, ram::DevRAM, rtc::DevRTC, pic::DevPIC,
+    dev_crt::DevCRT, dev_display_classic::DevDisplayClassic, dev_kbd::DevKBD, dev_pic::DevPIC,
+    dev_ram::DevRAM, dev_rtc::DevRTC,
 };
-mod crt;
-mod display_classic;
-mod kbd;
-mod ram;
-mod rtc;
-mod pic;
+mod dev_crt;
+mod dev_display_classic;
+mod dev_kbd;
+mod dev_pic;
+mod dev_ram;
+mod dev_rtc;
 #[cfg(test)]
 mod tests;
 

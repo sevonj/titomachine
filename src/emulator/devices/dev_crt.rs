@@ -1,12 +1,11 @@
+//!
+//! Legacy output device =crt
+//!
+//!
 use super::PMIO;
-///
-/// devices/crt.rs
-///
-/// Legacy output device =crt
-///
-///
 use std::sync::mpsc::Sender;
 
+/// Legacy output device =crt
 pub(crate) struct DevCRT {
     output: Option<Sender<i32>>,
 }
@@ -22,6 +21,7 @@ impl DevCRT {
         self.output = Some(output);
     }
 }
+
 impl PMIO for DevCRT {
     fn read_port(&mut self, _port: u8) -> Result<i32, ()> {
         Err(()) // You can't read from the crt!

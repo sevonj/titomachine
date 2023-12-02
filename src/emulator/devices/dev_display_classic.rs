@@ -1,20 +1,20 @@
-///
-/// devices/display_classic.rs
-///
-/// Color screen with memory mapped framebuffer.
-/// It displays the image identically to titokone.
-/// 160x120, 3 least significant bytes map to RGB
-/// Reading from the framebuffer is allowed.
-/// When writing, information outside RGB bytes is lost.
-///
+//!
+//! Color screen with memory mapped framebuffer
+//!
 use super::{Device, MMIO};
 use image::Rgba;
 use std::sync::mpsc::Sender;
 
+/// Color screen with memory mapped framebuffer
+/// It displays the image identically to titokone.
+///
+/// 160x120
 pub(crate) struct DevDisplayClassic {
+    /// mpsc sender for framebuf
     tx: Option<Sender<Vec<Rgba<u8>>>>,
     framebuffer: Vec<Rgba<u8>>,
-    pub(crate) interrupt: bool, // Sending a frame sets a pin on PIC
+    /// Interrupt signal
+    pub(crate) interrupt: bool,
 }
 impl Default for DevDisplayClassic {
     fn default() -> Self {
@@ -28,15 +28,21 @@ impl Default for DevDisplayClassic {
 impl Device for DevDisplayClassic {
     fn reset(&mut self) {
         self.framebuffer = vec![image::Rgba([0, 0, 0, 255,]); 120 * 160];
+        self.interrupt = false
     }
     fn on(&mut self) {}
-    fn off(&mut self) {}
+    fn off(&mut self) {
+        self.framebuffer = vec![image::Rgba([0, 0, 0, 255,]); 120 * 160];
+        self.interrupt = false
+    }
 }
 
 impl DevDisplayClassic {
+    /// Give the device an mpsc sender to send framebuffer to.
     pub fn connect(&mut self, tx: Sender<Vec<Rgba<u8>>>) {
         self.tx = Some(tx);
     }
+    /// Send framebuffer
     pub(crate) fn send(&mut self) {
         self.interrupt = true;
         if let Some(tx) = &self.tx {

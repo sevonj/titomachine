@@ -1,11 +1,11 @@
-///
-///  devices/ram.rs
-///
-/// This is a very simple ram device.
-/// 0x2000 or 8192 addresses equals to 32KB.
-///
+//!
+//! A simple RAM device.
+//!
+//! 0x2000 or 8192 addresses equals to 32KB.
+//!
 use super::{Device, MMIO};
 
+/// A simple RAM device.
 pub(crate) struct DevRAM {
     ram: Vec<i32>,
 }
