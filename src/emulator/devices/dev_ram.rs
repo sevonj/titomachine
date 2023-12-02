@@ -1,11 +1,11 @@
-///
-///  devices/ram.rs
-///
-/// This is a very simple ram device.
-/// 0x2000 or 8192 addresses equals to 32KB.
-///
-use super::{MMIO, Device};
+//!
+//! A simple RAM device.
+//!
+//! 0x2000 or 8192 addresses equals to 32KB.
+//!
+use super::{Device, MMIO};
 
+/// A simple RAM device.
 pub(crate) struct DevRAM {
     ram: Vec<i32>,
 }
@@ -18,10 +18,12 @@ impl Default for DevRAM {
     }
 }
 
-impl Device for DevRAM{
+impl Device for DevRAM {
     fn reset(&mut self) {
         self.ram = vec![0; 0x2000];
     }
+    fn on(&mut self) {}
+    fn off(&mut self) {}
 }
 
 impl MMIO for DevRAM {

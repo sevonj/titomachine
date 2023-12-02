@@ -2,7 +2,7 @@ use std::{thread, time::Duration};
 
 use crate::emulator::{cpu::CPU, devices::PMIO};
 
-use super::{pic::DevPIC, Bus};
+use super::{dev_pic::DevPIC, Bus};
 
 /// This test has the CPU output to CRT. The test listens if CRT sends the value via the channel.
 #[test]

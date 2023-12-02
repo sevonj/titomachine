@@ -1,11 +1,10 @@
-///
-/// devices/rtc.rs
-///
-/// Real-time clock. Returns local 32-bit unix-time.
-///
+//!
+//! Real-time clock in a port. Returns local 32-bit unix-time.
+//!
 use super::PMIO;
 use chrono::Local;
 
+/// Real-time clock in a port. Returns local 32-bit unix-time.
 pub(crate) struct DevRTC {}
 
 impl Default for DevRTC {

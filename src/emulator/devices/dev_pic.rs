@@ -1,50 +1,55 @@
-///
-/// devices/pic.rs
-///
-/// Programmable Interrupt Controller. This allows devices to trigger interrupts. It also contains a simple builtin timer.
-///
-/// The PIC contains two 8-bit registers:
-/// - Mask Register: Which interrupts can fire
-/// - Flag Register: Currently firing interrupts
-///
-/// Size of the registers may be increased later.
-///
-///
-/// Interrupt map (subject to change):
-/// | Bit | Device |
-/// | --- | ------ |
-/// | 0   |        |
-/// | 1   | Timer  |
-/// | 2   |        |
-/// | 3   |        |
-/// | 4   |        |
-/// | 5   |        |
-/// | 6   |        |
-/// | 7   |        |
-///
-/// Ports:
-///  - Port 0: Command
-///  - Port 1: Mask
-///  - Port 2: Timer
-///
-/// Read Behaviour:
-/// | Port | Effect                |
-/// | ---- | --------------------- |
-/// | 0    | Returns Flag Register |
-/// | 1    | Returns Mask Register |
-/// | 2    | Returns Timer value   |
-///
-/// Write Behaviour:
-/// | Port | Value | Effect                                                                      |
-/// | ---- | ----- | --------------------------------------------------------------------------- |
-/// | 0    | 0     | Clear Flag Register                                                         |
-/// | 0    | 1     | Disable PIC (doesn't affect Mask or Flag registers)                         |
-/// | 0    | 2     | Enable PIC (doesn't affect Mask or Flag registers)                          |
-/// | 1    | any   | Set Mask Register. If a bit is cleared, it is also cleared in Flag Register |
-/// | 2    | any   | Set Timer Reload Value. Resets timer.                                       |
-///
-/// So far this only accounts for timer. TODO: ther rest of it.
-///
+//!
+//! Programmable Interrupt Controller.
+//!
+//! <div class="warning">
+//! The PIC, and the interrupt system are very incomplete and need more rethinking.
+//! </div>
+//!
+//! The PIC allows devices to trigger interrupts. It also contains a simple builtin timer.
+//!
+//! ```
+//! The PIC contains two 8-bit registers:
+//! - Mask Register: Which interrupts can fire
+//! - Flag Register: Currently firing interrupts
+//!
+//! Size of the registers may be increased later.
+//!
+//!
+//! Interrupt map (subject to change):
+//! | Bit | Device |
+//! | --- | ------ |
+//! | 0   |        |
+//! | 1   | Timer  |
+//! | 2   |        |
+//! | 3   |        |
+//! | 4   |        |
+//! | 5   |        |
+//! | 6   |        |
+//! | 7   |        |
+//!
+//! Ports:
+//!  - Port 0: Command
+//!  - Port 1: Mask
+//!  - Port 2: Timer
+//!
+//! Read Behaviour:
+//! | Port | Effect                |
+//! | ---- | --------------------- |
+//! | 0    | Returns Flag Register |
+//! | 1    | Returns Mask Register |
+//! | 2    | Returns Timer value   |
+//!
+//! Write Behaviour:
+//! | Port | Value | Effect                                                                      |
+//! | ---- | ----- | --------------------------------------------------------------------------- |
+//! | 0    | 0     | Clear Flag Register                                                         |
+//! | 0    | 1     | Disable PIC (doesn't affect Mask or Flag registers)                         |
+//! | 0    | 2     | Enable PIC (doesn't affect Mask or Flag registers)                          |
+//! | 1    | any   | Set Mask Register. If a bit is cleared, it is also cleared in Flag Register |
+//! | 2    | any   | Set Timer Reload Value. Resets timer.                                       |
+//!
+//! So far this only accounts for timer. TODO: ther rest of it.
+//!
 use super::{Device, PMIO};
 use std::time::Duration;
 
@@ -81,6 +86,8 @@ impl Device for DevPIC {
         self.timer_reload = 0;
         self.reset_timer();
     }
+    fn on(&mut self) {}
+    fn off(&mut self) {}
 }
 
 impl PMIO for DevPIC {
