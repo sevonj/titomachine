@@ -1,6 +1,6 @@
 # Titomachine is a TTK-91 Emulator
 
-![build badge](https://github.com/sevonj/titomachine/actions/workflows/ci.yml/badge.svg)
+![build badge](https://github.com/sevonj/titomachine/actions/workflows/main.yml/badge.svg)
 
 Because my programs were too much for [Titokone](https://www.cs.helsinki.fi/group/titokone/).
 
