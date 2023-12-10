@@ -9,6 +9,7 @@ Because my programs were too much for [Titokone](https://www.cs.helsinki.fi/grou
 > The codebase is currently undergoing some renovation.
 >  - Unfinished and broken features, such as interrupts will be either fixed or ripped out from master.
 >  - At least the emulator side will be covered by rustdoc. (Example: [devices module](https://sevonj.github.io/titomachine/titomachine/emulator/devices/index.html))
+>  - User docs with hugo
 >  - Unit tests will be brought to a proper standard.
 
 
