@@ -1,5 +1,5 @@
 //!
-//! Color screen with memory mapped framebuffer
+//! Memory mapped framebuffer
 //!
 use super::{Device, MMIO};
 use image::Rgba;

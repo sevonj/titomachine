@@ -17,7 +17,7 @@
 //!
 
 use super::{Device, MMIO};
-use rodio::{OutputStream, OutputStreamHandle, Sink, Source};
+use rodio::{OutputStream, Sink, Source};
 use std::sync::{Arc, Mutex};
 
 mod envelope;
