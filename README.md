@@ -23,6 +23,7 @@ Features:
 
 [User documentation](https://sevonj.github.io/titouserdoc) |
 [Developer documentation](https://sevonj.github.io/titomachine) |
+[Backlog](https://github.com/users/sevonj/projects/3/views/2) |
 [(outdated) wiki](https://github.com/sevonj/titomachine/wiki)  
 
 ![image](https://user-images.githubusercontent.com/100710152/230110624-c4e512e7-bed8-4f5e-9495-9f62e89f08a0.png)
