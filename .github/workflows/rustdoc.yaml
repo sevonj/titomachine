@@ -15,6 +15,9 @@ jobs:
     - name: Build Documentation
       run: cargo doc --no-deps
 
+    - name: redirect index file
+      run: echo '<meta http-equiv="Refresh" content="0; url="./titomachine" />' > index.html
+    
     # https://github.com/marketplace/actions/github-pages-action
     - name: Deploy
       uses: peaceiris/actions-gh-pages@v3
