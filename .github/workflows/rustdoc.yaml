@@ -16,7 +16,7 @@ jobs:
       run: cargo doc --no-deps
 
     - name: redirect index file
-      run: echo '<meta http-equiv="Refresh" content="0; url="./titomachine" />' > index.html
+      run: echo '<meta http-equiv="Refresh" content="0; url="./titomachine" />' > ./target/doc/index.html
     
     # https://github.com/marketplace/actions/github-pages-action
     - name: Deploy
