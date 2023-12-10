@@ -33,8 +33,7 @@ const SAMPLE_RATE: u32 = 22050;
 /// Device struct.
 ///
 pub(crate) struct DevPSG {
-    _stream: OutputStream,
-    stream_handle: OutputStreamHandle,
+    stream: Option<OutputStream>,
     sink0: Sink,
     sink1: Sink,
     sink2: Sink,
@@ -47,15 +46,36 @@ pub(crate) struct DevPSG {
 
 impl Default for DevPSG {
     fn default() -> Self {
-        // Create a new sink for this device
-        let (_stream, stream_handle) = OutputStream::try_default().unwrap();
-        let sink0 = Sink::try_new(&stream_handle).unwrap();
+        //
+        let try_default = OutputStream::try_default();
+
+        let sink0;
+        let sink1;
+        let sink2;
+        let sink3;
+
+        let stream;
+        // Host has an audio device, create sinks.
+        if try_default.is_ok() {
+            let (_stream, _stream_handle) = try_default.unwrap();
+            stream = Some(_stream);
+            sink0 = Sink::try_new(&_stream_handle).unwrap();
+            sink1 = Sink::try_new(&_stream_handle).unwrap();
+            sink2 = Sink::try_new(&_stream_handle).unwrap();
+            sink3 = Sink::try_new(&_stream_handle).unwrap();
+        }
+        // No audio devices available. Create sinks that do nothing.
+        else {
+            stream = None;
+            (sink0, _) = Sink::new_idle();
+            (sink1, _) = Sink::new_idle();
+            (sink2, _) = Sink::new_idle();
+            (sink3, _) = Sink::new_idle();
+        }
+
         sink0.pause();
-        let sink1 = Sink::try_new(&stream_handle).unwrap();
         sink1.pause();
-        let sink2 = Sink::try_new(&stream_handle).unwrap();
         sink2.pause();
-        let sink3 = Sink::try_new(&stream_handle).unwrap();
         sink3.pause();
 
         // Create channels
@@ -71,8 +91,7 @@ impl Default for DevPSG {
         sink3.append(AudioSource::new(ch3.clone()));
 
         DevPSG {
-            _stream,
-            stream_handle,
+            stream: stream,
             sink0,
             sink1,
             sink2,
