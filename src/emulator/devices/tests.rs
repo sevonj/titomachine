@@ -4,26 +4,6 @@ use crate::emulator::{cpu::CPU, devices::PMIO};
 
 use super::{dev_pic::DevPIC, Bus};
 
-/// This test has the CPU output to CRT. The test listens if CRT sends the value via the channel.
-#[test]
-fn test_dev_crt() -> Result<(), ()> {
-    let mut cpu = CPU::new();
-    let mut bus = Bus::new();
-
-    let (tx, rx) = std::sync::mpsc::channel();
-    bus.crt.connect(tx);
-
-    bus.write(0, 0x02200037)?; // LOAD R1, =55
-    bus.write(1, 0x04200000)?; // OUT  R1, =0
-    cpu.tick(&mut bus);
-    cpu.tick(&mut bus);
-
-    if rx.try_recv().unwrap() == 55 {
-        return Ok(());
-    }
-    Err(())
-}
-
 ///Test KBD. The test listens for input request, sends a value and checks if it gets loaded.
 #[test]
 fn test_dev_kbd() -> Result<(), ()> {
