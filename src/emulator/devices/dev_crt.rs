@@ -51,16 +51,20 @@ mod test {
         let (tx, rx) = std::sync::mpsc::channel();
         crt.connect(tx);
 
-        // Correct port.
+        // Write to correct port.
         crt.write_port(0, 55)?;
         assert!(rx.try_recv().unwrap() == 55);
 
-        // Incorrect port.
+        // Write to incorrect port.
         assert!(crt.write_port(1, 55).is_err());
         assert!(crt.write_port(2, 55).is_err());
         assert!(crt.write_port(3, 55).is_err());
+        assert!(rx.try_recv().is_err());
 
-        // Incorrect port: Nothing was sent.
+        // Try reading from it
+        assert!(crt.read_port(0).is_err());
+        assert!(crt.read_port(1).is_err());
+        assert!(crt.read_port(2).is_err());
         assert!(rx.try_recv().is_err());
 
         Ok(())
