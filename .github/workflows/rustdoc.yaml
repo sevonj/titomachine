@@ -1,0 +1,25 @@
+name: rustdoc
+on:
+  push:
+   branches:
+   - 'master'
+
+jobs:
+  rustdoc:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Install dependencies
+      run: sudo apt update && sudo apt install libgtk-3-dev libasound2-dev
+
+    - name: Build Documentation
+      run: cargo doc --no-deps
+
+    # https://github.com/marketplace/actions/github-pages-action
+    - name: Deploy
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        publish_branch: rustdoc
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./target/doc
+        force_orphan: true
