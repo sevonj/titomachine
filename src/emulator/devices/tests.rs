@@ -28,16 +28,17 @@ fn test_dev_crt() -> Result<(), ()> {
 #[test]
 fn test_dev_kbd() -> Result<(), ()> {
     let mut cpu = CPU::new();
-    let mut bus = Bus::new();
 
     let (tx, rx) = std::sync::mpsc::channel();
     let (tx_req, rx_req) = std::sync::mpsc::channel();
 
-    bus.kbd.connect(rx, tx_req);
-    bus.write(0, 0x03400001)?; // IN R2, =1
-
     // Because KBD device locks the program, we have to put it into another thread.
     let cpu_thread = thread::spawn(move || {
+        let mut bus = Bus::new();
+
+        bus.kbd.connect(rx, tx_req);
+        bus.write(0, 0x03400001); // IN R2, =1
+
         cpu.tick(&mut bus);
         cpu.debug_get_gpr(2)
     });

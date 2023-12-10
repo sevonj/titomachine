@@ -9,7 +9,7 @@
 
 use self::{
     dev_crt::DevCRT, dev_display_classic::DevDisplayClassic, dev_kbd::DevKBD, dev_pic::DevPIC,
-    dev_ram::DevRAM, dev_rtc::DevRTC,
+    dev_ram::DevRAM, dev_rtc::DevRTC, psg::DevPSG,
 };
 mod dev_crt;
 mod dev_display_classic;
@@ -17,6 +17,7 @@ mod dev_kbd;
 mod dev_pic;
 mod dev_ram;
 mod dev_rtc;
+mod psg;
 #[cfg(test)]
 mod tests;
 
@@ -55,6 +56,7 @@ pub struct Bus {
     pub(crate) kbd: DevKBD,
     pub(crate) rtc: DevRTC,
     pub(crate) pic: DevPIC,
+    pub(crate) psg: DevPSG,
 }
 
 impl Bus {
@@ -66,6 +68,7 @@ impl Bus {
             kbd: DevKBD::default(),
             rtc: DevRTC::default(),
             pic: DevPIC::default(),
+            psg: DevPSG::default(),
         }
     }
     /// MMIO access

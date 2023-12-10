@@ -14,6 +14,7 @@ image = "0.24.5"
 rfd = "0.11.0" # see gtk3 if fails to build https://docs.rs/rfd/latest/rfd/
 serde = { version = "1", features = ["derive"] }
 chrono = "0.4.23"
+rodio = "0.17.3"
 
 [build-dependencies]
 
