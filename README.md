@@ -26,6 +26,3 @@ Features:
 [(outdated) wiki](https://github.com/sevonj/titomachine/wiki)  
 
 ![image](https://user-images.githubusercontent.com/100710152/230110624-c4e512e7-bed8-4f5e-9495-9f62e89f08a0.png)
-
-I know there are **at least two** other people who were interested in this. In case you're one of them, I accept feedback and contributions.  
-[Discussions ➜](https://github.com/sevonj/titomachine/discussions)
