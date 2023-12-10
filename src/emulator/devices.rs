@@ -9,7 +9,7 @@
 
 use self::{
     dev_crt::DevCRT, dev_display_classic::DevDisplayClassic, dev_kbd::DevKBD, dev_pic::DevPIC,
-    dev_ram::DevRAM, dev_rtc::DevRTC, psg::DevPSG,
+    dev_ram::DevRAM, dev_rtc::DevRTC, dev_psg::DevPSG,
 };
 mod dev_crt;
 mod dev_display_classic;
@@ -17,7 +17,7 @@ mod dev_kbd;
 mod dev_pic;
 mod dev_ram;
 mod dev_rtc;
-mod psg;
+mod dev_psg;
 #[cfg(test)]
 mod tests;
 
