@@ -1,15 +1,13 @@
 //!
 //! This module contains device traits, and the Bus struct, which parents all devices.
 //!
-//! A device means a piece of hardware that is made accessible to the program via IO calls.
+//! A device here means a piece of hardware that is made accessible to the program via IO traits.
 //!
-//! Every device is accessible from the Bus struct.
-//!
-//! If you're writing a new device, it must implement the Device trait, and also one of, or both MMIO and PMIO traits.
+//! If you're writing a new device, it must implement the Device trait, and at least one of the IO traits.
 
 use self::{
     dev_crt::DevCRT, dev_display_classic::DevDisplayClassic, dev_kbd::DevKBD, dev_pic::DevPIC,
-    dev_ram::DevRAM, dev_rtc::DevRTC, psg::DevPSG,
+    dev_ram::DevRAM, dev_rtc::DevRTC, dev_psg::DevPSG,
 };
 mod dev_crt;
 mod dev_display_classic;
@@ -17,7 +15,9 @@ mod dev_kbd;
 mod dev_pic;
 mod dev_ram;
 mod dev_rtc;
-mod psg;
+mod dev_psg;
+mod dev_midi;
+mod dev_pad;
 #[cfg(test)]
 mod tests;
 
