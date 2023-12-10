@@ -1,3 +1,3 @@
 //!
-//! This will become a port-mapped midi controller.
+//! This will become the MIDI port.
 //!
