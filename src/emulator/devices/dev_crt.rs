@@ -3,7 +3,7 @@
 //! Communication happens via an mpsc channel, which could be refactored away.
 //!
 //!
-use super::PMIO;
+use super::{Device, PMIO};
 use std::sync::mpsc::Sender;
 
 /// Legacy output device =crt
@@ -21,6 +21,12 @@ impl DevCRT {
     pub fn connect(&mut self, output: Sender<i32>) {
         self.output = Some(output);
     }
+}
+
+impl Device for DevCRT {
+    fn reset(&mut self) {}
+    fn on(&mut self) {}
+    fn off(&mut self) {}
 }
 
 /// Port 0: crt output

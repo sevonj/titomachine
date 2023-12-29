@@ -198,6 +198,7 @@ impl Emu {
         self.cpu.init();
         self.running = true;
         self.t_last_update = None;
+        self.bus.turn_on();
     }
 
     fn stop(&mut self) {
@@ -206,11 +207,16 @@ impl Emu {
         self.playing = false;
         // Send framebuffer to avoid incomplete picture
         self.bus.display.send();
+        self.bus.turn_off();
     }
 
     fn playpause(&mut self, p: bool) {
         self.t_last_update = None;
         self.playing = p;
+        match p {
+            true => self.bus.turn_on(),
+            false => self.bus.turn_off(),
+        }
     }
 
     fn loadprog(&mut self, prog: String) {
@@ -220,7 +226,7 @@ impl Emu {
     }
     fn reset(&mut self) {
         self.stop();
-        self.bus.reset_devices();
+        self.bus.reset();
         self.cpu = CPU::new();
         self.reload();
     }
