@@ -16,6 +16,7 @@ pub(crate) struct DevDisplayClassic {
     /// Interrupt signal
     pub(crate) interrupt: bool,
 }
+
 impl Default for DevDisplayClassic {
     fn default() -> Self {
         Self {
@@ -25,6 +26,7 @@ impl Default for DevDisplayClassic {
         }
     }
 }
+
 impl Device for DevDisplayClassic {
     fn reset(&mut self) {
         self.framebuffer = vec![image::Rgba([0, 0, 0, 255,]); 120 * 160];
@@ -46,7 +48,7 @@ impl DevDisplayClassic {
     pub(crate) fn send(&mut self) {
         self.interrupt = true;
         if let Some(tx) = &self.tx {
-            tx.send(self.framebuffer.clone());
+            let _ = tx.send(self.framebuffer.clone());
         }
     }
 }
