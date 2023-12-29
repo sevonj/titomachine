@@ -1,5 +1,6 @@
 //!
 //! Legacy output device =crt
+//! Communication happens via an mpsc channel, which could be refactored away.
 //!
 //!
 use super::PMIO;
@@ -22,6 +23,7 @@ impl DevCRT {
     }
 }
 
+/// Port 0: crt output
 impl PMIO for DevCRT {
     fn read_port(&mut self, _port: u8) -> Result<i32, ()> {
         Err(()) // You can't read from the crt!
@@ -35,6 +37,36 @@ impl PMIO for DevCRT {
                 return Err(());
             }
         }
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_dev_crt() -> Result<(), ()> {
+        let mut crt = DevCRT::default();
+        let (tx, rx) = std::sync::mpsc::channel();
+        crt.connect(tx);
+
+        // Write to correct port.
+        crt.write_port(0, 55)?;
+        assert!(rx.try_recv().unwrap() == 55);
+
+        // Write to incorrect port.
+        assert!(crt.write_port(1, 55).is_err());
+        assert!(crt.write_port(2, 55).is_err());
+        assert!(crt.write_port(3, 55).is_err());
+        assert!(rx.try_recv().is_err());
+
+        // Try reading from it
+        assert!(crt.read_port(0).is_err());
+        assert!(crt.read_port(1).is_err());
+        assert!(crt.read_port(2).is_err());
+        assert!(rx.try_recv().is_err());
+
         Ok(())
     }
 }
