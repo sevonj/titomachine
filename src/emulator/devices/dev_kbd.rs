@@ -3,7 +3,7 @@
 //!
 //! This will freeze the emulator thread until a reply is received.
 //!
-use super::PMIO;
+use super::{Device, PMIO};
 use std::sync::mpsc::{Receiver, Sender};
 
 /// Legacy input device =kbd
@@ -26,6 +26,12 @@ impl DevKBD {
         self.input_receiver = Some(input);
         self.input_requester = Some(inputreq);
     }
+}
+
+impl Device for DevKBD {
+    fn reset(&mut self) {}
+    fn on(&mut self) {}
+    fn off(&mut self) {}
 }
 
 impl PMIO for DevKBD {

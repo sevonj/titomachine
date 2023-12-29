@@ -1,7 +1,7 @@
 //!
 //! Real-time clock in a port. Returns local 32-bit unix-time.
 //!
-use super::PMIO;
+use super::{Device, PMIO};
 use chrono::Local;
 
 /// Real-time clock in a port. Returns local 32-bit unix-time.
@@ -11,6 +11,12 @@ impl Default for DevRTC {
     fn default() -> Self {
         DevRTC {}
     }
+}
+
+impl Device for DevRTC {
+    fn reset(&mut self) {}
+    fn on(&mut self) {}
+    fn off(&mut self) {}
 }
 
 impl PMIO for DevRTC {

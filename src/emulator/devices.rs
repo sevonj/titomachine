@@ -7,17 +7,17 @@
 
 use self::{
     dev_crt::DevCRT, dev_display_classic::DevDisplayClassic, dev_kbd::DevKBD, dev_pic::DevPIC,
-    dev_ram::DevRAM, dev_rtc::DevRTC, dev_psg::DevPSG,
+    dev_psg::DevPSG, dev_ram::DevRAM, dev_rtc::DevRTC,
 };
 mod dev_crt;
 mod dev_display_classic;
 mod dev_kbd;
-mod dev_pic;
-mod dev_ram;
-mod dev_rtc;
-mod dev_psg;
 mod dev_midi;
 mod dev_pad;
+mod dev_pic;
+mod dev_psg;
+mod dev_ram;
+mod dev_rtc;
 #[cfg(test)]
 mod tests;
 
@@ -32,7 +32,7 @@ pub(crate) trait Device {
 }
 
 /// Memory Mapped IO: Any device that occupies memory addresses shall implement this trait.
-pub(crate) trait MMIO {
+pub(crate) trait MMIO: Device {
     /// MMIO read. In implementation, address is **relative to device offset**, not global. So your first addr is always 0x0.
     fn read(&mut self, addr: usize) -> Result<i32, ()>;
     /// MMIO write. In implementation, address is **relative to device offset**, not global. So your first addr is always 0x0.
@@ -40,7 +40,7 @@ pub(crate) trait MMIO {
 }
 
 /// Port Mapped IO: Any device that occupies ports shall implement this trait.
-pub(crate) trait PMIO {
+pub(crate) trait PMIO: Device {
     /// PMIO read. In implementation, port index is **relative to device offset**, not global. So your first port is always 0x0.
     fn read_port(&mut self, port: u8) -> Result<i32, ()>;
     /// PMIO write. In implementation, port index is **relative to device offset**, not global. So your first port is always 0x0.
