@@ -265,9 +265,11 @@ fn main() {
         event_loop_builder: None,
         shader_version: None,
         centered: true,
+        active: true,
+        app_id: None,
     };
 
-    eframe::run_native(
+    let _ = eframe::run_native(
         "Tito",
         native_options,
         Box::new(|cc| Box::new(TitoApp::new(cc))),
