@@ -21,8 +21,8 @@ pub struct PulseChannel {
 
 impl PulseChannel {
     /// Expected input range: 0..=i32::MAX
-    pub fn set_freq(&mut self, value: i32) {
-        self.freq = value.max(0) as f32;
+    pub fn set_freq(&mut self, value: f32) {
+        self.freq = value;
         self.env.reset_timer();
     }
     /// Expected input range: 0..=255
