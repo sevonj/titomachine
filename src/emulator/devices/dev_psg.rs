@@ -22,9 +22,11 @@ use std::sync::{Arc, Mutex};
 
 mod envelope;
 mod noise_channel;
+mod note_table;
 mod pulse_channel;
 mod ramp_channel;
 use self::noise_channel::NoiseChannel;
+use self::note_table::key_freq;
 use self::pulse_channel::PulseChannel;
 use self::ramp_channel::RampChannel;
 
@@ -144,25 +146,25 @@ impl MMIO for DevPSG {
         //
         match addr {
             // ch0
-            0x00 => self.ch0.lock().unwrap().set_freq(value),
+            0x00 => self.ch0.lock().unwrap().set_freq(key_freq(value)),
             0x01 => self.ch0.lock().unwrap().set_vol(value),
             0x02 => self.ch0.lock().unwrap().set_pw(value),
             0x03 => self.ch0.lock().unwrap().set_env_mask(value),
             0x04 => self.ch0.lock().unwrap().set_env_length(value),
             // ch1
-            0x10 => self.ch1.lock().unwrap().set_freq(value),
+            0x10 => self.ch1.lock().unwrap().set_freq(key_freq(value)),
             0x11 => self.ch1.lock().unwrap().set_vol(value),
             0x12 => self.ch1.lock().unwrap().set_pw(value),
             0x13 => self.ch1.lock().unwrap().set_env_mask(value),
             0x14 => self.ch1.lock().unwrap().set_env_length(value),
             // ch2
-            0x20 => self.ch2.lock().unwrap().set_freq(value),
+            0x20 => self.ch2.lock().unwrap().set_freq(key_freq(value)),
             0x21 => self.ch2.lock().unwrap().set_vol(value),
             0x22 => self.ch2.lock().unwrap().set_dc(value),
             0x23 => self.ch2.lock().unwrap().set_env_mask(value),
             0x24 => self.ch2.lock().unwrap().set_env_length(value),
             // ch3
-            0x30 => self.ch3.lock().unwrap().set_freq(value),
+            0x30 => self.ch3.lock().unwrap().set_freq(key_freq(value)),
             0x31 => self.ch3.lock().unwrap().set_vol(value),
             //0x32 =>
             0x33 => self.ch3.lock().unwrap().set_env_mask(value),
