@@ -7,9 +7,13 @@ edition = "2021"
 [dependencies]
 num-traits = "0.2"
 num-derive = "0.3"
-egui = { version = "0.20.1", default-features = false }
-egui_extras = "0.20.0"
-eframe = { version = "0.20.1", default-features = false, features = ["glow", "default_fonts", "persistence"] }
+egui = { version = "0.22", default-features = false }
+egui_extras = "0.22"
+eframe = { version = "0.22", default-features = false, features = [
+    "glow",
+    "default_fonts",
+    "persistence",
+] }
 image = "0.24.5"
 rfd = "0.11.0" # see gtk3 if fails to build https://docs.rs/rfd/latest/rfd/
 serde = { version = "1", features = ["derive"] }

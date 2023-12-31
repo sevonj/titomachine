@@ -87,8 +87,9 @@ impl TitoApp {
                         match self.guimode {
                             GuiMode::Editor => {
                                 if self.filestatus.compilefail {
-                                    ui.label(RichText::new("Could not compile!")
-                                    .color(Color32::RED),);
+                                    ui.label(
+                                        RichText::new("Could not compile!").color(Color32::RED),
+                                    );
                                 }
                             }
                             GuiMode::Emulator => {
@@ -187,19 +188,28 @@ impl TitoApp {
                         .clamp_range(1..=9999),
                 );
                 match self.emu_cpuspeedmul {
-                    crate::FreqMagnitude::Hz =>  ui.label("Hz"),
+                    crate::FreqMagnitude::Hz => ui.label("Hz"),
                     crate::FreqMagnitude::KHz => ui.label("KHz"),
                     crate::FreqMagnitude::MHz => ui.label("MHz"),
                 }
             });
             ui.with_layout(Layout::left_to_right(Align::TOP), |ui| {
-                if ui.radio_value(&mut self.emu_cpuspeedmul, crate::FreqMagnitude::Hz, "Hz").clicked(){
+                if ui
+                    .radio_value(&mut self.emu_cpuspeedmul, crate::FreqMagnitude::Hz, "Hz")
+                    .clicked()
+                {
                     self.send_settings();
                 }
-                if ui.radio_value(&mut self.emu_cpuspeedmul, crate::FreqMagnitude::KHz, "KHz").clicked(){
+                if ui
+                    .radio_value(&mut self.emu_cpuspeedmul, crate::FreqMagnitude::KHz, "KHz")
+                    .clicked()
+                {
                     self.send_settings();
                 }
-                if ui.radio_value(&mut self.emu_cpuspeedmul, crate::FreqMagnitude::MHz, "MHz").clicked(){
+                if ui
+                    .radio_value(&mut self.emu_cpuspeedmul, crate::FreqMagnitude::MHz, "MHz")
+                    .clicked()
+                {
                     self.send_settings();
                 }
             });
@@ -218,57 +228,56 @@ impl TitoApp {
 
         ui.menu_button("Help", |ui| {
             if ui.button("↗Project Wiki").clicked() {
-                ui.output()
-                    .open_url("https://github.com/sevonj/titomachine/wiki");
+                ui.output_mut(|o| o.open_url("https://github.com/sevonj/titomachine/wiki"));
             }
             if ui.button("↗Old TTK-91 Reference").clicked() {
-                ui.output()
-                    .open_url("https://www.cs.helsinki.fi/group/titokone/ttk91_ref_fi.html");
+                ui.output_mut(|o| {
+                    o.open_url("https://www.cs.helsinki.fi/group/titokone/ttk91_ref_fi.html")
+                });
             }
             if ui.button("↗Github").clicked() {
-                ui.output()
-                    .open_url("https://github.com/sevonj/titomachine/");
+                ui.output_mut(|o| o.open_url("https://github.com/sevonj/titomachine/"));
             }
         });
     }
 
     fn consume_shortcuts(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
-        if ui.input_mut().consume_shortcut(&SHORTCUT_DEBUG_GUI) {
+        if ui.input_mut(|i| i.consume_shortcut(&SHORTCUT_DEBUG_GUI)) {
             let debug = ui.style().debug.debug_on_hover;
             ui.ctx().set_debug_on_hover(!debug);
             println!("its debuggin time, {}", debug)
         }
         // General
-        if ui.input_mut().consume_shortcut(&SHORTCUT_NEW) {
+        if ui.input_mut(|i| i.consume_shortcut(&SHORTCUT_NEW)) {
             self.file_new()
         }
-        if ui.input_mut().consume_shortcut(&SHORTCUT_OPEN) {
+        if ui.input_mut(|i| i.consume_shortcut(&SHORTCUT_OPEN)) {
             self.file_open()
         }
-        if ui.input_mut().consume_shortcut(&SHORTCUT_SAVE) {
+        if ui.input_mut(|i| i.consume_shortcut(&SHORTCUT_SAVE)) {
             self.file_save()
         }
-        if ui.input_mut().consume_shortcut(&SHORTCUT_SAVEAS) {
+        if ui.input_mut(|i| i.consume_shortcut(&SHORTCUT_SAVEAS)) {
             self.file_saveas()
         }
-        if ui.input_mut().consume_shortcut(&SHORTCUT_GUI_EDIT) {
+        if ui.input_mut(|i| i.consume_shortcut(&SHORTCUT_GUI_EDIT)) {
             self.guimode = GuiMode::Editor
         }
-        if ui.input_mut().consume_shortcut(&SHORTCUT_GUI_RUN) {
+        if ui.input_mut(|i| i.consume_shortcut(&SHORTCUT_GUI_RUN)) {
             self.guimode = GuiMode::Emulator
         }
         // Editor specific
         if self.guimode == GuiMode::Editor {
-            if ui.input_mut().consume_shortcut(&SHORTCUT_COMPILE) {
+            if ui.input_mut(|i| i.consume_shortcut(&SHORTCUT_COMPILE)) {
                 self.file_compile()
             }
         }
         // Emulator specific
         else {
-            if ui.input_mut().consume_shortcut(&SHORTCUT_GUI_EMUGRAPHICS) {
+            if ui.input_mut(|i| i.consume_shortcut(&SHORTCUT_GUI_EMUGRAPHICS)) {
                 self.emugui_display = !self.emugui_display
             }
-            if ui.input_mut().consume_shortcut(&SHORTCUT_TOGGLEPOWER) {
+            if ui.input_mut(|i| i.consume_shortcut(&SHORTCUT_TOGGLEPOWER)) {
                 match self.emu_running {
                     true => {
                         self.tx_ctrl.send(CtrlMSG::PlaybackStop);
@@ -278,14 +287,15 @@ impl TitoApp {
                     }
                 }
             }
-            if ui.input_mut().consume_shortcut(&SHORTCUT_STOP) {
+            if ui.input_mut(|i| i.consume_shortcut(&SHORTCUT_STOP)) {
                 self.tx_ctrl.send(CtrlMSG::PlaybackStop);
             }
             if self.emu_running {
-                if ui.input_mut().consume_shortcut(&SHORTCUT_PLAY) {
-                    self.tx_ctrl.send(CtrlMSG::PlaybackPlayPause(!self.emu_playing));
+                if ui.input_mut(|i| i.consume_shortcut(&SHORTCUT_PLAY)) {
+                    self.tx_ctrl
+                        .send(CtrlMSG::PlaybackPlayPause(!self.emu_playing));
                 }
-                if ui.input_mut().consume_shortcut(&SHORTCUT_TICK) && !self.emu_playing {
+                if ui.input_mut(|i| i.consume_shortcut(&SHORTCUT_TICK)) && !self.emu_playing {
                     self.tx_ctrl.send(CtrlMSG::PlaybackTick);
                     ctx.request_repaint_after(std::time::Duration::from_secs(1 / 60))
                 }
