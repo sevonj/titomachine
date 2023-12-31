@@ -227,8 +227,8 @@ impl TitoApp {
         });
 
         ui.menu_button("Help", |ui| {
-            if ui.button("↗Project Wiki").clicked() {
-                ui.output_mut(|o| o.open_url("https://github.com/sevonj/titomachine/wiki"));
+            if ui.button("↗User Guide").clicked() {
+                ui.output_mut(|o| o.open_url("https://sevonj.github.io/titouserdoc/"));
             }
             if ui.button("↗Old TTK-91 Reference").clicked() {
                 ui.output_mut(|o| {
