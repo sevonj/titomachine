@@ -174,23 +174,23 @@ impl Emu {
         if self.playing {
             self.tick_timer += self.t_delta;
         }
-        self.bus.pic.update_timer(self.t_delta);
+        // self.bus.pic.update_timer(self.t_delta);
     }
 
     /// Fast update: every cpu tick
     fn dev_update(&mut self) {
         // Interrupts
-        if self.bus.pic.is_firing() {
-            self.cpu.exception_irq(&mut self.bus);
-        }
+        // if self.bus.pic.is_firing() {
+        //     self.cpu.exception_irq(&mut self.bus);
+        // }
     }
 
     /// Slow update: every frame or so
     fn dev_update_slow(&mut self) {
         self.bus.display.send();
-        if self.bus.display.interrupt {
-            self.bus.pic.flag |= 0b_0100;
-        }
+        // if self.bus.display.interrupt {
+        //     self.bus.pic.flag |= 0b_0100;
+        // }
     }
 
     fn start(&mut self) {

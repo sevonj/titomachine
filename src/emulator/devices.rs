@@ -6,20 +6,19 @@
 //! If you're writing a new device, it must implement the Device trait, and at least one of the IO traits.
 
 use self::{
-    dev_crt::DevCRT, dev_display_classic::DevDisplayClassic, dev_kbd::DevKBD, dev_pic::DevPIC,
+    dev_crt::DevCRT, dev_display_classic::DevDisplayClassic, dev_kbd::DevKBD, // dev_pic::DevPIC,
     dev_psg::DevPSG, dev_ram::DevRAM, dev_rtc::DevRTC,
 };
+
 mod dev_crt;
 mod dev_display_classic;
 mod dev_kbd;
 mod dev_midi;
 mod dev_pad;
-mod dev_pic;
+// mod dev_pic;
 mod dev_psg;
 mod dev_ram;
 mod dev_rtc;
-#[cfg(test)]
-mod tests;
 
 /// All devices should implement this trait.
 pub(crate) trait Device {
@@ -53,7 +52,7 @@ pub struct Bus {
     pub(crate) crt: DevCRT,
     pub(crate) display: DevDisplayClassic,
     pub(crate) kbd: DevKBD,
-    pub(crate) pic: DevPIC,
+    // pub(crate) pic: DevPIC,
     pub(crate) psg: DevPSG,
     pub(crate) ram: DevRAM,
     pub(crate) rtc: DevRTC,
@@ -65,7 +64,7 @@ impl Bus {
             crt: DevCRT::default(),
             display: DevDisplayClassic::default(),
             kbd: DevKBD::default(),
-            pic: DevPIC::default(),
+            // pic: DevPIC::default(),
             psg: DevPSG::default(),
             ram: DevRAM::default(),
             rtc: DevRTC::default(),
@@ -105,9 +104,9 @@ impl Bus {
             2 => self.rtc.read_port(0),
             //6 => stdin
             //7 => stdout
-            0x20 => self.pic.read_port(0),
-            0x21 => self.pic.read_port(1),
-            0x22 => self.pic.read_port(2),
+            //0x20 => self.pic.read_port(0),
+            //0x21 => self.pic.read_port(1),
+            //0x22 => self.pic.read_port(2),
             _ => {
                 println!("port read fault: {:x}", port);
                 Err(())
@@ -122,9 +121,9 @@ impl Bus {
             2 => self.rtc.write_port(0, value),
             //6 => stdin
             //7 => stdout
-            0x20 => self.pic.write_port(0, value),
-            0x21 => self.pic.write_port(1, value),
-            0x22 => self.pic.write_port(2, value),
+            //0x20 => self.pic.write_port(0, value),
+            //0x21 => self.pic.write_port(1, value),
+            //0x22 => self.pic.write_port(2, value),
             _ => {
                 println!("port write fault: {:x}", port);
                 Err(())
@@ -136,7 +135,7 @@ impl Bus {
         self.crt.reset();
         self.display.reset();
         self.kbd.reset();
-        self.pic.reset();
+        //self.pic.reset();
         self.psg.reset();
         self.ram.reset();
         self.rtc.reset();
@@ -145,7 +144,7 @@ impl Bus {
         self.crt.on();
         self.display.on();
         self.kbd.on();
-        self.pic.on();
+        //self.pic.on();
         self.psg.on();
         self.ram.on();
         self.rtc.on();
@@ -154,7 +153,7 @@ impl Bus {
         self.crt.off();
         self.display.off();
         self.kbd.off();
-        self.pic.off();
+        //self.pic.off();
         self.psg.off();
         self.ram.off();
         self.rtc.off();
