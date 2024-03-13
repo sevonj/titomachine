@@ -3,6 +3,7 @@
 //!
 use super::{Device, PMIO};
 use chrono::Local;
+use crate::emulator::devices::dev_kbd::DevKBD;
 
 /// Real-time clock in a port. Returns local 32-bit unix-time.
 pub(crate) struct DevRTC {}
@@ -29,5 +30,30 @@ impl PMIO for DevRTC {
     }
     fn write_port(&mut self, _port: u8, _value: i32) -> Result<(), ()> {
         Err(()) // You can't write into the clock!
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_dev_rtc() -> Result<(), ()> {
+        let mut rtc = DevRTC::default();
+
+        // Test wrong usage
+        assert!(rtc.read_port(1).is_err());
+        assert!(rtc.read_port(2).is_err());
+        assert!(rtc.read_port(3).is_err());
+        assert!(rtc.write_port(0, 0).is_err());
+        assert!(rtc.write_port(1, 55).is_err());
+        assert!(rtc.write_port(2, -33).is_err());
+
+        // Test read correctly
+        let time = Local::now().timestamp() as i32 + Local::now().offset().local_minus_utc();
+        let rtc_time = rtc.read_port(0).unwrap();
+        assert_eq!(time, rtc_time);
+
+        Ok(())
     }
 }
