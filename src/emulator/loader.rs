@@ -80,7 +80,6 @@ fn load(bus: &mut Bus, cpu: &mut CPU, prog: &str, org: usize) {
             },
         }
     }
-    cpu.debug_print_regs();
 }
 
 /// This fn looks for special symbols.
