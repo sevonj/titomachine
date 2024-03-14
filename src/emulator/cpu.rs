@@ -15,8 +15,9 @@ pub const SR_O: i32 = 1 << 28; // Overflow
 pub const SR_Z: i32 = 1 << 27; // Zero division
 pub const SR_U: i32 = 1 << 26; // Unknown instruction
 pub const SR_M: i32 = 1 << 25; // Forbidden mem address
-
+#[allow(dead_code)]
 pub const SR_I: i32 = 1 << 24; // Device Interrupt      // unused?
+#[allow(dead_code)]
 pub const SR_S: i32 = 1 << 23; // SVC
 pub const SR_P: i32 = 1 << 22; // Privileged mode       // unused?
 pub const SR_D: i32 = 1 << 21; // Disable Interrupts    // unused?
@@ -96,6 +97,7 @@ impl CPU {
     }
 
     /// Exception handler for device interrupts
+    #[allow(dead_code)] // Interrupts are are TODO
     pub(crate) fn exception_irq(&mut self, bus: &mut Bus) {
         // Interrupts disabled.
         if self.cu_sr & SR_D != 0 {
@@ -137,9 +139,10 @@ impl CPU {
     // Common bookkeeping for interrupt handlers
     fn enter_interrupt_handler(&mut self, bus: &mut Bus, handler_idx: i32) {
         // Push SR, PC, FP
-        self.memwrite(bus, self.gpr[SP] + 1, self.cu_sr);
-        self.memwrite(bus, self.gpr[SP] + 2, self.cu_pc);
-        self.memwrite(bus, self.gpr[SP] + 3, self.gpr[FP]);
+        // We will ignore errors, because this is the interrupt handler itself.
+        let _ = self.memwrite(bus, self.gpr[SP] + 1, self.cu_sr);
+        let _ = self.memwrite(bus, self.gpr[SP] + 2, self.cu_pc);
+        let _ = self.memwrite(bus, self.gpr[SP] + 3, self.gpr[FP]);
         self.gpr[SP] += 3;
         // State flags
         self.cu_sr |= SR_P;

@@ -3,7 +3,6 @@
 //!
 use super::{Device, PMIO};
 use chrono::Local;
-use crate::emulator::devices::dev_kbd::DevKBD;
 
 /// Real-time clock in a port. Returns local 32-bit unix-time.
 pub(crate) struct DevRTC {}

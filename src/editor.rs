@@ -69,7 +69,7 @@ impl Editor {
                 let file = fs::read_to_string(filepath.clone());
                 if let Ok(s) = file {
                     self.source_code = s;
-                    set_current_dir(PathBuf::from(&filepath).parent().unwrap());
+                    let _ = set_current_dir(PathBuf::from(&filepath).parent().unwrap());
                     self.source_path = Some(filepath.to_str().unwrap().into());
                     self.update_linecount();
                 }
@@ -88,8 +88,8 @@ impl Editor {
         }
         let file = File::create(&filepath);
         if let Ok(mut f) = file {
-            f.write_all(self.source_code.as_bytes());
-            set_current_dir(PathBuf::from(&filepath).parent().unwrap());
+            let _ = f.write_all(self.source_code.as_bytes());
+            let _ = set_current_dir(PathBuf::from(&filepath).parent().unwrap());
             self.source_path = Some(filepath);
         }
     }

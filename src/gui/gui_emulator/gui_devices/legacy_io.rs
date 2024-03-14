@@ -4,13 +4,13 @@
 ///
 use super::GUIDevice;
 use egui::{Color32, Context, FontId, Frame, RichText, TextEdit, Ui};
-use std::sync::mpsc::{self, Receiver, Sender};
+use std::sync::mpsc::{Receiver, Sender};
 const FONT_PANELNAME: FontId = FontId::monospace(12.0);
 
 pub(crate) struct GUIDevLegacyIO {
-    rx_crt: mpsc::Receiver<i32>,
-    tx_kbd: mpsc::Sender<i32>,
-    rx_kbdreq: mpsc::Receiver<()>,
+    rx_crt: Receiver<i32>,
+    tx_kbd: Sender<i32>,
+    rx_kbdreq: Receiver<()>,
     buf_kbd: String,
     buf_crt: String,
 
@@ -46,7 +46,7 @@ impl GUIDevLegacyIO {
         if !self.waiting_for_in {
             return;
         }
-        self.tx_kbd.send(0);
+        let _ = self.tx_kbd.send(0);
     }
 }
 impl GUIDevice for GUIDevLegacyIO {
@@ -74,7 +74,7 @@ impl GUIDevice for GUIDevLegacyIO {
                 .show(ui);
             if ui.button("Send").clicked() {
                 if self.buf_kbd.parse::<i32>().is_ok() {
-                    self.tx_kbd.send(self.buf_kbd.parse::<i32>().unwrap());
+                    let _ = self.tx_kbd.send(self.buf_kbd.parse::<i32>().unwrap());
                     self.buf_kbd = String::new();
                     self.waiting_for_in = false;
                 } else {

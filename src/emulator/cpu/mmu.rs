@@ -1,5 +1,3 @@
-use std::result;
-
 ///
 /// cpu/mmu.rs
 ///

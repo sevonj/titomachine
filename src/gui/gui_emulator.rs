@@ -12,12 +12,13 @@ use num_traits::ToPrimitive;
 
 const FONT_TBL: FontId = FontId::monospace(12.0);
 const FONT_TBLH: FontId = FontId::proportional(12.5);
+#[allow(dead_code)]
 const FONT_BUT: FontId = FontId::monospace(16.0);
 const COL_TEXT: Color32 = Color32::DARK_GRAY;
 const COL_TEXT_HI: Color32 = Color32::WHITE;
 
 impl TitoApp {
-    pub fn emulator_toolbar(&mut self, ctx: &Context, ui: &mut Ui) {
+    pub fn emulator_toolbar(&mut self, _: &Context, ui: &mut Ui) {
         let text_onoff;
         match self.emu_running {
             true => text_onoff = RichText::new("⏼on/off").color(Color32::WHITE),
@@ -25,12 +26,12 @@ impl TitoApp {
         }
         if ui.add(Button::new(text_onoff)).clicked() {
             self.emu_playing = false;
-            self.tx_ctrl.send(CtrlMSG::PlaybackPlayPause(false));
+            let _ = self.tx_ctrl.send(CtrlMSG::PlaybackPlayPause(false));
             if self.emu_running {
                 self.stop_emulation();
             } else {
                 self.emu_running = true;
-                self.tx_ctrl.send(CtrlMSG::PlaybackStart);
+                let _ = self.tx_ctrl.send(CtrlMSG::PlaybackStart);
             }
         }
 
@@ -45,7 +46,7 @@ impl TitoApp {
                 .clicked()
             {
                 self.emu_playing = !self.emu_playing;
-                self.tx_ctrl
+                let _ = self.tx_ctrl
                     .send(CtrlMSG::PlaybackPlayPause(self.emu_playing));
             }
             ui.add_enabled_ui(!self.emu_playing, |ui| {
@@ -53,7 +54,7 @@ impl TitoApp {
                     .add(Button::new(RichText::new("|▶")).min_size(egui::vec2(24.0, 0.0)))
                     .clicked()
                 {
-                    self.tx_ctrl.send(CtrlMSG::PlaybackTick);
+                    let _ = self.tx_ctrl.send(CtrlMSG::PlaybackTick);
                 }
             })
         });
@@ -61,7 +62,7 @@ impl TitoApp {
         ui.separator();
 
         if ui.button("Reset").clicked() {
-            self.tx_ctrl.send(CtrlMSG::Reset());
+            let _ = self.tx_ctrl.send(CtrlMSG::Reset());
             self.dev_legacyio.reset();
             self.dev_display.reset();
         }
@@ -76,10 +77,10 @@ impl TitoApp {
         ui.separator();
     }
 
-    pub fn emulator_panel(&mut self, ctx: &Context, ui: &mut Ui) {
+    pub fn emulator_panel(&mut self, ctx: &Context, _: &mut Ui) {
         self.refresh_emu_state();
 
-        egui::CentralPanel::default().show(ctx, |ui| {
+        egui::CentralPanel::default().show(ctx, |_| {
             egui::SidePanel::right("register_panel")
                 .resizable(false)
                 .show(ctx, |ui| {
@@ -107,7 +108,7 @@ impl TitoApp {
         });
     }
 
-    fn memview(&mut self, ctx: &Context, ui: &mut Ui) {
+    fn memview(&mut self, ctx: &Context, _: &mut Ui) {
         let width_adr: f32 = 96.0;
         let width_val: f32 = match self.mem_val_base == Base::Bin {
             true => 256.0,
@@ -336,8 +337,8 @@ impl TitoApp {
 
     // Refresh cached regs and memory
     fn refresh_emu_state(&mut self) {
-        self.tx_ctrl.send(CtrlMSG::GetState);
-        self.tx_ctrl.send(CtrlMSG::GetMem(
+        let _ = self.tx_ctrl.send(CtrlMSG::GetState);
+        let _ = self.tx_ctrl.send(CtrlMSG::GetMem(
             self.gui_memview_off..self.gui_memview_off + self.gui_memview_len,
         ));
     }
