@@ -1,4 +1,6 @@
-use super::{CPU, FP, SP, SR_D, SR_E, SR_G, SR_I, SR_L, SR_M, SR_O, SR_P, SR_S, SR_U, SR_Z};
+use super::CPU;
+#[allow(unused_imports)] // Some of these flags are unused.
+use super::{FP, SP, SR_D, SR_E, SR_G, SR_I, SR_L, SR_M, SR_O, SR_P, SR_S, SR_U, SR_Z};
 use crate::emulator::Bus;
 
 const NOP: u16 = 0x00;

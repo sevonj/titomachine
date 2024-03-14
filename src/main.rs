@@ -211,7 +211,7 @@ impl TitoApp {
     fn stop_emulation(&mut self) {
         self.emu_running = false;
         self.dev_legacyio.clear_kbd();
-        self.tx_ctrl.send(CtrlMSG::PlaybackStop);
+        let _ = self.tx_ctrl.send(CtrlMSG::PlaybackStop);
     }
 
     fn update_devices(&mut self) {

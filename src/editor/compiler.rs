@@ -297,7 +297,6 @@ impl Compiler {
 
         // Get Instructions
         let mut ln = 0;
-        let mut off = 0;
         for line in &processed_lines {
             ln += 1;
             if line.len() == 0 {
@@ -859,8 +858,6 @@ impl Compiler {
             }
 
             prog.push(instruction);
-
-            off += 1;
         }
 
         let prog_start = origin;

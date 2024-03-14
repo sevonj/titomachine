@@ -5,10 +5,11 @@ use egui::{Color32, FontId, RichText};
 
 const FONT_COMPILER: FontId = FontId::monospace(12.0);
 const COL_TEXT: Color32 = Color32::DARK_GRAY;
+#[allow(dead_code)]
 const COL_TEXT_HI: Color32 = Color32::WHITE;
 
 impl TitoApp {
-    pub fn editor_toolbar(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+    pub fn editor_toolbar(&mut self, _: &egui::Context, ui: &mut egui::Ui) {
         if ui.button("Compile").clicked() {
             self.file_compile();
         }

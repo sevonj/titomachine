@@ -52,19 +52,19 @@ impl TitoApp {
     }
 
     pub fn file_compile(&mut self) {
-        self.tx_ctrl.send(CtrlMSG::ClearMem);
+        let _ = self.tx_ctrl.send(CtrlMSG::ClearMem);
 
         // Compile Default OS
         if self.editorsettings.compile_default_os {
             if let Ok(prog) = self.editor.compile_default_os() {
-                self.tx_ctrl.send(CtrlMSG::LoadProg(prog));
+                let _ = self.tx_ctrl.send(CtrlMSG::LoadProg(prog));
             } else {
                 panic!("Failed to compile default OS!")
             }
         }
         // Compile the actual program
         if let Ok(prog) = self.editor.compile() {
-            self.tx_ctrl.send(CtrlMSG::LoadProg(prog));
+            let _ = self.tx_ctrl.send(CtrlMSG::LoadProg(prog));
             self.filestatus.on_compile(Ok(()));
             self.guimode = GuiMode::Emulator;
         } else {

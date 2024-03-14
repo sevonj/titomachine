@@ -97,6 +97,7 @@ impl CPU {
     }
 
     /// Exception handler for device interrupts
+    #[allow(dead_code)] // Interrupts are are TODO
     pub(crate) fn exception_irq(&mut self, bus: &mut Bus) {
         // Interrupts disabled.
         if self.cu_sr & SR_D != 0 {

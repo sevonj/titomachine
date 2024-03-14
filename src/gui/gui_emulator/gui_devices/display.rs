@@ -27,7 +27,7 @@ impl GUIDevDisplay {
     }
 }
 impl GUIDevice for GUIDevDisplay {
-    fn gui_panel(&mut self, ctx: &Context, ui: &mut Ui) {
+    fn gui_panel(&mut self, _: &Context, ui: &mut Ui) {
         {
             // Determine image size based on available w / h, whichever fits a smaller image
             let target_h = clamp(ui.available_height(), 120., 400.); // size limited for performance

@@ -109,7 +109,7 @@ impl TitoApp {
                     self.emulator_panel(ctx, ui);
                 } else {
                     if self.emu_running {
-                        self.tx_ctrl.send(CtrlMSG::PlaybackStop);
+                        let _ = self.tx_ctrl.send(CtrlMSG::PlaybackStop);
                         self.emu_running = false;
                     }
                     self.editor_panel(ctx, ui);
@@ -214,7 +214,7 @@ impl TitoApp {
                 }
             });
             if ui.checkbox(&mut self.emu_turbo, "Turbo Mode").changed() {
-                self.tx_ctrl.send(CtrlMSG::SetTurbo(self.emu_turbo));
+                let _ = self.tx_ctrl.send(CtrlMSG::SetTurbo(self.emu_turbo));
             };
 
             ui.menu_button("Language", |ui| {
@@ -280,23 +280,23 @@ impl TitoApp {
             if ui.input_mut(|i| i.consume_shortcut(&SHORTCUT_TOGGLEPOWER)) {
                 match self.emu_running {
                     true => {
-                        self.tx_ctrl.send(CtrlMSG::PlaybackStop);
+                        let _ = self.tx_ctrl.send(CtrlMSG::PlaybackStop);
                     }
                     false => {
-                        self.tx_ctrl.send(CtrlMSG::PlaybackStart);
+                        let _ = self.tx_ctrl.send(CtrlMSG::PlaybackStart);
                     }
                 }
             }
             if ui.input_mut(|i| i.consume_shortcut(&SHORTCUT_STOP)) {
-                self.tx_ctrl.send(CtrlMSG::PlaybackStop);
+                let _ = self.tx_ctrl.send(CtrlMSG::PlaybackStop);
             }
             if self.emu_running {
                 if ui.input_mut(|i| i.consume_shortcut(&SHORTCUT_PLAY)) {
-                    self.tx_ctrl
+                    let _ = self.tx_ctrl
                         .send(CtrlMSG::PlaybackPlayPause(!self.emu_playing));
                 }
                 if ui.input_mut(|i| i.consume_shortcut(&SHORTCUT_TICK)) && !self.emu_playing {
-                    self.tx_ctrl.send(CtrlMSG::PlaybackTick);
+                    let _ = self.tx_ctrl.send(CtrlMSG::PlaybackTick);
                     ctx.request_repaint_after(std::time::Duration::from_secs(1 / 60))
                 }
             }
