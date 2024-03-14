@@ -10,6 +10,11 @@ impl CPU {
     pub fn debug_get_gprs(&mut self) -> [i32; 8] {
         self.gpr
     }
+
+    #[allow(dead_code)] // used by tests
+    pub fn debug_get_gpr(&mut self, idx: usize) -> i32 {
+        self.gpr[idx]
+    }
     pub fn debug_get_cu(&mut self) -> [i32; 4] {
         [self.cu_pc, self.cu_ir, self.cu_tr, self.cu_sr]
     }
@@ -23,6 +28,10 @@ impl CPU {
     }
     pub fn debug_set_gpr(&mut self, idx: usize, value: i32) {
         self.gpr[idx] = value;
+    }
+    #[allow(dead_code)] // used by tests
+    pub fn debug_get_ivt(&mut self, idx: usize) -> i32 {
+        self.ivt[idx]
     }
     pub fn debug_set_ivt(&mut self, idx: usize, value: i32) {
         self.ivt[idx] = value
