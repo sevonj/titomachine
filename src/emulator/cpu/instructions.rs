@@ -46,13 +46,13 @@ const HLT: u16 = 0x71;
 const HCF: u16 = 0x72;
 
 impl CPU {
-    pub(crate) fn exec_instruction(&mut self, bus: &mut Bus) { //-> Result<(), ()> {
+    pub(crate) fn exec_instruction(&mut self, bus: &mut Bus) {
         let opcode = (self.cu_ir >> 24) as u16;
         let rj = (self.cu_ir >> 21) & 0x7;
         let mode = (self.cu_ir >> 19) & 0x3;
         let ri = (self.cu_ir >> 16) & 0x7;
-        let addr = (self.cu_ir & 0xffff) as i16 as i32;
         // these casts catch the sign
+        let addr = (self.cu_ir & 0xffff) as i16 as i32;
 
         match self.fetch_second_operand(bus, mode, ri, addr) {
             Ok(val) => self.cu_tr = val,
@@ -277,7 +277,6 @@ impl CPU {
                 self.halt = true;
                 self.burn = true;
                 println!("Execution has ended.");
-                self.debug_print_regs();
             }
             _ => self.exception_trap_u(bus),
         }
@@ -290,10 +289,16 @@ impl CPU {
         ri: i32,
         addr: i32,
     ) -> Result<i32, ()> {
+
+        // Value of second register.
         let ri_val = match ri {
+            // R0, zero regardless
             0 => 0,
+            // Not R0, use value of the register.
             _ => self.gpr[ri as usize],
         };
+
+        // Immediate = address + ri_val
         let immediate = match addr.checked_add(ri_val) {
             Some(i) => i,
             None => {
@@ -302,9 +307,13 @@ impl CPU {
             }
         };
 
+        // Return value through relevant number of memory fetches.
         match mode {
+            // No fetch
             0 => Ok(immediate),
+            // 1 fetch
             1 => Ok(self.memread(bus, immediate)?),
+            // 2 fetches
             2 => {
                 let ptr = self.memread(bus, immediate)?;
                 Ok(self.memread(bus, ptr)?)

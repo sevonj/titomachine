@@ -19,16 +19,6 @@ fn test_cpu_mmio() {
     cpu.tick(&mut bus);
     let expected = 55;
 
-    println!(
-        "Memory:\n{:08x}\n{:08x}\n{:08x}\n..\n{:08x}\nCPU:\n{:08x}\n{:08x}",
-        bus.read(0).unwrap(),
-        bus.read(1).unwrap(),
-        bus.read(2).unwrap(),
-        bus.read(0x200).unwrap(),
-        cpu.debug_get_gpr(1),
-        cpu.debug_get_gpr(2),
-    );
-
     assert_eq!(cpu.debug_get_gpr(2), expected);
 }
 

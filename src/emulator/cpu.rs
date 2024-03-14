@@ -5,7 +5,7 @@ mod instructions;
 mod mmu;
 mod svc;
 
-////                                    GELOZUMI SPD
+//                                      GELOZUMI SPD
 //pub const SR_EXCEPTION_MASK: i32 = 0b_00011111_10000000_00000000_00000000;
 pub const SR_G: i32 = 1 << 31; // Comp Greater
 pub const SR_E: i32 = 1 << 30; // Comp Equal
@@ -35,8 +35,8 @@ pub const SP: usize = 6;
 pub const FP: usize = 7;
 
 pub struct CPU {
-    pub halt: bool,     //
-    pub burn: bool,     // CPU is disabled permanently.
+    pub halt: bool,     /// Halt
+    pub burn: bool,     /// Catch fire: CPU is disabled permanently.
 
     cu_pc: i32,     // Program Counter
     cu_ir: i32,     // Instruction Register
@@ -67,7 +67,18 @@ impl CPU {
             ivt: [0; 16],
         }
     }
+    pub fn init(&mut self) {
+        self.cu_pc = 0;
+        self.cu_ir = 0;
+        self.cu_tr = 0;
+        self.cu_sr = 0;
+        self.halt = false;
+        self.burn = false;
+        self.mmu_base = 0;
+        self.mmu_limit = u32::MAX;
+    }
 
+    /// Advance CPU state by one instruction
     pub fn tick(&mut self, bus: &mut Bus) {
         if let Ok(val) = self.memread(bus, self.cu_pc) {
             self.cu_ir = val;
@@ -78,7 +89,7 @@ impl CPU {
         }
     }
 
-    /// Exception handlers for traps
+    /// Exception traps
     fn exception_trap_o(&mut self, bus: &mut Bus) {
         self.cu_sr |= SR_O;
         self.enter_interrupt_handler(bus, 0);
@@ -96,7 +107,7 @@ impl CPU {
         self.enter_interrupt_handler(bus, 3);
     }
 
-    /// Exception handler for device interrupts
+    /// Interrupt trap
     #[allow(dead_code)] // Interrupts are are TODO
     pub(crate) fn exception_irq(&mut self, bus: &mut Bus) {
         // Interrupts disabled.
@@ -136,18 +147,18 @@ impl CPU {
         }
     }
 
-    // Common bookkeeping for interrupt handlers
+    /// Store relevant state and jump to interrupt handler.
     fn enter_interrupt_handler(&mut self, bus: &mut Bus, handler_idx: i32) {
         // Push SR, PC, FP
-        // We will ignore errors, because this is the interrupt handler itself.
+        // We will ignore errors, because this is part of interrupt handling itself.
         let _ = self.memwrite(bus, self.gpr[SP] + 1, self.cu_sr);
         let _ = self.memwrite(bus, self.gpr[SP] + 2, self.cu_pc);
         let _ = self.memwrite(bus, self.gpr[SP] + 3, self.gpr[FP]);
         self.gpr[SP] += 3;
-        // State flags
+        // Set state flags
         self.cu_sr |= SR_P;
         self.cu_sr |= SR_D;
-        // Jump to handler
+        // Jump to handler address as defined by Interrupt Vector Table.
         self.cu_pc = self.ivt[handler_idx as usize];
     }
 }
