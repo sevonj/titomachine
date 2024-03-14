@@ -158,9 +158,6 @@ impl Emu {
     fn slow_checks(&mut self) {
         self.perfmon.update();
         self.t_last_cpu_tick = Some(Instant::now());
-        if self.cpu.burn {
-            self.stop();
-        }
     }
 
     fn timekeeper(&mut self) {

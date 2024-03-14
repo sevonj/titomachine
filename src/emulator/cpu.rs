@@ -93,7 +93,13 @@ impl CPU {
     }
     fn exception_trap_m(&mut self, bus: &mut Bus) {
         self.cu_sr |= SR_M;
-        self.enter_interrupt_handler(bus, 3);
+        // Interrupt handling is unfinished. Just HCF instead.
+        self.halt = true;
+        self.burn = true;
+        println!("Execution has ended.");
+        self.debug_print_regs();
+
+        // self.enter_interrupt_handler(bus, 3);
     }
 
     /// Exception handler for device interrupts
