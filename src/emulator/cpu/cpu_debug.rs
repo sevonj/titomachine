@@ -4,7 +4,7 @@
  * emu debug to pass values to gui.
  */
 
-use super::{CPU, FP, SP};
+use super::CPU;
 
 impl CPU {
     pub fn debug_get_gprs(&mut self) -> [i32; 8] {

@@ -35,6 +35,8 @@ const SAMPLE_RATE: u32 = 22050;
 /// Device struct.
 ///
 pub(crate) struct DevPSG {
+    #[allow(dead_code)] // Output stream is never "used", but we have to keep it around in order to
+    // get sound.
     stream: Option<OutputStream>,
     sink0: Sink,
     sink1: Sink,
@@ -93,7 +95,7 @@ impl Default for DevPSG {
         sink3.append(AudioSource::new(ch3.clone()));
 
         DevPSG {
-            stream: stream,
+            stream,
             sink0,
             sink1,
             sink2,
