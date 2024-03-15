@@ -101,9 +101,9 @@ HCF ;
 
 ; SVC 15 =DATE
 __IVT_ENTRY_15__    nop ;
-JUMP FINISH             ;
+JUMP finish             ;
 
 HCF ;
 
-FINISH LOAD R2, =55 ;
+finish LOAD R2, =55 ;
 HCF                 ;

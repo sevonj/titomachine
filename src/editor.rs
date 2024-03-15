@@ -1,4 +1,5 @@
 pub(crate) mod compiler;
+
 use compiler::Compiler;
 use std::{
     env::set_current_dir,
@@ -14,6 +15,7 @@ const DEFAULT_PROGRAM: &str = include_str!("../programs/default/default_program.
 pub(crate) struct EditorSettings {
     pub(crate) compile_default_os: bool,
 }
+
 impl Default for EditorSettings {
     fn default() -> Self {
         Self {
@@ -54,11 +56,11 @@ impl Editor {
         }
     }
 
-    pub fn compile(&mut self) -> Result<String, ()> {
+    pub fn compile(&mut self) -> Result<String, String> {
         self.compiler.compile(self.source_code.clone())
     }
 
-    pub fn compile_default_os(&mut self) -> Result<String, ()> {
+    pub fn compile_default_os(&mut self) -> Result<String, String> {
         self.compiler.compile(DEFAULT_OS.into())
     }
 
@@ -104,13 +106,13 @@ mod test {
 
     /// Compile different values in all bases
     #[test]
-    fn test_compiler_variables(){
+    fn test_compiler_variables() {
         let vec = compile(include_str!("../programs/tests/test_compiler_variables.k91").into());
-        for i in 0..=3{
+        for i in 0..=3 {
             let expected = 52;
             assert_eq!(vec[i], expected)
         }
-        for i in 4..=11{
+        for i in 4..=11 {
             let expected = -1;
             assert_eq!(vec[i], expected)
         }
@@ -121,6 +123,7 @@ mod test {
         compile_disass_compile(include_str!("../programs/tests/test_compiler_opcodes.k91").into());
         compile_disass_compile(include_str!("../programs/tests/test_compiler_addressing.k91").into());
     }
+
     /// This function tests the compiler and the disassmbler against each other.
     /// Steps:
     /// 1. Compile test program
@@ -161,9 +164,7 @@ mod test {
         let mut compiler = Compiler::default();
         let compiled = match compiler.compile(source) {
             Ok(res) => res,
-            Err(_) => {
-                panic!("Compiler failed:\n{}", compiler.output);
-            }
+            Err(e) => panic!("{}", e)
         };
         let mut vec: Vec<i32> = Vec::new();
         let mut lines = compiled.lines();
@@ -183,6 +184,7 @@ mod test {
         }
         vec
     }
+
     fn print_source(source: String) {
         let mut i = 1;
         source.lines().for_each(|line| {
@@ -190,6 +192,7 @@ mod test {
             i += 1;
         });
     }
+
     fn print_instruction(ins: i32) {
         let opcode = (ins >> 24) as u16;
         let rj = (ins >> 21) & 0x7;

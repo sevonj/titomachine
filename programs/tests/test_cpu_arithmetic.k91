@@ -10,37 +10,37 @@
 ; 2+2=4
 load r1, =2;
 add r1, =2;
-out r1, =crt;
+out r1, =CRT;
 
 ; 3+4=7
 load r2, =3;
 add r2, r1;
-out r2, =crt;
+out r2, =CRT;
 
 ; 7-2=5
 sub r2, =2;
-out r2, =crt;
+out r2, =CRT;
 
 ; 5-4=1
 sub r2, r1;
-out r2, =crt;
+out r2, =CRT;
 
 ; 1*3=3
 mul r2, =3;
-out r2, =crt;
+out r2, =CRT;
 
 ; 3*-2=-6
 load r3, =-2;
 mul r2, r3;
-out r2, =crt;
+out r2, =CRT;
 
 ; -6/2=-3
 div r2, =2;
-out r2, =crt;
+out r2, =CRT;
 
 ; -3/-3=1
 div r2, =-3;
-out r2, =crt;
+out r2, =CRT;
 
 ; 155%100=55
 load r2, =155
