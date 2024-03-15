@@ -167,7 +167,7 @@ impl Compiler {
         }
 
         // Get variables
-        match parse_data_statements(&mut statements, org) {
+        match parse_data_statements(&mut statements) {
             Ok((seg, symbols)) => {
                 data_segment = seg;
                 data_symbols = symbols;
@@ -352,7 +352,7 @@ fn parse_const_statements(statements: &Vec<Statement>) -> Result<HashMap<String,
 
 /// Creates data segment and data symbols
 fn parse_data_statements(
-    statements: &mut Vec<Statement>, org: Option<usize>)
+    statements: &mut Vec<Statement>)
     -> Result<(Vec<i32>, HashMap<String, usize>), String>
 {
     let mut data_segment = Vec::new();
@@ -363,7 +363,6 @@ fn parse_data_statements(
             continue;
         }
 
-        let org = org.unwrap_or(0);
         let keyword_string = statement.words[0].to_uppercase();
         let keyword = keyword_string.as_str();
         let line = statement.line;
@@ -385,13 +384,13 @@ fn parse_data_statements(
         match keyword {
             // Data Constant - store a value
             "DC" => {
-                // Push data
-                data_segment.push(value);
-
                 // Add symbol, if labeled
                 if let Some(label) = &statement.label {
-                    data_symbols.insert(label.clone(), org + data_segment.len());
+                    data_symbols.insert(label.clone(), data_segment.len());
                 }
+
+                // Push data
+                data_segment.push(value);
             }
             // Data Segment - allocate space
             "DS" => {
@@ -402,14 +401,14 @@ fn parse_data_statements(
                     return Err(format!("You tried to allocate a zero addresses! '{}' on line {}", keyword, line));
                 }
 
+                // Add symbol, if labeled
+                if let Some(label) = &statement.label {
+                    data_symbols.insert(label.clone(), data_segment.len());
+                }
+
                 // Push data
                 for _ in 0..value {
                     data_segment.push(0);
-                }
-
-                // Add symbol, if labeled
-                if let Some(label) = &statement.label {
-                    data_symbols.insert(label.clone(), org + data_segment.len());
                 }
             }
             _ => return Err(format!("Error: '{}' on line {} is not a variable keyword. This is compiler's fault, not yours. Please file an issue.", keyword, line)),
@@ -421,20 +420,30 @@ fn parse_data_statements(
 /// Before actually parsing the code, we need to know possible code labels the code might reference.
 fn get_code_labels(statements: &Vec<Statement>) -> HashMap<String, usize> {
     let mut code_symbols = HashMap::new();
+    let mut code_offset = 0;
+    for statement in statements {
+        if statement.statement_type != Keyword::Code {
+            continue;
+        }
+        // Add symbol, if labeled
+        if let Some(label) = &statement.label {
+            code_symbols.insert(label.clone(), code_offset);
+        }
+        code_offset += 1;
+    }
+    code_symbols
+}
 
+/// Returns the size of code segments.
+fn get_code_size(statements: &Vec<Statement>) -> usize {
     let mut code_offset = 0;
     for statement in statements {
         if statement.statement_type != Keyword::Code {
             continue;
         }
         code_offset += 1;
-
-        // Add symbol, if labeled
-        if let Some(label) = &statement.label {
-            code_symbols.insert(label.clone(), code_offset);
-        }
     }
-    code_symbols
+    code_offset
 }
 
 /// Creates code segment and code symbols
@@ -447,6 +456,7 @@ fn parse_code_statements(
 ) -> Result<Vec<i32>, String>
 {
     let mut code_segment = Vec::new();
+    let code_size = get_code_size(statements);
 
     for statement in statements {
         if statement.statement_type != Keyword::Code {
@@ -513,7 +523,7 @@ fn parse_code_statements(
             }
             "ADD" => {
                 assert_op_count(words.len(), 2, line)?;
-                opcode = Instruction::OUT as i32;
+                opcode = Instruction::ADD as i32;
             }
             "SUB" => {
                 assert_op_count(words.len(), 2, line)?;
@@ -732,7 +742,7 @@ fn parse_code_statements(
             }
             // Address (is variable)
             else if let Some(offset) = data_symbols.get(&parsed.addr) {
-                addr = (org + offset).to_i32().unwrap();
+                addr = (org + code_size + offset).to_i32().unwrap();
             }
             // Address (is code)
             else if let Some(offset) = code_symbols.get(&parsed.addr) {
@@ -766,9 +776,6 @@ fn parse_code_statements(
 
         code_segment.push(value);
     }
-    if code_segment.is_empty() {
-        return Err("No code found!".into());
-    }
     Ok(code_segment)
 }
 
@@ -790,9 +797,9 @@ fn build_b91(
 {
     let org = org.unwrap_or(0);
     let code_size = code_segment.len();
-    let fp_start = org + code_size - 1;
+    let fp_start: i32 = (org + code_size) as i32 - 1; // fp_start can be -1 if code_size == 0
     let data_start = code_size + org;
-    let sp_start = fp_start + data_segment.len();
+    let sp_start = fp_start + data_segment.len() as i32;
 
     let mut return_str = "___b91___\n".to_string();
 
