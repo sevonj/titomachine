@@ -40,7 +40,7 @@ impl TitoApp {
                         let rowcount = (ui.available_height() as i32) / rowheight + 1;
                         ui.add_enabled(
                             false,
-                            egui::TextEdit::multiline(&mut self.editor.compiler.output)
+                            egui::TextEdit::multiline(&mut self.editor.compiler_output)
                                 .font(FONT_COMPILER) // for cursor height
                                 //.code_editor()
                                 .desired_rows(rowcount as usize)

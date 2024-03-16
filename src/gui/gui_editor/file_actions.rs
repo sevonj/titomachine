@@ -56,19 +56,27 @@ impl TitoApp {
 
         // Compile Default OS
         if self.editorsettings.compile_default_os {
-            if let Ok(prog) = self.editor.compile_default_os() {
-                let _ = self.tx_ctrl.send(CtrlMSG::LoadProg(prog));
-            } else {
-                panic!("Failed to compile default OS!")
+            match self.editor.compile_default_os() {
+                Ok(prog) => {
+                    let _ = self.tx_ctrl.send(CtrlMSG::LoadProg(prog));
+                }
+                Err(e) => {
+                    println!("Compile failed: {}", e);
+                    panic!("Failed to compile default OS!")
+                }
             }
         }
         // Compile the actual program
-        if let Ok(prog) = self.editor.compile() {
-            let _ = self.tx_ctrl.send(CtrlMSG::LoadProg(prog));
-            self.filestatus.on_compile(Ok(()));
-            self.guimode = GuiMode::Emulator;
-        } else {
-            self.filestatus.on_compile(Err(()))
+        match self.editor.compile() {
+            Ok(prog) => {
+                let _ = self.tx_ctrl.send(CtrlMSG::LoadProg(prog));
+                self.filestatus.on_compile(Ok(()));
+                self.guimode = GuiMode::Emulator;
+            }
+            Err(e) => {
+                println!("Compile failed: {}", e);
+                self.filestatus.on_compile(Err(()))
+            }
         }
     }
 }

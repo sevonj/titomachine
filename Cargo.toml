@@ -5,6 +5,8 @@ edition = "2021"
 
 
 [dependencies]
+# TTK-91 ToolKit
+ttktk = { git = "https://github.com/sevonj/ttktk.git", tag = "v0.2.0" }
 num-traits = "0.2"
 num-derive = "0.3"
 egui = { version = "0.22", default-features = false }

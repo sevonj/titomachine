@@ -26,7 +26,7 @@ __IVT_ENTRY_11__        hcf ;
 
 ; SVC READ
 __IVT_ENTRY_12__        pushr   sp          ;
-                        in      r1, =kbd    ;
+                        in      r1, =KBD    ;
                         load    r2, @-9(sp) ;
                         store   r1, @r2     ;
                         popr    sp          ;
@@ -35,13 +35,13 @@ __IVT_ENTRY_12__        pushr   sp          ;
 ; SVC WRITE
 __IVT_ENTRY_13__        pushr   sp          ;
                         load    r1, -9(sp)  ;
-                        out     r1, =crt    ;
+                        out     r1, =CRT    ;
                         popr    sp          ;
                         iexit   sp, =1;     ;
 
 ; SVC TIME
 __IVT_ENTRY_14__        pushr   sp          ;
-                        in      r1, =rtc    ;
+                        in      r1, =RTC    ;
                         load    r2, r1      ; Sec
                         mod     r2, =60     ;
                         store   r2, @-9(sp) ;
@@ -60,7 +60,7 @@ __IVT_ENTRY_14__        pushr   sp          ;
 ; SVC DATE
 ;       This is long. Maybe should implement this in RTC device?
 __IVT_ENTRY_15__    pushr   sp          ;
-            in      r1, =rtc    ; Get Unix time 
+            in      r1, =RTC    ; Get Unix time
             load    r2, r1      ; 
             load    r3, =3600   ; R3 will contain number of seconds in a day.
             mul     r3, =24     ; 
@@ -153,7 +153,7 @@ yr_done    store r2, @-12(sp)           ; Store Year
 
             add     r2,     =1          ; December
 
-    mo_done out     r2,     =crt        ; print month
+    mo_done out     r2,     =CRT        ; print month
             store   r2, @-11(sp)        ; Store month
             add     r3,     =1          ; Calendar days don't start from zero.
             store   r3, @-10(sp)        ; Store day

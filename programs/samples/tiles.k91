@@ -124,7 +124,7 @@ Tile93 dc 202143864     ;
 
 ; ----- Init ---------------------------------------
 
-                load r1,  @memAttemptNo ;
+entry           load r1,  @memAttemptNo ;
                 store r1, scrClearColor ; Clear color randomize.
 
                 call sp, ScrClear
@@ -154,7 +154,7 @@ tileInitLoop    load r4, r5             ; tile_idx
 
                 push sp, r5             ; param -3: tile_idx                    ; Index of output tile
                 push sp, =Tile0(r4)     ; param -2: unprocessed_tile_addr       ;
-                call sp, StoreTile      ; look at StoreTile for an explanation
+                call sp, storeTile      ; look at storeTile for an explanation
 
                 add     r5, =1          ;
                 comp    r5, =tileCnt    ;
@@ -296,7 +296,7 @@ fillLoopEnd     add r4, =1              ; X++
 
         
 ; ---------- the end ------------------ ;
-        svc     sp, =halt               ;
+        svc     sp, =HALT               ;
 
 
 ;---------------- got some of them aliohjelmas for you
