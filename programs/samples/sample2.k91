@@ -14,12 +14,12 @@ Sum         DC 0    ; Result will be stored here.
 
     LOOP    comp  r1, =ArraySize    ; iterator is less/equal/greater than =ArraySize
             jnles END               ; If above does NOT return "less", we have looped ArraySize times.
-            in    r2, =kbd          ; Input a value to R2
+            in    r2, =KBD          ; Input a value to R2
             store r2, Array(r1)     ; Store entry to Array start address + R1
             add   r3, r2            ; Add entry to the sum.
             add   r1, =1            ; increment iterator
             jump  LOOP              ;
 
 END store r3, Sum           ; Store the sum to Sum
-    out r3, =crt            ; Output the value while at it
-    svc sp, =halt           ; Halt
+    out r3, =CRT            ; Output the value while at it
+    svc sp, =HALT           ; Halt

@@ -1,12 +1,10 @@
-pub(crate) mod compiler;
-
-use compiler::Compiler;
 use std::{
     env::set_current_dir,
     fs::{self, File},
     io::Write,
     path::PathBuf,
 };
+use libttktk::compiler::compile;
 
 const DEFAULT_OS: &str = include_str!("../programs/default/default_os.k91");
 const DEFAULT_PROGRAM: &str = include_str!("../programs/default/default_program.k91");
@@ -27,9 +25,9 @@ impl Default for EditorSettings {
 pub(crate) struct Editor {
     pub(crate) source_path: Option<String>,
     pub(crate) source_code: String,
+    pub(crate) compiler_output: String,
     pub(crate) line_no: String,
     pub(crate) linecnt: i32,
-    pub(crate) compiler: Compiler,
 }
 
 impl Default for Editor {
@@ -37,9 +35,9 @@ impl Default for Editor {
         let mut ed = Editor {
             source_path: None,
             source_code: DEFAULT_PROGRAM.into(),
+            compiler_output: String::new(),
             line_no: "".into(),
             linecnt: 1,
-            compiler: Compiler::default(),
         };
         ed.update_linecount();
         ed
@@ -57,11 +55,19 @@ impl Editor {
     }
 
     pub fn compile(&mut self) -> Result<String, String> {
-        self.compiler.compile(self.source_code.clone())
+        let result = compile(self.source_code.clone());
+        if let Err(e) = &result {
+            self.compiler_output = e.clone()
+        }
+        result
     }
 
     pub fn compile_default_os(&mut self) -> Result<String, String> {
-        self.compiler.compile(DEFAULT_OS.into())
+        let result = compile(DEFAULT_OS.into());
+        if let Err(e) = &result {
+            self.compiler_output = e.clone()
+        }
+        result
     }
 
     pub fn open_file(&mut self, pathbuf: Option<PathBuf>) {
@@ -101,13 +107,13 @@ impl Editor {
 
 #[cfg(test)]
 mod test {
-    use super::compiler::Compiler;
+    use libttktk::compiler::compile;
     use crate::gui::gui_emulator::disassembler;
 
     /// Compile different values in all bases
     #[test]
     fn test_compiler_variables() {
-        let vec = compile(include_str!("../programs/tests/test_compiler_variables.k91").into());
+        let vec = editor_compile(include_str!("../programs/tests/test_compiler_variables.k91").into());
         for i in 0..=3 {
             let expected = 52;
             assert_eq!(vec[i], expected)
@@ -134,7 +140,7 @@ mod test {
         println!("Source code:");
         print_source(source.clone());
 
-        let vec1 = compile(source);
+        let vec1 = editor_compile(source);
         let mut disassembled = String::new();
 
         for i in 0..vec1.len() {
@@ -145,7 +151,7 @@ mod test {
         println!("Disassembled code:");
         print_source(disassembled.clone());
 
-        let vec2 = compile(disassembled);
+        let vec2 = editor_compile(disassembled);
         println!("Comparing binaries compiled from source and disassembly:\nSource    Disassembly");
         for i in 0..vec1.len() {
             print!("{:08x}, {:08x}", vec1[i], vec2[i]);
@@ -160,9 +166,8 @@ mod test {
     }
 
     /// Compile and return result as a Vec<i32>
-    fn compile(source: String) -> Vec<i32> {
-        let mut compiler = Compiler::default();
-        let compiled = match compiler.compile(source) {
+    fn editor_compile(source: String) -> Vec<i32> {
+        let compiled = match compile(source) {
             Ok(res) => res,
             Err(e) => panic!("{}", e)
         };

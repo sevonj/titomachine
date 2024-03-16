@@ -1,4 +1,4 @@
-use super::super::editor::compiler::Compiler;
+use libttktk::compiler::compile;
 use super::{cpu::CPU, devices::Bus, loader};
 
 /// These tests depend on compiler and loader.
@@ -24,7 +24,7 @@ fn test_cpu_mmio() {
 
 #[test]
 fn test_cpu_arithmetic() {
-    let prog = compile(include_str!("../../programs/tests/test_cpu_arithmetic.k91").into());
+    let prog = compile(include_str!("../../programs/tests/test_cpu_arithmetic.k91").into()).unwrap();
     let mut cpu = CPU::new();
     let mut bus = Bus::new();
     loader::load_program(&mut bus, &mut cpu, &prog);
@@ -37,7 +37,7 @@ fn test_cpu_arithmetic() {
 
 #[test]
 fn test_cpu_logical() {
-    let prog = compile(include_str!("../../programs/tests/test_cpu_logical.k91").into());
+    let prog = compile(include_str!("../../programs/tests/test_cpu_logical.k91").into()).unwrap();
     let mut cpu = CPU::new();
     let mut bus = Bus::new();
     loader::load_program(&mut bus, &mut cpu, &prog);
@@ -51,7 +51,7 @@ fn test_cpu_logical() {
 /// Exhaustive test of all jumps and conditions
 #[test]
 fn test_cpu_jumps() {
-    let prog = compile(include_str!("../../programs/tests/test_cpu_jumps.k91").into());
+    let prog = compile(include_str!("../../programs/tests/test_cpu_jumps.k91").into()).unwrap();
     let mut cpu = CPU::new();
     let mut bus = Bus::new();
     loader::load_program(&mut bus, &mut cpu, &prog);
@@ -65,7 +65,7 @@ fn test_cpu_jumps() {
 /// Execute a simple subroutine.
 #[test]
 fn test_cpu_subroutines() {
-    let prog = compile(include_str!("../../programs/tests/test_cpu_subroutines.k91").into());
+    let prog = compile(include_str!("../../programs/tests/test_cpu_subroutines.k91").into()).unwrap();
     let mut cpu = CPU::new();
     let mut bus = Bus::new();
     loader::load_program(&mut bus, &mut cpu, &prog);
@@ -79,7 +79,7 @@ fn test_cpu_subroutines() {
 /// Stack instructions
 #[test]
 fn test_cpu_stack() {
-    let prog = compile(include_str!("../../programs/tests/test_cpu_stack.k91").into());
+    let prog = compile(include_str!("../../programs/tests/test_cpu_stack.k91").into()).unwrap();
     let mut cpu = CPU::new();
     let mut bus = Bus::new();
     loader::load_program(&mut bus, &mut cpu, &prog);
@@ -125,7 +125,7 @@ fn test_cpu_halt() {
 /// Tests most exception types.
 #[test]
 fn test_cpu_exceptions() {
-    let prog = compile(include_str!("../../programs/tests/test_cpu_exceptions.k91").into());
+    let prog = compile(include_str!("../../programs/tests/test_cpu_exceptions.k91").into()).unwrap();
     let mut cpu = CPU::new();
     let mut bus = Bus::new();
     loader::load_program(&mut bus, &mut cpu, &prog);
@@ -139,16 +139,11 @@ fn test_cpu_exceptions() {
 /// Verify that IVT entries are loaded correctly
 #[test]
 fn test_loader_ivt() {
-    let prog = compile(include_str!("../../programs/tests/test_loader_ivt.k91").into());
+    let prog = compile(include_str!("../../programs/tests/test_loader_ivt.k91").into()).unwrap();
     let mut cpu = CPU::new();
     let mut bus = Bus::new();
     loader::load_program(&mut bus, &mut cpu, &prog);
     for i in 0..=15 {
         assert_eq!(cpu.debug_get_ivt(i), 0x1000 + i as i32)
     }
-}
-
-fn compile(source: String) -> String {
-    let mut compiler = Compiler::default();
-    compiler.compile(source).unwrap()
 }
