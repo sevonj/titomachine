@@ -1,15 +1,17 @@
 use crate::{emulator::emu_debug::CtrlMSG, TitoApp};
 use serde;
+
 pub mod gui_editor;
 pub mod gui_emulator;
 
-use egui::{Align, Button, Color32, DragValue, Layout, Modifiers, RichText};
+use egui::{Align, Button, Color32, DragValue, Layout, Modifiers, OpenUrl, RichText};
 
 #[derive(PartialEq)]
 pub enum GuiMode {
     Editor,
     Emulator,
 }
+
 #[derive(PartialEq, Default, serde::Deserialize, serde::Serialize)]
 pub enum Base {
     Bin,
@@ -17,6 +19,10 @@ pub enum Base {
     Dec,
     Hex,
 }
+
+const URL_GITHUB: &str = "https://github.com/sevonj/titomachine/";
+const URL_GUIDE: &str = "https://sevonj.github.io/titouserdoc/";
+const URL_OLDREF: &str = "https://www.cs.helsinki.fi/group/titokone/ttk91_ref_fi.html";
 
 pub const SHORTCUT_NEW: egui::KeyboardShortcut =
     egui::KeyboardShortcut::new(Modifiers::COMMAND, egui::Key::N);
@@ -62,6 +68,12 @@ impl TitoApp {
                 .exact_height(32.0)
                 .show(ctx, |ui| {
                     ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
+                        ui.add(
+                            egui::Image::new(egui::include_image!("assets/32bit.png"))
+                                .fit_to_original_size(0.75)
+                                .tint(Color32::DARK_GRAY)
+                        );
+                        ui.separator();
                         // File, Options, Help
                         self.gui_menubar_entries(ctx, ui);
                         ui.separator();
@@ -228,15 +240,22 @@ impl TitoApp {
 
         ui.menu_button("Help", |ui| {
             if ui.button("↗User Guide").clicked() {
-                ui.output_mut(|o| o.open_url("https://sevonj.github.io/titouserdoc/"));
+                ui.output_mut(|o| o.open_url = Some(OpenUrl {
+                    url: URL_GUIDE.into(),
+                    new_tab: false,
+                }));
             }
             if ui.button("↗Old TTK-91 Reference").clicked() {
-                ui.output_mut(|o| {
-                    o.open_url("https://www.cs.helsinki.fi/group/titokone/ttk91_ref_fi.html")
-                });
+                ui.output_mut(|o| o.open_url = Some(OpenUrl {
+                    url: URL_OLDREF.into(),
+                    new_tab: false,
+                }));
             }
             if ui.button("↗Github").clicked() {
-                ui.output_mut(|o| o.open_url("https://github.com/sevonj/titomachine/"));
+                ui.output_mut(|o| o.open_url = Some(OpenUrl {
+                    url: URL_GITHUB.into(),
+                    new_tab: false,
+                }));
             }
         });
     }
