@@ -20,10 +20,15 @@
 ///
 #[macro_use]
 extern crate num_derive;
+
 use std::{env::current_dir, path::PathBuf, sync::mpsc, thread};
+use egui::{Vec2, ViewportBuilder};
+use egui_extras::install_image_loaders;
+
 pub mod editor;
 pub mod emulator;
 pub mod gui;
+
 use editor::{Editor, EditorSettings};
 
 use emulator::emu_debug::{CtrlMSG, DebugRegs, ReplyMSG};
@@ -71,13 +76,17 @@ pub struct TitoApp {
     #[serde(skip)]
     emu_regs: DebugRegs,
     #[serde(skip)]
-    gui_memview: Vec<i32>, // Cached partial memory for gui
+    gui_memview: Vec<i32>,
+    // Cached partial memory for gui
     #[serde(skip)]
-    gui_memview_off: u32, // Start offset
+    gui_memview_off: u32,
+    // Start offset
     #[serde(skip)]
-    gui_memview_len: u32, // Size of cache
+    gui_memview_len: u32,
+    // Size of cache
     #[serde(skip)]
-    emu_mem_len: usize, // Size of cache
+    emu_mem_len: usize,
+    // Size of cache
     #[serde(skip)]
     gui_memview_scroll: f32,
 
@@ -226,6 +235,8 @@ impl eframe::App for TitoApp {
     }
 
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        install_image_loaders(ctx);
+
         // 60fps gui update when emulator is running
         self.update_devices();
 
@@ -240,33 +251,24 @@ impl eframe::App for TitoApp {
 
 fn main() {
     let native_options = eframe::NativeOptions {
-        always_on_top: false,
-        maximized: false,
-        decorated: true,
-        fullscreen: false,
-        drag_and_drop_support: false,
-        icon_data: None,
-        initial_window_pos: None,
-        initial_window_size: Some(egui::Vec2 { x: 800., y: 600. }),
-        min_window_size: Some(egui::Vec2 { x: 800., y: 52. }),
-        max_window_size: None,
-        resizable: true,
-        transparent: false,
-        mouse_passthrough: false,
+        viewport: ViewportBuilder::default()
+            .with_app_id("fi.sevonj.titomachine")
+            .with_inner_size(Vec2 { x: 800., y: 600. })
+            .with_min_inner_size(Vec2 { x: 800., y: 52. }),
         vsync: true,
         multisampling: 0,
         depth_buffer: 0,
         stencil_buffer: 0,
         hardware_acceleration: eframe::HardwareAcceleration::Preferred,
-        renderer: eframe::Renderer::Glow,
+        renderer: eframe::Renderer::default(),
         follow_system_theme: true,
         default_theme: eframe::Theme::Dark,
         run_and_return: false,
         event_loop_builder: None,
+        window_builder: None,
         shader_version: None,
         centered: true,
-        active: true,
-        app_id: None,
+        persist_window: false,
     };
 
     let _ = eframe::run_native(
