@@ -8,19 +8,19 @@ edition = "2021"
 # TTK-91 ToolKit
 ttktk = { git = "https://github.com/sevonj/ttktk.git", tag = "v0.2.0" }
 num-traits = "0.2"
-num-derive = "0.3"
-egui = { version = "0.22", default-features = false }
-egui_extras = "0.22"
-eframe = { version = "0.22", default-features = false, features = [
+num-derive = "0.4"
+egui = { version = "0.26", default-features = false }
+egui_extras = { version = "0.26", features = ["all_loaders"] }
+eframe = { version = "0.26", default-features = false, features = [
     "glow",
     "default_fonts",
     "persistence",
 ] }
-image = "0.24.5"
-rfd = "0.11.0" # see gtk3 if fails to build https://docs.rs/rfd/latest/rfd/
+image = "0.25"
+rfd = "0.14" # see gtk3 if fails to build https://docs.rs/rfd/latest/rfd/
 serde = { version = "1", features = ["derive"] }
-chrono = "0.4.23"
-rodio = "0.17.3"
+chrono = "0.4"
+rodio = "0.17"
 
 [build-dependencies]
 
