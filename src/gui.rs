@@ -341,3 +341,9 @@ impl TitoApp {
         }
     }
 }
+
+
+/// Trait for emulator GUI modules
+pub trait View {
+    fn ui(&mut self, ui: &mut egui::Ui);
+}

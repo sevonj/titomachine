@@ -1,14 +1,14 @@
 use self::gui_devices::GUIDevice;
 
 use super::Radix;
-use crate::{emulator::emu_debug::CtrlMSG, TitoApp, View};
+use crate::{emulator::emu_debug::CtrlMSG, TitoApp, gui::View};
 
 pub(crate) mod gui_devices;
 pub mod disassembler;
 pub(crate) mod memoryview;
 
 use eframe::emath::format_with_decimals_in_range;
-use egui::{Button, Color32, Context, FontId, Frame, RichText, Ui};
+use egui::{Button, Color32, Context, FontId, Frame, RichText, Ui, Widget};
 use egui_extras::{Column, TableBuilder};
 use num_traits::ToPrimitive;
 

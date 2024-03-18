@@ -274,8 +274,3 @@ fn main() {
         Box::new(|cc| Box::new(TitoApp::new(cc))),
     );
 }
-
-/// Trait for emulator GUI modules
-pub trait View {
-    fn ui(&mut self, ui: &mut egui::Ui);
-}

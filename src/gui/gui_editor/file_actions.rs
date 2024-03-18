@@ -52,6 +52,7 @@ impl TitoApp {
     }
 
     pub fn file_compile(&mut self) {
+        self.memoryview.reset();
         let _ = self.tx_ctrl.send(CtrlMSG::ClearMem);
 
         // Compile Default OS

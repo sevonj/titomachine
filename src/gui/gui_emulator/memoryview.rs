@@ -1,21 +1,18 @@
-//! TiToMachine
-//! SPDX-License-Identifier: MPL-2.0
-//!
+// SPDX-FileCopyrightText: 2024 sevonj
+//
+// SPDX-License-Identifier: MPL-2.0
+
 //! This module houses the Memory Explorer GUI
 //!
 
-use std::default::Default;
-use std::ops::Range;
+use std::{default::Default, ops::Range};
 use std::collections::{HashMap, HashSet};
-use egui::{CentralPanel, Color32, Context, Frame, Image, include_image, RichText, ScrollArea, Sense, SidePanel, Slider, TopBottomPanel, Ui};
-use egui::scroll_area::ScrollBarVisibility;
-use egui::style::HandleShape;
+use egui::{CentralPanel, Color32, Frame, Image, include_image, RichText, ScrollArea, Sense, SidePanel, Slider, TopBottomPanel, Ui, scroll_area::ScrollBarVisibility};
 use egui_extras::{Column, TableBody, TableBuilder, TableRow};
 use num_traits::ToPrimitive;
-use crate::gui::Radix;
+use crate::gui::{Radix, View};
 use crate::gui::gui_emulator::{COL_TEXT, COL_TEXT_HI, FONT_TBL, FONT_TBLH};
 use crate::gui::gui_emulator::disassembler::disassemble_instruction;
-use crate::View;
 
 const MEM_SIZE: usize = 0x2000;
 const COLOR_SEGMENT_NONE: Color32 = Color32::from_rgb(60, 60, 60);
@@ -344,7 +341,7 @@ impl View for MemoryView {
                         ui.radio_value(&mut self.view_value_base, Radix::Dec, "Decimal");
                         ui.radio_value(&mut self.view_value_base, Radix::Hex, "Hex");
                     });
-                    if ui.button("Find PC").clicked(){
+                    if ui.button("Find PC").clicked() {
                         self.scroll_to_pc();
                     }
                 });
@@ -369,7 +366,7 @@ impl View for MemoryView {
                         .vertical()
                         .smart_aim(false)
                         .show_value(false)
-                        .handle_shape(HandleShape::Rect { aspect_ratio: 1.6 })
+                        .handle_shape(egui::style::HandleShape::Rect { aspect_ratio: 1.6 })
                     );
                 });
             });
