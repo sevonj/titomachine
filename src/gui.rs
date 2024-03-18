@@ -13,11 +13,30 @@ pub enum GuiMode {
 }
 
 #[derive(PartialEq, Default, serde::Deserialize, serde::Serialize)]
-pub enum Base {
+pub enum Radix {
     Bin,
     #[default]
     Dec,
     Hex,
+}
+
+impl Radix {
+    pub fn format_i32(&self, value: i32) -> String {
+        match self {
+            Radix::Bin => format!("{value:#034b}"),
+            Radix::Dec => format!("{value}"),
+            Radix::Hex => format!("{value:#010x}"),
+        }
+    }
+
+    /// Same as above, but expects usize and only adds 16 bits worth of leading zeros.
+    pub fn format_addr(&self, value: usize) -> String {
+        match self {
+            Radix::Bin => format!("{value:#b}"),
+            Radix::Dec => format!("{value}"),
+            Radix::Hex => format!("{value:#x}"),
+        }
+    }
 }
 
 const URL_GITHUB: &str = "https://github.com/sevonj/titomachine/";
@@ -178,17 +197,17 @@ impl TitoApp {
             ui.menu_button("Memory View", |ui| {
                 ui.checkbox(&mut self.emugui_follow_pc, "Follow PC");
                 ui.label("Memview Address base");
-                ui.radio_value(&mut self.mem_adr_base, Base::Bin, "Binary");
-                ui.radio_value(&mut self.mem_adr_base, Base::Dec, "Decimal");
-                ui.radio_value(&mut self.mem_adr_base, Base::Hex, "Hex");
+                ui.radio_value(&mut self.mem_adr_base, Radix::Bin, "Binary");
+                ui.radio_value(&mut self.mem_adr_base, Radix::Dec, "Decimal");
+                ui.radio_value(&mut self.mem_adr_base, Radix::Hex, "Hex");
                 ui.label("Memview Value base");
-                ui.radio_value(&mut self.mem_val_base, Base::Bin, "Binary");
-                ui.radio_value(&mut self.mem_val_base, Base::Dec, "Decimal");
-                ui.radio_value(&mut self.mem_val_base, Base::Hex, "Hex");
+                ui.radio_value(&mut self.mem_val_base, Radix::Bin, "Binary");
+                ui.radio_value(&mut self.mem_val_base, Radix::Dec, "Decimal");
+                ui.radio_value(&mut self.mem_val_base, Radix::Hex, "Hex");
                 ui.label("Register Value base");
-                ui.radio_value(&mut self.regs_base, Base::Bin, "Binary");
-                ui.radio_value(&mut self.regs_base, Base::Dec, "Decimal");
-                ui.radio_value(&mut self.regs_base, Base::Hex, "Hex");
+                ui.radio_value(&mut self.regs_base, Radix::Bin, "Binary");
+                ui.radio_value(&mut self.regs_base, Radix::Dec, "Decimal");
+                ui.radio_value(&mut self.regs_base, Radix::Hex, "Hex");
             });
 
             ui.with_layout(Layout::left_to_right(Align::TOP), |ui| {

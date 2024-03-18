@@ -91,7 +91,7 @@ fn rj2string(r: i32) -> String {
     }
 }
 
-pub fn instruction_to_string(input_instr: i32) -> String {
+pub fn disassemble_instruction(input_instr: i32) -> String {
     let mut retstr = String::new();
 
     let opcode = input_instr >> 24;
@@ -286,7 +286,7 @@ pub fn instruction_to_string(input_instr: i32) -> String {
         Some(Opcode::HLT) => retstr += "HLT   ",
         Some(Opcode::HCF) => retstr += "HCF   ",
 
-        None => retstr += "INVALID",
+        None => retstr += "N/A",
     }
 
     retstr

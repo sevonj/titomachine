@@ -1,13 +1,15 @@
 use self::gui_devices::GUIDevice;
 
-use super::Base;
-use crate::{emulator::emu_debug::CtrlMSG, TitoApp};
+use super::Radix;
+use crate::{emulator::emu_debug::CtrlMSG, TitoApp, View};
+
 pub(crate) mod gui_devices;
 pub mod disassembler;
+pub(crate) mod memoryview;
+
 use eframe::emath::format_with_decimals_in_range;
-use egui::{Button, Color32, Context, FontId, RichText, Ui};
+use egui::{Button, Color32, Context, FontId, Frame, RichText, Ui};
 use egui_extras::{Column, TableBuilder};
-use disassembler::*;
 use num_traits::ToPrimitive;
 
 const FONT_TBL: FontId = FontId::monospace(12.0);
@@ -96,6 +98,7 @@ impl TitoApp {
                     ui.separator();
                 });
             egui::CentralPanel::default().show(ctx, |ui| {
+                // Display
                 if self.emugui_display {
                     egui::TopBottomPanel::top("display")
                         .resizable(true)
@@ -103,172 +106,21 @@ impl TitoApp {
                             self.dev_display.gui_panel(ctx, ui);
                         });
                 }
-                self.memview(ctx, ui);
+                // Memory View
+                egui::CentralPanel::default()
+                    .frame(Frame::none())
+                    .show(ctx, |ui| {
+                        self.memoryview.ui(ui);
+                    });
             });
         });
-    }
-
-    fn memview(&mut self, ctx: &Context, _: &mut Ui) {
-        let width_adr: f32 = 96.0;
-        let width_val: f32 = match self.mem_val_base == Base::Bin {
-            true => 256.0,
-            false => 96.0,
-        };
-        let width_ins: f32 = 192.0;
-
-        egui::CentralPanel::default().show(ctx, |ui| {
-            /*
-             * Memview gives an illusion of scrolling through one large table that contains all
-             * addresses, but it's size is actually always exactly what's visible on the screen.
-             *
-             * To keep the table always in view of the scroll area, we allocate the last known
-             * scroll position worth of space before it.
-             *
-             * After adding the table, we allocate more space again to make the scrollarea total
-             * height what the table would take if it contained every address.
-             *
-             * Table start offset is calculated from scroll position.
-             */
-            let row_height = 23.;
-            let height = ui.available_height() - 30.;
-            self.gui_memview_len = (height / row_height).to_u32().unwrap();
-            let total_height = row_height * (self.emu_mem_len + 2) as f32 + 30.; // +2 because for some reason it fell short by that amount
-            let view_height = height + 30.;
-            self.gui_memview_scroll = egui::ScrollArea::vertical()
-                .show(ui, |ui| {
-                    ui.allocate_space(egui::Vec2 {
-                        x: 0.,
-                        y: self.gui_memview_scroll,
-                    });
-                    TableBuilder::new(ui)
-                        .striped(true)
-                        .auto_shrink([false; 2])
-                        .max_scroll_height(f32::INFINITY)
-                        .vscroll(false)
-                        .column(Column::exact(width_adr)) // Address
-                        .column(Column::exact(width_val)) // Value
-                        .column(Column::exact(width_ins)) // Instruction
-                        .column(Column::remainder()) // Registers PC/SP/FP
-                        .header(20.0, |mut header| {
-                            header.col(|ui| {
-                                ui.heading(RichText::new("Address").font(FONT_TBLH.clone()));
-                            });
-                            header.col(|ui| {
-                                ui.heading(RichText::new("Value").font(FONT_TBLH.clone()));
-                            });
-                            header.col(|ui| {
-                                ui.heading(RichText::new("Instruction").font(FONT_TBLH.clone()));
-                            });
-                            header.col(|ui| {
-                                ui.heading(RichText::new("").font(FONT_TBLH.clone()));
-                            });
-                        })
-                        .body(|mut body| {
-                            //let rowcount = self.emu_memory_len;
-                            for i in 0..self.gui_memview_len {
-                                if i >= self.gui_memview.len() as u32 {
-                                    break;
-                                }
-                                let adr = (self.gui_memview_off + i) as i32;
-                                let val: i32 = self.gui_memview[i as usize];
-                                let pc = self.emu_regs.pc;
-                                let sp = self.emu_regs.gpr[6];
-                                let fp = self.emu_regs.gpr[7];
-                                // Create strings
-                                let mut reg_str = String::new();
-                                if pc == adr || sp == adr || fp == adr {
-                                    reg_str.push_str("<-- ");
-                                    if pc == adr {
-                                        reg_str.push_str("PC ")
-                                    }
-                                    if sp == adr {
-                                        reg_str.push_str("SP ")
-                                    }
-                                    if fp == adr {
-                                        reg_str.push_str("FP ")
-                                    }
-                                }
-                                let adr_str = match self.mem_adr_base {
-                                    Base::Bin => format!("{adr:#b}"),
-                                    Base::Dec => format!("{adr}"),
-                                    Base::Hex => format!("{adr:#x}"),
-                                };
-                                let val_str = match self.mem_val_base {
-                                    Base::Bin => format!("{val:#034b}"),
-                                    Base::Dec => format!("{val}"),
-                                    Base::Hex => format!("{val:#010x}"),
-                                };
-                                let ins_str = instruction_to_string(val);
-                                // Decide style
-                                let col = if adr == pc { COL_TEXT_HI } else { COL_TEXT };
-                                body.row(20.0, |mut row| {
-                                    row.col(|ui| {
-                                        ui.label(
-                                            RichText::new(adr_str)
-                                                .font(FONT_TBL.clone())
-                                                .color(col),
-                                        );
-                                    });
-                                    row.col(|ui| {
-                                        ui.label(
-                                            RichText::new(val_str)
-                                                .font(FONT_TBL.clone())
-                                                .color(col),
-                                        );
-                                    });
-                                    row.col(|ui| {
-                                        ui.label(
-                                            RichText::new(ins_str)
-                                                .font(FONT_TBL.clone())
-                                                .color(col),
-                                        );
-                                    });
-                                    row.col(|ui| {
-                                        ui.label(
-                                            RichText::new(reg_str)
-                                                .font(FONT_TBL.clone())
-                                                .color(col),
-                                        );
-                                    });
-                                });
-                            }
-                        });
-
-                    ui.allocate_space(egui::Vec2 {
-                        x: 0.,
-                        y: total_height - self.gui_memview_scroll - view_height,
-                    });
-                    if self.emugui_follow_pc && self.emu_playing {
-                        let pc_pos = row_height * self.emu_regs.pc as f32;
-                        ui.scroll_to_rect(
-                            egui::Rect {
-                                min: egui::Pos2 {
-                                    x: 0.,
-                                    y: pc_pos - self.gui_memview_scroll,
-                                },
-                                max: egui::Pos2 {
-                                    x: 0.,
-                                    y: pc_pos - self.gui_memview_scroll + view_height,
-                                },
-                            },
-                            Some(egui::Align::Center),
-                        );
-                    }
-                })
-                .state
-                .offset
-                .y;
-            self.gui_memview_off = (self.gui_memview_scroll / row_height) as u32;
-        });
-        //    });
-        //});
     }
 
     fn regview(&mut self, ui: &mut Ui) {
         // CPU Registers
         ui.label("CPU Registers");
         let reg_name_width: f32 = 16.0;
-        let reg_val_width: f32 = match self.regs_base == Base::Bin {
+        let reg_val_width: f32 = match self.regs_base == Radix::Bin {
             true => 256.0,
             false => 72.0,
         };
@@ -281,9 +133,9 @@ impl TitoApp {
             .column(Column::exact(reg_val_width))
             .body(|mut body| {
                 let pc_str = match self.mem_adr_base {
-                    Base::Bin => format!("{pc:#b}"),
-                    Base::Dec => format!("{pc}"),
-                    Base::Hex => format!("{pc:#x}"),
+                    Radix::Bin => format!("{pc:#b}"),
+                    Radix::Dec => format!("{pc}"),
+                    Radix::Hex => format!("{pc:#x}"),
                 };
                 body.row(20.0, |mut row| {
                     row.col(|ui| {
@@ -296,9 +148,9 @@ impl TitoApp {
                 for i in 0..8 {
                     let val = self.emu_regs.gpr[i];
                     let val_str = match self.regs_base {
-                        Base::Bin => format!("{val:#034b}"),
-                        Base::Dec => format!("{val}"),
-                        Base::Hex => format!("{val:#010x}"),
+                        Radix::Bin => format!("{val:#034b}"),
+                        Radix::Dec => format!("{val}"),
+                        Radix::Hex => format!("{val:#010x}"),
                     };
                     body.row(20.0, |mut row| {
                         row.col(|ui| {
@@ -338,9 +190,7 @@ impl TitoApp {
     // Refresh cached regs and memory
     fn refresh_emu_state(&mut self) {
         let _ = self.tx_ctrl.send(CtrlMSG::GetState);
-        let _ = self.tx_ctrl.send(CtrlMSG::GetMem(
-            self.gui_memview_off..self.gui_memview_off + self.gui_memview_len,
-        ));
+        let _ = self.tx_ctrl.send(CtrlMSG::GetMem(self.memoryview.get_view_cache_range()));
     }
 
     fn stateview(&mut self, ui: &mut Ui) {
