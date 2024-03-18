@@ -7,6 +7,7 @@
 const SP: usize = 6;
 const FP: usize = 7;
 
+use std::num::ParseIntError;
 use super::{cpu::CPU, devices::Bus};
 use crate::emulator::devices::Device;
 use std::str::Lines;
@@ -14,6 +15,7 @@ use std::str::Lines;
 pub fn load_program(bus: &mut Bus, cpu: &mut CPU, prog: &str) {
     load(bus, cpu, prog, 0);
 }
+
 fn load(bus: &mut Bus, cpu: &mut CPU, prog: &str, org: usize) {
     let mut mem_idx = org;
     let mut lines = prog.lines();
@@ -119,6 +121,55 @@ fn symbols(cpu: &mut CPU, lines: &mut Lines) {
                 }
             }
             None => break,
+        }
+    }
+}
+
+/// Parse code segment, data segment, and stack pointers from .b91
+pub(crate) fn get_segment_offsets(b91: &str) -> Result<(usize, usize, usize), String> {
+    let mut start_code = None;
+    let mut start_data = None;
+    let mut start_stack = None;
+
+    let mut lines = b91.lines();
+    loop {
+        let line = lines.next().unwrap();
+        match line {
+            "___code___" => {
+                if start_code.is_some() {
+                    return Err("code: multiple".into());
+                }
+                let words: Vec<String> = lines.next().unwrap().split_whitespace().map(str::to_string).collect();
+                if words.len() != 2 {
+                    return Err(format!("code: '{:?}' is not 2 words.", words));
+                }
+                match words[0].parse::<usize>() {
+                    Ok(value) => start_code = Some(value),
+                    Err(e) => return Err(format!("code: {} '{:?}'", e, words))
+                }
+            }
+            "___data___" => {
+                if start_data.is_some() {
+                    return Err("data: multiple".into());
+                }
+                let words: Vec<String> = lines.next().unwrap().split_whitespace().map(str::to_string).collect();
+                if words.len() != 2 {
+                    return Err(format!("data: '{:?}' is not 2 words.", words));
+                }
+                match words[0].parse::<usize>() {
+                    Ok(value) => start_data = Some(value),
+                    Err(e) => return Err(format!("data: {} '{:?}'", e, words))
+                }
+                match words[1].parse::<usize>() {
+                    Ok(value) => start_stack = Some(value + 1),
+                    Err(e) => return Err(format!("stack: {} '{:?}'", e, words))
+                }
+
+                if start_code.is_some() {
+                    return Ok((start_code.unwrap(), start_data.unwrap(), start_stack.unwrap()));
+                }
+            }
+            _ => ()
         }
     }
 }

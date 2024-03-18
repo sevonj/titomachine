@@ -21,8 +21,9 @@
 #[macro_use]
 extern crate num_derive;
 
+use crate::gui::gui_emulator::memoryview::MemoryView;
 use std::{env::current_dir, path::PathBuf, sync::mpsc, thread};
-use egui::{Vec2, ViewportBuilder};
+use egui::{Context, Vec2, ViewportBuilder};
 use egui_extras::install_image_loaders;
 
 pub mod editor;
@@ -35,7 +36,7 @@ use emulator::emu_debug::{CtrlMSG, DebugRegs, ReplyMSG};
 use gui::{
     gui_editor::file_actions::FileStatus,
     gui_emulator::gui_devices::{display::GUIDevDisplay, legacy_io::GUIDevLegacyIO, GUIDevice},
-    Base, GuiMode,
+    Radix, GuiMode,
 };
 
 #[derive(serde::Deserialize, serde::Serialize)]
@@ -75,29 +76,16 @@ pub struct TitoApp {
     emu_achieved_speed: f32,
     #[serde(skip)]
     emu_regs: DebugRegs,
-    #[serde(skip)]
-    gui_memview: Vec<i32>,
-    // Cached partial memory for gui
-    #[serde(skip)]
-    gui_memview_off: u32,
-    // Start offset
-    #[serde(skip)]
-    gui_memview_len: u32,
-    // Size of cache
-    #[serde(skip)]
-    emu_mem_len: usize,
-    // Size of cache
-    #[serde(skip)]
-    gui_memview_scroll: f32,
+    memoryview: MemoryView,
 
     // GUI settings
     #[serde(skip)]
     guimode: GuiMode,
     emugui_display: bool,
     emugui_follow_pc: bool,
-    mem_adr_base: Base,
-    mem_val_base: Base,
-    regs_base: Base,
+    mem_adr_base: Radix,
+    mem_val_base: Radix,
+    regs_base: Radix,
 }
 
 #[derive(serde::Deserialize, serde::Serialize, PartialEq)]
@@ -149,19 +137,15 @@ impl Default for TitoApp {
             emu_cpuspeedmul: FreqMagnitude::Hz,
             emu_turbo: false,
             emu_regs: DebugRegs::default(),
-            emu_mem_len: 0,
-            gui_memview: vec![7; 16],
-            gui_memview_off: 0,
-            gui_memview_len: 16,
-            gui_memview_scroll: 0.,
+            memoryview: MemoryView::new(),
 
             // GUI
             guimode: GuiMode::Editor,
             emugui_display: false,
             emugui_follow_pc: true,
-            mem_adr_base: Base::Dec,
-            mem_val_base: Base::Dec,
-            regs_base: Base::Dec,
+            mem_adr_base: Radix::Dec,
+            mem_val_base: Radix::Dec,
+            regs_base: Radix::Dec,
         }
     }
 }
@@ -195,10 +179,23 @@ impl TitoApp {
                         self.emu_halted = st.halted;
                         self.emu_playing = st.playing;
                         self.emu_achieved_speed = st.speed_percent;
+                        self.memoryview.is_playing = st.running && st.playing && !st.halted;
                     }
-                    ReplyMSG::Regs(regs) => self.emu_regs = regs,
-                    ReplyMSG::Mem(vec) => self.gui_memview = vec,
-                    ReplyMSG::MemSize(s) => self.emu_mem_len = s,
+                    ReplyMSG::Regs(regs) => {
+                        self.memoryview.cpu_pc = regs.pc as usize;
+                        self.memoryview.cpu_sp = regs.gpr[6] as usize;
+                        self.memoryview.cpu_fp = regs.gpr[7] as usize;
+                        self.emu_regs = regs;
+                    }
+                    ReplyMSG::Mem(vec) => {
+                        self.memoryview.set_view_cache(self.memoryview.get_view_cache_start(), vec)
+                    }
+                    ReplyMSG::MemSize(s) => (), // TODO: Remove
+                    ReplyMSG::SegmentOffsets(start_code, start_data, start_stack) => {
+                        self.memoryview.start_code = start_code;
+                        self.memoryview.start_data = start_data;
+                        self.memoryview.start_stack = start_stack;
+                    }
                 }
             } else {
                 break;
@@ -234,7 +231,7 @@ impl eframe::App for TitoApp {
         eframe::set_value(storage, eframe::APP_KEY, self);
     }
 
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+    fn update(&mut self, ctx: &Context, _frame: &mut eframe::Frame) {
         install_image_loaders(ctx);
 
         // 60fps gui update when emulator is running

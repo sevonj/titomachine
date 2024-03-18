@@ -144,7 +144,7 @@ mod test {
         let mut disassembled = String::new();
 
         for i in 0..vec1.len() {
-            disassembled += disassembler::instruction_to_string(vec1[i]).as_str();
+            disassembled += disassembler::disassemble_instruction(vec1[i]).as_str();
             disassembled += "\n";
         }
 
@@ -211,7 +211,7 @@ mod test {
             mode,
             ri,
             addr,
-            disassembler::instruction_to_string(ins)
+            disassembler::disassemble_instruction(ins)
         );
     }
 }

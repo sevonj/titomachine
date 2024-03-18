@@ -73,6 +73,9 @@ pub struct Emu {
     tx: Sender<ReplyMSG>,
     rx: Receiver<CtrlMSG>,
     loaded_prog: String,
+    start_code: usize,
+    start_data: usize,
+    start_stack: usize,
     running: bool,
     playing: bool,
     tick_rate: f32,
@@ -99,6 +102,9 @@ impl Emu {
             tx,
             rx,
             loaded_prog: String::new(),
+            start_code: 0,
+            start_data: 0,
+            start_stack: 0,
             running: false,
             playing: false,
             tick_rate: 10.,
@@ -220,6 +226,9 @@ impl Emu {
         self.stop();
         self.loaded_prog = prog;
         loader::load_program(&mut self.bus, &mut self.cpu, &self.loaded_prog);
+        (self.start_code, self.start_data, self.start_stack) =
+            loader::get_segment_offsets(&self.loaded_prog).unwrap_or((0, 0, 0));
+        let _ = self.tx.send(ReplyMSG::SegmentOffsets(self.start_code, self.start_data, self.start_stack));
     }
     fn reset(&mut self) {
         self.stop();

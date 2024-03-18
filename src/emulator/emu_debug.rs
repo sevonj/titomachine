@@ -23,6 +23,7 @@ pub enum ReplyMSG {
     Regs(DebugRegs),
     Mem(Vec<i32>),
     MemSize(usize),
+    SegmentOffsets(usize, usize, usize)
 }
 pub struct EmuState {
     pub playing: bool,
