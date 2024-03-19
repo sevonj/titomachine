@@ -18,7 +18,6 @@
 ///         Further divided into 3 files: Editor GUI, Emulator GUI, and File actions.
 ///
 ///
-#[macro_use]
 extern crate num_derive;
 
 use crate::gui::gui_emulator::memoryview::MemoryView;
@@ -30,7 +29,7 @@ pub mod editor;
 pub mod emulator;
 pub mod gui;
 
-use editor::{Editor, EditorSettings};
+use editor::Editor;
 
 use emulator::emu_debug::{CtrlMSG, DebugRegs, ReplyMSG};
 use gui::{
@@ -47,9 +46,7 @@ pub struct TitoApp {
     workdir: PathBuf,
     #[serde(skip)]
     filestatus: FileStatus,
-    editorsettings: EditorSettings,
-    #[serde(skip)]
-    editor: Editor,
+    #[serde(skip)] editor: Editor,
 
     // Devices
     #[serde(skip)]
@@ -120,7 +117,6 @@ impl Default for TitoApp {
         TitoApp {
             workdir: current_dir().unwrap(),
             filestatus: FileStatus::default(),
-            editorsettings: EditorSettings::default(),
             editor: Editor::default(),
             // Emulator
             tx_ctrl: tx_control,

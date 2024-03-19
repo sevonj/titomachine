@@ -37,6 +37,7 @@
 use std::sync::mpsc::{Receiver, Sender};
 use std::thread;
 use std::time::{Duration, Instant};
+
 mod devices;
 pub mod emu_debug;
 mod perfmon;
@@ -44,13 +45,15 @@ mod perfmon;
 mod tests;
 
 use image::Rgba;
+use libttktk::b91::B91;
+use crate::emulator::cpu::GPR;
 
 use self::cpu::CPU;
 use self::devices::{Bus, Device};
 use self::emu_debug::{CtrlMSG, ReplyMSG};
 use self::perfmon::PerfMonitor;
+
 mod cpu;
-mod loader;
 
 // There has to be a cleaner way to pass the channels.
 pub fn run(
@@ -72,7 +75,7 @@ pub struct Emu {
     cpu: CPU,
     tx: Sender<ReplyMSG>,
     rx: Receiver<CtrlMSG>,
-    loaded_prog: String,
+    loaded_prog: Option<B91>,
     start_code: usize,
     start_data: usize,
     start_stack: usize,
@@ -101,7 +104,7 @@ impl Emu {
             cpu: CPU::new(),
             tx,
             rx,
-            loaded_prog: String::new(),
+            loaded_prog: None,
             start_code: 0,
             start_data: 0,
             start_stack: 0,
@@ -222,13 +225,46 @@ impl Emu {
         }
     }
 
-    fn loadprog(&mut self, prog: String) {
+    fn load_b91(&mut self, b91: B91) {
         self.stop();
-        self.loaded_prog = prog;
-        loader::load_program(&mut self.bus, &mut self.cpu, &self.loaded_prog);
-        (self.start_code, self.start_data, self.start_stack) =
-            loader::get_segment_offsets(&self.loaded_prog).unwrap_or((0, 0, 0));
+
+        self.start_code = b91.code_segment.start;
+        self.start_data = b91.data_segment.start;
+        self.start_stack = b91.data_segment.end + 1;
         let _ = self.tx.send(ReplyMSG::SegmentOffsets(self.start_code, self.start_data, self.start_stack));
+
+        // Load code segment
+        let mut mem_off = b91.code_segment.start;
+        for instruction in &b91.code_segment.content {
+            self.bus.write(mem_off as u32, *instruction)
+                .map_err(|err| println!("load_b91 writing code segment failed!\n{:?}", err))
+                .ok();
+            mem_off += 1;
+        }
+
+        // Load data segment
+        let mut mem_off = b91.data_segment.start;
+        for variable in &b91.data_segment.content {
+            self.bus.write(mem_off as u32, *variable)
+                .map_err(|err| println!("load_b91 writing data segment failed!\n{:?}", err))
+                .ok();
+            mem_off += 1;
+        }
+
+        // CPU registers
+        self.cpu.init();
+        self.cpu.debug_set_cu_pc(b91.code_segment.start as i32);
+        self.cpu.debug_set_gpr(GPR::FP, b91.code_segment.end as i32);
+        self.cpu.debug_set_gpr(GPR::SP, b91.data_segment.end as i32);
+
+        // CPU Interrupt Vector Table
+        for i in 0..=15 {
+            if let Some(value) = b91.symbol_table.get(format!("__IVT_ENTRY_{i}__").as_str()) {
+                self.cpu.debug_set_ivt(i, (*value).into())
+            }
+        }
+
+        self.loaded_prog = Some(b91);
     }
     fn reset(&mut self) {
         self.stop();
@@ -238,7 +274,7 @@ impl Emu {
     }
     fn reload(&mut self) {
         self.stop();
-        loader::load_program(&mut self.bus, &mut self.cpu, &self.loaded_prog);
+        self.load_b91(self.loaded_prog.clone().unwrap());
     }
 
     fn clearmem(&mut self) {

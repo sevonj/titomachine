@@ -1,11 +1,9 @@
-use libttktk::compiler::compile;
-use super::{cpu::CPU, devices::Bus, loader};
+use super::{cpu::CPU, devices::Bus};
 
 /// These tests depend on compiler and loader.
 ///
 /// The tests run samples in a minimal emulator instance, and verifies that they run correctly.
 ///
-
 #[test]
 /// Tests load / store
 fn test_cpu_mmio() {
@@ -22,8 +20,14 @@ fn test_cpu_mmio() {
     assert_eq!(cpu.debug_get_gpr(2), expected);
 }
 
+/*
+TODO: These tests already needed rewrite in a smaller scope as they rely on compiler and loader,
+ but now that loader's gone, they're just out.
+ Rewrite these with minimal scope. Write instructions to memory manually instead of using loader.
+
 #[test]
 fn test_cpu_arithmetic() {
+
     let prog = compile(include_str!("../../programs/tests/test_cpu_arithmetic.k91").into()).unwrap();
     let mut cpu = CPU::new();
     let mut bus = Bus::new();
@@ -100,6 +104,8 @@ fn test_cpu_stack() {
     assert_eq!(regs[4], expected_r4);
     assert_eq!(regs[5], expected_r5);
 }
+*/
+
 /// Test hlt hcf
 #[test]
 fn test_cpu_halt() {
@@ -122,6 +128,7 @@ fn test_cpu_halt() {
     assert!(cpu.burn);
 }
 
+/*
 /// Tests most exception types.
 #[test]
 fn test_cpu_exceptions() {
@@ -147,3 +154,4 @@ fn test_loader_ivt() {
         assert_eq!(cpu.debug_get_ivt(i), 0x1000 + i as i32)
     }
 }
+*/

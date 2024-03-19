@@ -1,46 +1,39 @@
-use std::{
-    env::set_current_dir,
-    fs::{self, File},
-    io::Write,
-    path::PathBuf,
-};
+use std::env::set_current_dir;
+use std::fs;
+use std::fs::File;
+use std::io::Write;
+use std::path::PathBuf;
+use std::str::FromStr;
+use libttktk::b91::{B91, B91ParseError};
 use libttktk::compiler::compile;
 
 const DEFAULT_OS: &str = include_str!("../programs/default/default_os.k91");
 const DEFAULT_PROGRAM: &str = include_str!("../programs/default/default_program.k91");
 
 #[derive(serde::Deserialize, serde::Serialize)]
-pub(crate) struct EditorSettings {
-    pub(crate) compile_default_os: bool,
-}
-
-impl Default for EditorSettings {
-    fn default() -> Self {
-        Self {
-            compile_default_os: true,
-        }
-    }
-}
-
 pub(crate) struct Editor {
-    pub(crate) source_path: Option<String>,
-    pub(crate) source_code: String,
-    pub(crate) compiler_output: String,
-    pub(crate) line_no: String,
-    pub(crate) linecnt: i32,
+    #[serde(skip)] pub(crate) source_path: Option<String>,
+    #[serde(skip)] pub(crate) source_code: String,
+    #[serde(skip)] pub(crate) compiler_output: String,
+    #[serde(skip)] pub(crate) line_no: String,
+    #[serde(skip)] pub(crate) linecnt: i32,
+    #[serde(skip)] pub(crate) default_os: Option<B91>,
+    pub(crate) compile_default_os: bool,
 }
 
 impl Default for Editor {
     fn default() -> Self {
-        let mut ed = Editor {
+        let mut editor = Editor {
             source_path: None,
             source_code: DEFAULT_PROGRAM.into(),
             compiler_output: String::new(),
             line_no: "".into(),
             linecnt: 1,
+            compile_default_os: true,
+            default_os: Some(compile(DEFAULT_OS.into()).unwrap().parse().unwrap()),
         };
-        ed.update_linecount();
-        ed
+        editor.update_linecount();
+        editor
     }
 }
 
@@ -54,21 +47,25 @@ impl Editor {
         }
     }
 
-    pub fn compile(&mut self) -> Result<String, String> {
+    pub fn compile(&mut self) -> Result<B91, String> {
         let result = compile(self.source_code.clone());
         if let Err(e) = &result {
             self.compiler_output = e.clone()
         }
-        result
+        match B91::from_str(result.unwrap().as_str()) {
+            Ok(b91) => Ok(b91),
+            Err(e) => Err(format!("Compiler succeeded, but parser failed! Please file an issue. {e}"))
+        }
     }
 
+    /*
     pub fn compile_default_os(&mut self) -> Result<String, String> {
         let result = compile(DEFAULT_OS.into());
         if let Err(e) = &result {
             self.compiler_output = e.clone()
         }
         result
-    }
+    }*/
 
     pub fn open_file(&mut self, pathbuf: Option<PathBuf>) {
         match pathbuf {

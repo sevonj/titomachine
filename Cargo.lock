@@ -3253,7 +3253,7 @@ checksum = "17f77d76d837a7830fe1d4f12b7b4ba4192c1888001c7164257e4bc6d21d96b4"
 [[package]]
 name = "ttktk"
 version = "0.3.0"
-source = "git+https://github.com/sevonj/ttktk.git?tag=v0.3.0#f001424a12db075a19c2bf55285e7a854e80c6d5"
+source = "git+https://github.com/sevonj/ttktk.git?tag=v0.3.1#a45a72585be8dba0243396ef7b5e7bc388546140"
 dependencies = [
  "num-traits",
 ]

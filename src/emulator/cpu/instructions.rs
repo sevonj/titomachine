@@ -1,6 +1,6 @@
 use super::CPU;
 #[allow(unused_imports)] // Some of these flags are unused.
-use super::{FP, SP, SR_D, SR_E, SR_G, SR_I, SR_L, SR_M, SR_O, SR_P, SR_S, SR_U, SR_Z};
+use super::{GPR, SR_D, SR_E, SR_G, SR_I, SR_L, SR_M, SR_O, SR_P, SR_S, SR_U, SR_Z};
 use crate::emulator::Bus;
 
 const NOP: u16 = 0x00;
@@ -192,50 +192,50 @@ impl CPU {
             }
             // Subroutine instructions
             CALL => {
-                if let Err(_) = self.memwrite(bus, self.gpr[SP] + 1, self.cu_pc)
+                if let Err(_) = self.memwrite(bus, self.gpr[GPR::SP as usize] + 1, self.cu_pc)
                 {
                     return;
                 };
-                if let Err(_) = self.memwrite(bus, self.gpr[SP] + 2, self.gpr[FP]) {
+                if let Err(_) = self.memwrite(bus, self.gpr[GPR::SP as usize] + 2, self.gpr[GPR::FP as usize]) {
                     return;
                 };
-                self.gpr[SP] += 2;
+                self.gpr[GPR::SP as usize] += 2;
                 self.cu_pc = self.cu_tr;
-                self.gpr[FP] = self.gpr[SP];
+                self.gpr[GPR::FP as usize] = self.gpr[GPR::SP as usize];
             }
             EXIT => {
-                self.gpr[SP] = self.gpr[FP] - 2 - self.cu_tr;
-                match self.memread(bus, self.gpr[FP] - 1) {
+                self.gpr[GPR::SP as usize] = self.gpr[GPR::FP as usize] - 2 - self.cu_tr;
+                match self.memread(bus, self.gpr[GPR::FP as usize] - 1) {
                     Ok(val) => self.cu_pc = val,
                     Err(_) => return
                 }
-                match self.memread(bus, self.gpr[FP]) {
-                    Ok(val) => self.gpr[FP] = val,
+                match self.memread(bus, self.gpr[GPR::FP as usize]) {
+                    Ok(val) => self.gpr[GPR::FP as usize] = val,
                     Err(_) => return
                 }
             }
             // Stack instructions
             PUSH => {
-                self.gpr[SP] += 1;
-                let _ = self.memwrite(bus, self.gpr[SP], self.cu_tr);
+                self.gpr[GPR::SP as usize] += 1;
+                let _ = self.memwrite(bus, self.gpr[GPR::SP as usize], self.cu_tr);
             }
             POP => {
-                match self.memread(bus, self.gpr[SP]) {
+                match self.memread(bus, self.gpr[GPR::SP as usize]) {
                     Ok(val) => self.gpr[ri as usize] = val,
                     Err(_) => return
                 }
-                self.gpr[SP] -= 1;
+                self.gpr[GPR::SP as usize] -= 1;
             }
             PUSHR => {
                 for i in 0..7 {
-                    self.gpr[SP] += 1;
-                    if let Err(_) = self.memwrite(bus, self.gpr[SP], self.gpr[i]) {
+                    self.gpr[GPR::SP as usize] += 1;
+                    if let Err(_) = self.memwrite(bus, self.gpr[GPR::SP as usize], self.gpr[i]) {
                         return;
                     }
                 }
             }
             POPR => {
-                let old_sp = self.gpr[SP];
+                let old_sp = self.gpr[GPR::SP as usize];
                 for i in (0..7).rev() {
                     let addr;
                     match old_sp.checked_sub(6) {
@@ -249,26 +249,26 @@ impl CPU {
                         Ok(val) => self.gpr[i as usize] = val,
                         Err(_) => return
                     }
-                    self.gpr[SP] -= 1;
+                    self.gpr[GPR::SP as usize] -= 1;
                 }
             }
             IEXIT => {
                 // Pop FP, PC, SR
-                match self.memread(bus, self.gpr[SP]) {
-                    Ok(val) => self.gpr[FP] = val,
+                match self.memread(bus, self.gpr[GPR::SP as usize]) {
+                    Ok(val) => self.gpr[GPR::FP as usize] = val,
                     Err(_) => return
                 }
-                match self.memread(bus, self.gpr[SP] - 1) {
+                match self.memread(bus, self.gpr[GPR::SP as usize] - 1) {
                     Ok(val) => self.cu_pc = val,
                     Err(_) => return
                 }
-                match self.memread(bus, self.gpr[SP] - 2) {
+                match self.memread(bus, self.gpr[GPR::SP as usize] - 2) {
                     Ok(val) => self.cu_sr = val,
                     Err(_) => return
                 }
-                self.gpr[SP] -= 3;
+                self.gpr[GPR::SP as usize] -= 3;
                 // Pop params
-                self.gpr[SP] -= self.cu_tr;
+                self.gpr[GPR::SP as usize] -= self.cu_tr;
             }
             // Syscalls
             SVC => self.exception_svc(bus),

@@ -140,8 +140,23 @@ impl MemoryView {
         }
     }
 
-    pub fn set_symbol_table(&mut self, table: HashMap<usize, Vec<String>>) {
-        self.symbol_table = table;
+    pub fn set_symbol_table(&mut self, table: HashMap<String, i32>) {
+        self.symbol_table.clear();
+        for (name, value) in table {
+            // Negative addresses don't exist, they wouldn't show up anyway.
+            if value < 0 {
+                continue;
+            }
+            let addr = value as usize;
+            match self.symbol_table.get_mut(&addr) {
+                None => {
+                    self.symbol_table.insert(addr, vec![name]);
+                }
+                Some(vec) => {
+                    vec.push(name);
+                }
+            }
+        }
     }
 
     pub fn set_comment_table(&mut self, table: HashMap<usize, String>) {
