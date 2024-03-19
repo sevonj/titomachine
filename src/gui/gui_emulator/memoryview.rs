@@ -9,10 +9,11 @@ use std::{default::Default, ops::Range};
 use std::collections::{HashMap, HashSet};
 use egui::{CentralPanel, Color32, Frame, Image, include_image, RichText, ScrollArea, Sense, SidePanel, Slider, TopBottomPanel, Ui, scroll_area::ScrollBarVisibility};
 use egui_extras::{Column, TableBody, TableBuilder, TableRow};
+use libttktk::disassembler::disassemble_instruction;
 use num_traits::ToPrimitive;
 use crate::gui::{Radix, View};
 use crate::gui::gui_emulator::{COL_TEXT, COL_TEXT_HI, FONT_TBL, FONT_TBLH};
-use crate::gui::gui_emulator::disassembler::disassemble_instruction;
+
 
 const MEM_SIZE: usize = 0x2000;
 const COLOR_SEGMENT_NONE: Color32 = Color32::from_rgb(60, 60, 60);

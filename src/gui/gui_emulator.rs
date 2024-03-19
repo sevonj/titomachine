@@ -4,7 +4,6 @@ use super::Radix;
 use crate::{emulator::emu_debug::CtrlMSG, TitoApp, gui::View};
 
 pub(crate) mod gui_devices;
-pub mod disassembler;
 pub(crate) mod memoryview;
 
 use eframe::emath::format_with_decimals_in_range;
