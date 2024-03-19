@@ -5,12 +5,14 @@
 
 use super::Emu;
 use std::ops::Range;
+use libttktk::b91::B91;
+
 pub enum CtrlMSG {
     PlaybackStart,
     PlaybackStop,
     PlaybackPlayPause(bool),
     PlaybackTick,
-    LoadProg(String),
+    LoadB91(B91),
     Reset(),
     ClearMem,
     SetRate(f32),
@@ -71,7 +73,7 @@ impl Emu {
                     CtrlMSG::PlaybackTick => self.manual_tick(),
                     // Loader
                     CtrlMSG::Reset() => self.reset(),
-                    CtrlMSG::LoadProg(fname) => self.loadprog(fname),
+                    CtrlMSG::LoadB91(b91) => self.load_b91(b91),
                     CtrlMSG::ClearMem => self.clearmem(),
                     // Settings
                     CtrlMSG::SetRate(rate) => self.tick_rate = rate,

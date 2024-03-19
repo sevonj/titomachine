@@ -188,7 +188,7 @@ impl TitoApp {
             ui.label("Editor");
             ui.menu_button("Compiler", |ui| {
                 ui.checkbox(
-                    &mut self.editorsettings.compile_default_os,
+                    &mut self.editor.compile_default_os,
                     "Use default SVCs",
                 );
             });

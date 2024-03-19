@@ -55,22 +55,17 @@ impl TitoApp {
         self.memoryview.reset();
         let _ = self.tx_ctrl.send(CtrlMSG::ClearMem);
 
-        // Compile Default OS
-        if self.editorsettings.compile_default_os {
-            match self.editor.compile_default_os() {
-                Ok(prog) => {
-                    let _ = self.tx_ctrl.send(CtrlMSG::LoadProg(prog));
-                }
-                Err(e) => {
-                    println!("Compile failed: {}", e);
-                    panic!("Failed to compile default OS!")
-                }
-            }
+        // Default OS
+        if self.editor.compile_default_os {
+            let _ = self.tx_ctrl.send(CtrlMSG::LoadB91(self.editor.default_os.clone().unwrap()));
         }
         // Compile the actual program
         match self.editor.compile() {
-            Ok(prog) => {
-                let _ = self.tx_ctrl.send(CtrlMSG::LoadProg(prog));
+            Ok(b91) => {
+
+                self.memoryview.set_symbol_table(b91.symbol_table.clone());
+
+                let _ = self.tx_ctrl.send(CtrlMSG::LoadB91(b91));
                 self.filestatus.on_compile(Ok(()));
                 self.guimode = GuiMode::Emulator;
             }
@@ -89,6 +84,7 @@ pub(crate) struct FileStatus {
     pub(crate) uncompiled: bool,
     pub(crate) compilefail: bool,
 }
+
 impl Default for FileStatus {
     fn default() -> Self {
         Self {
@@ -100,6 +96,7 @@ impl Default for FileStatus {
         }
     }
 }
+
 impl FileStatus {
     pub(crate) fn new_with_path(path: Option<PathBuf>) -> Self {
         let mut new = Self::default();

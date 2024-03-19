@@ -63,64 +63,64 @@ Palet13 dc 0            ;
 ; If you add a tile, remember to increment tileCnt
 
 ; BGTile0
-Tile0  dc -16744705     ; rows 0 - 1
-Tile01 dc -2055108221   ; rows 2 - 3
-Tile02 dc -1819957877   ; rows 4 - 5
-Tile03 dc -912818433    ; rows 6 - 7
+Tile0   dc -16744705     ; rows 0 - 1
+        dc -2055108221   ; rows 2 - 3
+        dc -1819957877   ; rows 4 - 5
+        dc -912818433    ; rows 6 - 7
 
 ; BGTile1
-Tile1  dc -2130689279   ;
-Tile12 dc 1057177347    ;
-Tile11 dc 1057177347    ;
-Tile13 dc 2134769534    ;
+Tile1   dc -2130689279   ;
+        dc 1057177347    ;
+        dc 1057177347    ;
+        dc 2134769534    ;
 
 ; char T
-Tile2  dc 32382         ;
-Tile21 dc 1515853848    ;
-Tile22 dc 404232216     ;
-Tile23 dc 404241468     ;
+Tile2   dc 32382         ;
+        dc 1515853848    ;
+        dc 404232216     ;
+        dc 404241468     ;
 
 ; char i
-Tile3  dc 6168          ;
-Tile31 dc 14392         ;
-Tile32 dc 404232216     ;
-Tile33 dc 404241468     ;
+Tile3   dc 6168          ;
+        dc 14392         ;
+        dc 404232216     ;
+        dc 404241468     ;
 
 ; char t
-Tile4  dc 6168          ;
-Tile41 dc 1010571288    ;
-Tile42 dc 404232216     ;
-Tile43 dc 404233244     ;
+Tile4   dc 6168          ;
+        dc 1010571288    ;
+        dc 404232216     ;
+        dc 404233244     ;
 
 ; char o
-Tile5  dc 0             ;
-Tile51 dc 15420         ;
-Tile52 dc 1717986918    ;
-Tile53 dc 1717976124    ;
+Tile5   dc 0             ;
+        dc 15420         ;
+        dc 1717986918    ;
+        dc 1717976124    ;
 
 ; char n
-Tile6  dc 0             ;
-Tile61 dc 60652         ;
-Tile62 dc 1987470950    ;
-Tile63 dc 1718019814    ;
+Tile6   dc 0             ;
+        dc 60652         ;
+        dc 1987470950    ;
+        dc 1718019814    ;
 
 ; char l
-Tile7  dc 14392         ;
-Tile71 dc 404232216     ;
-Tile72 dc 404232216     ;
-Tile73 dc 404241468     ;
+Tile7   dc 14392         ;
+        dc 404232216     ;
+        dc 404232216     ;
+        dc 404241468     ;
 
 ; char e
-Tile8  dc 0             ;
-Tile81 dc 15420         ;
-Tile82 dc 1717992572    ;
-Tile83 dc 1616919612    ;
+Tile8   dc 0             ;
+        dc 15420         ;
+        dc 1717992572    ;
+        dc 1616919612    ;
 
 ; char s
-Tile9  dc 0             ;
-Tile91 dc 15420         ;
-Tile92 dc 1616936060    ;
-Tile93 dc 202143864     ;
+Tile9   dc 0             ;
+        dc 15420         ;
+        dc 1616936060    ;
+        dc 202143864     ;
 
 ; ----- Init ---------------------------------------
 
