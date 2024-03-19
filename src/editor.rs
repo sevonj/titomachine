@@ -108,7 +108,7 @@ impl Editor {
 #[cfg(test)]
 mod test {
     use libttktk::compiler::compile;
-    use crate::gui::gui_emulator::disassembler;
+    use libttktk::disassembler::disassemble_instruction;
 
     /// Compile different values in all bases
     #[test]
@@ -144,7 +144,7 @@ mod test {
         let mut disassembled = String::new();
 
         for i in 0..vec1.len() {
-            disassembled += disassembler::disassemble_instruction(vec1[i]).as_str();
+            disassembled += disassemble_instruction(vec1[i]).as_str();
             disassembled += "\n";
         }
 
@@ -211,7 +211,7 @@ mod test {
             mode,
             ri,
             addr,
-            disassembler::disassemble_instruction(ins)
+            disassemble_instruction(ins)
         );
     }
 }
