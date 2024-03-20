@@ -75,10 +75,10 @@ impl TitoApp {
 
         ui.separator();
         if ui
-            .selectable_label(self.emugui_display, "Show Graphics")
+            .selectable_label(self.config.display_visible, "Show Graphics")
             .clicked()
         {
-            self.emugui_display = !self.emugui_display;
+            self.config.display_visible = !self.config.display_visible;
         }
         ui.separator();
     }
@@ -103,7 +103,7 @@ impl TitoApp {
                 });
             egui::CentralPanel::default().show(ctx, |_ui| {
                 // Display
-                if self.emugui_display {
+                if self.config.display_visible {
                     egui::TopBottomPanel::top("display")
                         .resizable(true)
                         .show(ctx, |ui| {
@@ -124,7 +124,7 @@ impl TitoApp {
         // CPU Registers
         ui.label("CPU Registers");
         let reg_name_width: f32 = 16.0;
-        let reg_val_width: f32 = match self.regs_base == Radix::Bin {
+        let reg_val_width: f32 = match self.config.cpuview_regs_base == Radix::Bin {
             true => 256.0,
             false => 72.0,
         };
@@ -151,7 +151,7 @@ impl TitoApp {
                 });
                 for i in 0..8 {
                     let val = self.emu_regs.gpr[i];
-                    let val_str = match self.regs_base {
+                    let val_str = match self.config.cpuview_regs_base {
                         Radix::Bin => format!("{val:#034b}"),
                         Radix::Dec => format!("{val}"),
                         Radix::Hex => format!("{val:#010x}"),

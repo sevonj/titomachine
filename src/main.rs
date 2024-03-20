@@ -45,44 +45,31 @@ use crate::config::Config;
 // TODO: Cleanup
 pub struct TitoApp {
     config: Config,
-    // File, Status
-    workdir: PathBuf,
-    #[serde(skip)]
-    filestatus: FileStatus,
+
+    #[serde(skip)] filestatus: FileStatus,
     #[serde(skip)] editor: Editor,
 
     // Devices
-    #[serde(skip)]
-    dev_legacyio: GUIDevLegacyIO,
-    #[serde(skip)]
-    dev_display: GUIDevDisplay,
+    #[serde(skip)] dev_legacyio: GUIDevLegacyIO,
+    #[serde(skip)] dev_display: GUIDevDisplay,
 
     // Emulator
-    #[serde(skip)]
-    tx_ctrl: mpsc::Sender<CtrlMSG>,
-    #[serde(skip)]
-    rx_reply: mpsc::Receiver<ReplyMSG>,
-    current_prog: String,
+    #[serde(skip)] tx_ctrl: mpsc::Sender<CtrlMSG>,
+    #[serde(skip)] rx_reply: mpsc::Receiver<ReplyMSG>,
 
     // Emu status, settings
-    emu_running: bool,
-    emu_halted: bool,
-    emu_playing: bool,
-    emu_cpuspeedmul: FreqMagnitude,
-    emu_speed: f32,
-    #[serde(skip)]
-    emu_turbo: bool,
-    #[serde(skip)]
-    emu_achieved_speed: f32,
-    #[serde(skip)]
-    emu_regs: DebugRegs,
+    #[serde(skip)] emu_running: bool,
+    #[serde(skip)] emu_halted: bool,
+    #[serde(skip)] emu_playing: bool,
+
+    #[serde(skip)] emu_turbo: bool,
+    #[serde(skip)] emu_achieved_speed: f32,
+    #[serde(skip)] emu_regs: DebugRegs,
     #[serde(skip)] memoryview: MemoryView,
 
     // GUI settings
-    #[serde(skip)]
-    guimode: GuiMode,
-    emugui_display: bool,
-    regs_base: Radix,
+    #[serde(skip)] guimode: GuiMode,
+
 }
 
 #[derive(serde::Deserialize, serde::Serialize, PartialEq)]
@@ -116,7 +103,6 @@ impl Default for TitoApp {
         });
         TitoApp {
             config: Config::default(),
-            workdir: current_dir().unwrap(),
             filestatus: FileStatus::default(),
             editor: Editor::default(),
             // Emulator
@@ -124,22 +110,17 @@ impl Default for TitoApp {
             rx_reply,
             dev_legacyio,
             dev_display,
-            current_prog: String::new(),
 
             emu_running: false,
             emu_halted: false,
             emu_playing: false,
-            emu_speed: 10.,
             emu_achieved_speed: 0.,
-            emu_cpuspeedmul: FreqMagnitude::Hz,
             emu_turbo: false,
             emu_regs: DebugRegs::default(),
             memoryview: MemoryView::new(),
 
             // GUI
             guimode: GuiMode::Editor,
-            emugui_display: false,
-            regs_base: Radix::Dec,
         }
     }
 }
@@ -197,10 +178,10 @@ impl TitoApp {
     }
 
     fn send_settings(&mut self) {
-        let speed = match self.emu_cpuspeedmul {
-            FreqMagnitude::Hz => self.emu_speed,
-            FreqMagnitude::KHz => self.emu_speed * 1000.,
-            FreqMagnitude::MHz => self.emu_speed * 1000000.,
+        let speed = match self.config.emu_cpuspeedmul {
+            FreqMagnitude::Hz => self.config.emu_speed,
+            FreqMagnitude::KHz => self.config.emu_speed * 1000.,
+            FreqMagnitude::MHz => self.config.emu_speed * 1000000.,
         };
         match self.tx_ctrl.send(CtrlMSG::SetRate(speed)) {
             Ok(_) => (),
