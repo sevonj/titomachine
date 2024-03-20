@@ -11,7 +11,9 @@ My programs were too much for [Titokone](https://www.cs.helsinki.fi/group/titoko
 ![image](https://user-images.githubusercontent.com/100710152/230110624-c4e512e7-bed8-4f5e-9495-9f62e89f08a0.png)
 
 ## What is this?
-TTK-91 is a computer architecture used to teach computer organization at University of Helsinki. The goal of this project is to create a faster and more convenient emulator, and to make the system an actually usable platform for games and other things.
+TTK-91 is a computer architecture used to teach computer organization at University of Helsinki.
+The goal of this project is to build a both faster, and more convenient to use TTK-91 vm,
+and to make it an actually usable platform for game development and other things.
 
 Features :
 - Builtin code editor and compiler
@@ -24,5 +26,5 @@ Features :
 [(outdated) wiki](https://github.com/sevonj/titomachine/wiki)  
 
 ## Related:
-- [**TTKTK**](https://github.com/sevonj/ttktk) - TTK-91 ToolKit. Offers standalone assembler and library used by titomachine.
+- [**TTKTK**](https://github.com/sevonj/ttktk) - TTK-91 ToolKit. Offers standalone assembler and Rust library used by titomachine.
 
