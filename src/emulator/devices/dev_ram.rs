@@ -24,6 +24,7 @@ impl Device for DevRAM {
     }
     fn on(&mut self) {}
     fn off(&mut self) {}
+    fn set_pause(&mut self, _paused: bool) {}
 }
 
 impl MMIO for DevRAM {

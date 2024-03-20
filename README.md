@@ -8,7 +8,7 @@ My programs were too much for [Titokone](https://www.cs.helsinki.fi/group/titoko
 > This application is work in progress, and he codebase is currently undergoing major renovation.  
 > The latest release build is heavily outdated.
 
-![image](https://user-images.githubusercontent.com/100710152/230110624-c4e512e7-bed8-4f5e-9495-9f62e89f08a0.png)
+![image](doc/screenshot.png)
 
 ## What is this?
 TTK-91 is a computer architecture used to teach computer organization at University of Helsinki.

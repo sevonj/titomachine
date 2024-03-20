@@ -21,7 +21,7 @@ impl Default for DevDisplayClassic {
     fn default() -> Self {
         Self {
             tx: None,
-            framebuffer: vec![image::Rgba([0, 0, 0, 255,]); 120 * 160],
+            framebuffer: vec![Rgba([0, 0, 0, 255, ]); 120 * 160],
             interrupt: false,
         }
     }
@@ -29,14 +29,15 @@ impl Default for DevDisplayClassic {
 
 impl Device for DevDisplayClassic {
     fn reset(&mut self) {
-        self.framebuffer = vec![image::Rgba([0, 0, 0, 255,]); 120 * 160];
+        self.framebuffer = vec![Rgba([0, 0, 0, 255, ]); 120 * 160];
         self.interrupt = false
     }
     fn on(&mut self) {}
     fn off(&mut self) {
-        self.framebuffer = vec![image::Rgba([0, 0, 0, 255,]); 120 * 160];
+        self.framebuffer = vec![Rgba([0, 0, 0, 255, ]); 120 * 160];
         self.interrupt = false
     }
+    fn set_pause(&mut self, _paused: bool) {}
 }
 
 impl DevDisplayClassic {
@@ -59,13 +60,13 @@ impl MMIO for DevDisplayClassic {
             return Err(());
         }
         let color = self.framebuffer[addr];
-        Ok((color[0] << 4) as i32 + (color[1]) as i32 + (color[2] >> 4) as i32)
+        Ok((color[0] << 4) as i32 + color[1] as i32 + (color[2] >> 4) as i32)
     }
     fn write(&mut self, addr: usize, value: i32) -> Result<(), ()> {
         if addr >= self.framebuffer.len() {
             return Err(());
         }
-        let color = Rgba([(value >> 4) as u8, (value) as u8, (value << 4) as u8, 255]);
+        let color = Rgba([(value >> 4) as u8, value as u8, (value << 4) as u8, 255]);
         self.framebuffer[addr] = color;
         Ok(())
     }
