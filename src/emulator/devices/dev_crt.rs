@@ -27,6 +27,7 @@ impl Device for DevCRT {
     fn reset(&mut self) {}
     fn on(&mut self) {}
     fn off(&mut self) {}
+    fn set_pause(&mut self, _paused: bool) {}
 }
 
 /// Port 0: crt output

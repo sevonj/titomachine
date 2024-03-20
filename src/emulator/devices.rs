@@ -26,8 +26,10 @@ pub(crate) trait Device {
     fn reset(&mut self);
     /// Turns this device on.
     fn on(&mut self);
-    /// Turns this device off (but might not fully clear its state).
+    /// Turns this device off.
     fn off(&mut self);
+    /// Pausing stops time for this device.
+    fn set_pause(&mut self, paused: bool);
 }
 
 /// Memory Mapped IO: Any device that occupies memory addresses shall implement this trait.
@@ -131,6 +133,7 @@ impl Bus {
         }
     }
 
+    /// Clear all state
     pub(crate) fn reset(&mut self) {
         self.crt.reset();
         self.display.reset();
@@ -140,6 +143,8 @@ impl Bus {
         self.ram.reset();
         self.rtc.reset();
     }
+
+    /// Turn the device on. May affect state, not suitable for "pausing" the device.
     pub(crate) fn turn_on(&mut self) {
         self.crt.on();
         self.display.on();
@@ -149,6 +154,8 @@ impl Bus {
         self.ram.on();
         self.rtc.on();
     }
+
+    /// Turn the device off. May affect state, not suitable for "pausing" the device.
     pub(crate) fn turn_off(&mut self) {
         self.crt.off();
         self.display.off();
@@ -157,5 +164,15 @@ impl Bus {
         self.psg.off();
         self.ram.off();
         self.rtc.off();
+    }
+
+    pub(crate) fn set_pause(&mut self, paused: bool){
+        self.crt.set_pause(paused);
+        self.display.set_pause(paused);
+        self.kbd.set_pause(paused);
+        //self.pic.set_pause(paused);
+        self.psg.set_pause(paused);
+        self.ram.set_pause(paused);
+        self.rtc.set_pause(paused);
     }
 }

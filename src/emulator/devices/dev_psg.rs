@@ -25,6 +25,7 @@ mod noise_channel;
 mod note_table;
 mod pulse_channel;
 mod ramp_channel;
+
 use self::noise_channel::NoiseChannel;
 use self::note_table::key_freq;
 use self::pulse_channel::PulseChannel;
@@ -35,6 +36,7 @@ const SAMPLE_RATE: u32 = 22050;
 /// Device struct.
 ///
 pub(crate) struct DevPSG {
+    paused: bool,
     #[allow(dead_code)] // Output stream is never "used", but we have to keep it around in order to
     // get sound.
     stream: Option<OutputStream>,
@@ -95,6 +97,7 @@ impl Default for DevPSG {
         sink3.append(AudioSource::new(ch3.clone()));
 
         DevPSG {
+            paused: false,
             stream,
             sink0,
             sink1,
@@ -136,6 +139,20 @@ impl Device for DevPSG {
         self.sink1.pause();
         self.sink2.pause();
         self.sink3.pause();
+    }
+
+    fn set_pause(&mut self, paused: bool) {
+        if paused {
+            self.sink0.pause();
+            self.sink1.pause();
+            self.sink2.pause();
+            self.sink3.pause();
+        } else {
+            self.sink0.play();
+            self.sink1.play();
+            self.sink2.play();
+            self.sink3.play();
+        }
     }
 }
 

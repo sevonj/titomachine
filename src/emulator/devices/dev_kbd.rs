@@ -32,6 +32,7 @@ impl Device for DevKBD {
     fn reset(&mut self) {}
     fn on(&mut self) {}
     fn off(&mut self) {}
+    fn set_pause(&mut self, _paused: bool) {}
 }
 
 impl PMIO for DevKBD {
