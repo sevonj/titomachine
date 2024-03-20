@@ -198,20 +198,20 @@ impl TitoApp {
             ui.label("Emulator");
             ui.menu_button("Memory View", |ui| {
                 ui.label("Register Value base");
-                ui.radio_value(&mut self.regs_base, Radix::Bin, "Binary");
-                ui.radio_value(&mut self.regs_base, Radix::Dec, "Decimal");
-                ui.radio_value(&mut self.regs_base, Radix::Hex, "Hex");
+                ui.radio_value(&mut self.config.cpuview_regs_base, Radix::Bin, "Binary");
+                ui.radio_value(&mut self.config.cpuview_regs_base, Radix::Dec, "Decimal");
+                ui.radio_value(&mut self.config.cpuview_regs_base, Radix::Hex, "Hex");
             });
 
             ui.with_layout(Layout::left_to_right(Align::TOP), |ui| {
                 ui.label("CPU Speed: ");
                 ui.add_enabled(
                     !self.emu_turbo,
-                    DragValue::new(&mut self.emu_speed)
+                    DragValue::new(&mut self.config.emu_speed)
                         .speed(0.1)
                         .clamp_range(1..=9999),
                 );
-                match self.emu_cpuspeedmul {
+                match self.config.emu_cpuspeedmul {
                     crate::FreqMagnitude::Hz => ui.label("Hz"),
                     crate::FreqMagnitude::KHz => ui.label("KHz"),
                     crate::FreqMagnitude::MHz => ui.label("MHz"),
@@ -219,19 +219,19 @@ impl TitoApp {
             });
             ui.with_layout(Layout::left_to_right(Align::TOP), |ui| {
                 if ui
-                    .radio_value(&mut self.emu_cpuspeedmul, crate::FreqMagnitude::Hz, "Hz")
+                    .radio_value(&mut self.config.emu_cpuspeedmul, crate::FreqMagnitude::Hz, "Hz")
                     .clicked()
                 {
                     self.send_settings();
                 }
                 if ui
-                    .radio_value(&mut self.emu_cpuspeedmul, crate::FreqMagnitude::KHz, "KHz")
+                    .radio_value(&mut self.config.emu_cpuspeedmul, crate::FreqMagnitude::KHz, "KHz")
                     .clicked()
                 {
                     self.send_settings();
                 }
                 if ui
-                    .radio_value(&mut self.emu_cpuspeedmul, crate::FreqMagnitude::MHz, "MHz")
+                    .radio_value(&mut self.config.emu_cpuspeedmul, crate::FreqMagnitude::MHz, "MHz")
                     .clicked()
                 {
                     self.send_settings();
@@ -306,7 +306,7 @@ impl TitoApp {
         // Emulator specific
         else {
             if ui.input_mut(|i| i.consume_shortcut(&SHORTCUT_GUI_EMUGRAPHICS)) {
-                self.emugui_display = !self.emugui_display
+                self.config.display_visible = !self.config.display_visible
             }
             if ui.input_mut(|i| i.consume_shortcut(&SHORTCUT_TOGGLEPOWER)) {
                 match self.emu_running {
