@@ -18,6 +18,7 @@ impl CPU {
     pub fn debug_get_cu(&mut self) -> [i32; 4] {
         [self.cu_pc, self.cu_ir, self.cu_tr, self.cu_sr]
     }
+    pub fn debug_get_cu_pc(&self) -> i32 { self.cu_pc }
     pub fn debug_set_cu_pc(&mut self, value: i32) {
         self.cu_pc = value;
     }

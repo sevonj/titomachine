@@ -1,3 +1,4 @@
+use std::sync::mpsc::Sender;
 use crate::{emulator::emu_debug::CtrlMSG, TitoApp};
 use serde;
 
@@ -5,6 +6,7 @@ pub mod gui_editor;
 pub mod gui_emulator;
 
 use egui::{Align, Button, Color32, DragValue, Layout, Modifiers, OpenUrl, RichText};
+use crate::config::Config;
 
 #[derive(PartialEq)]
 pub enum GuiMode {
@@ -195,15 +197,6 @@ impl TitoApp {
             ui.separator();
             ui.label("Emulator");
             ui.menu_button("Memory View", |ui| {
-                ui.checkbox(&mut self.emugui_follow_pc, "Follow PC");
-                ui.label("Memview Address base");
-                ui.radio_value(&mut self.mem_adr_base, Radix::Bin, "Binary");
-                ui.radio_value(&mut self.mem_adr_base, Radix::Dec, "Decimal");
-                ui.radio_value(&mut self.mem_adr_base, Radix::Hex, "Hex");
-                ui.label("Memview Value base");
-                ui.radio_value(&mut self.mem_val_base, Radix::Bin, "Binary");
-                ui.radio_value(&mut self.mem_val_base, Radix::Dec, "Decimal");
-                ui.radio_value(&mut self.mem_val_base, Radix::Hex, "Hex");
                 ui.label("Register Value base");
                 ui.radio_value(&mut self.regs_base, Radix::Bin, "Binary");
                 ui.radio_value(&mut self.regs_base, Radix::Dec, "Decimal");
@@ -343,7 +336,8 @@ impl TitoApp {
 }
 
 
-/// Trait for emulator GUI modules
-pub trait View {
-    fn ui(&mut self, ui: &mut egui::Ui);
+/// Trait for emulator GUI panels
+pub trait EmulatorPanel {
+    /// Args are references to ui, persistent settings struct, and emulator control message sender.
+    fn ui(&mut self, ui: &mut egui::Ui, config: &mut Config, sender: &Sender<CtrlMSG>);
 }

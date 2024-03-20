@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 ///
 /// emulator.rs
 ///
@@ -88,6 +89,8 @@ pub struct Emu {
     t_last_update: Option<Instant>,
     t_last_cpu_tick: Option<Instant>,
     perfmon: PerfMonitor,
+    breakpoints_enabled: bool,
+    breakpoints: HashSet<usize>,
 }
 
 impl Emu {
@@ -117,6 +120,8 @@ impl Emu {
             t_last_update: None,
             t_last_cpu_tick: None,
             perfmon: PerfMonitor::default(),
+            breakpoints_enabled: false,
+            breakpoints: HashSet::new(),
         };
         emu.bus.crt.connect(tx_devcrt);
         emu.bus.kbd.connect(rx_devkbd, tx_devkbdreq);
@@ -159,7 +164,7 @@ impl Emu {
 
     /// When user clicks step button
     pub fn manual_tick(&mut self) {
-        self.tick();
+        self.tick_ignore_breakpoints();
         self.slow_checks();
     }
 
@@ -219,9 +224,13 @@ impl Emu {
     fn playpause(&mut self, p: bool) {
         self.t_last_update = None;
         self.playing = p;
-        match p {
-            true => self.bus.turn_on(),
-            false => self.bus.turn_off(),
+        if p {
+            self.bus.turn_on();
+            // Perform one tick ignoring breakpoints, in case we're stopped on one.
+            self.tick_ignore_breakpoints();
+            thread::sleep(Duration::from_secs_f32(1. / self.tick_rate));
+        } else {
+            self.bus.turn_off()
         }
     }
 
@@ -283,7 +292,23 @@ impl Emu {
         self.bus.display.reset();
     }
 
+    /// Advance the emulator by one instruction.
     fn tick(&mut self) {
+        self.dev_update();
+        if self.cpu.halt {
+            return;
+        }
+        if self.breakpoints_enabled {
+            if self.breakpoints.contains(&(self.cpu.debug_get_cu_pc() as usize)) {
+                self.playpause(false);
+                return;
+            }
+        }
+        self.cpu.tick(&mut self.bus);
+    }
+
+    /// Advance the emulator by one instruction. Ignore breakpoints,
+    fn tick_ignore_breakpoints(&mut self) {
         self.dev_update();
         if self.cpu.halt {
             return;

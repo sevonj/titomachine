@@ -19,20 +19,26 @@ pub enum CtrlMSG {
     SetTurbo(bool),
     GetState,
     GetMem(Range<u32>),
+    EnableBreakpoints(bool),
+    ClearBreakpoints,
+    InsertBreakpoint(usize),
+    RemoveBreakpoint(usize),
 }
+
 pub enum ReplyMSG {
     State(EmuState),
     Regs(DebugRegs),
     Mem(Vec<i32>),
-    MemSize(usize),
-    SegmentOffsets(usize, usize, usize)
+    SegmentOffsets(usize, usize, usize),
 }
+
 pub struct EmuState {
     pub playing: bool,
     pub running: bool,
     pub halted: bool,
     pub speed_percent: f32,
 }
+
 pub struct DebugRegs {
     pub pc: i32,
     pub ir: i32,
@@ -44,6 +50,7 @@ pub struct DebugRegs {
     pub mar: i32,
     pub mbr: i32,
 }
+
 impl Default for DebugRegs {
     fn default() -> Self {
         DebugRegs {
@@ -61,8 +68,8 @@ impl Default for DebugRegs {
 }
 
 impl Emu {
+    /// Loop through any queued control messages.
     pub(crate) fn check_mail(&mut self) {
-        // Loop until there are no messages, because messages may arrive faster than this is called.
         loop {
             if let Ok(msg) = self.rx.try_recv() {
                 match msg {
@@ -81,6 +88,10 @@ impl Emu {
                     // Debug
                     CtrlMSG::GetState => self.debug_sendstate(),
                     CtrlMSG::GetMem(range) => self.debug_sendmem(range),
+                    CtrlMSG::EnableBreakpoints(enable) => self.breakpoints_enabled = enable,
+                    CtrlMSG::ClearBreakpoints => self.breakpoints.clear(),
+                    CtrlMSG::InsertBreakpoint(addr) => { self.breakpoints.insert(addr); }
+                    CtrlMSG::RemoveBreakpoint(addr) => { self.breakpoints.remove(&addr); }
                 }
             } else {
                 break;
@@ -111,14 +122,7 @@ impl Emu {
                 break;
             };
         }
-        match self.tx.send(ReplyMSG::Mem(retvec)) {
-            Ok(_) => (),
-            Err(_) => todo!(),
-        }
-        match self.tx.send(ReplyMSG::MemSize(0x2000)) {
-            Ok(_) => (),
-            Err(_) => todo!(),
-        }
+        let _ = self.tx.send(ReplyMSG::Mem(retvec));
     }
 
     fn debug_sendregs(&mut self) {

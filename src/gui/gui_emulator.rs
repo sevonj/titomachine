@@ -1,15 +1,14 @@
 use self::gui_devices::GUIDevice;
 
 use super::Radix;
-use crate::{emulator::emu_debug::CtrlMSG, TitoApp, gui::View};
+use crate::{emulator::emu_debug::CtrlMSG, TitoApp, gui::EmulatorPanel};
 
 pub(crate) mod gui_devices;
 pub(crate) mod memoryview;
 
 use eframe::emath::format_with_decimals_in_range;
-use egui::{Button, Color32, Context, FontId, Frame, RichText, Ui, Widget};
+use egui::{Button, Color32, Context, FontId, Frame, RichText, Ui};
 use egui_extras::{Column, TableBuilder};
-use num_traits::ToPrimitive;
 
 const FONT_TBL: FontId = FontId::monospace(12.0);
 const FONT_TBLH: FontId = FontId::proportional(12.5);
@@ -19,7 +18,7 @@ const COL_TEXT: Color32 = Color32::DARK_GRAY;
 const COL_TEXT_HI: Color32 = Color32::WHITE;
 
 impl TitoApp {
-    pub fn emulator_toolbar(&mut self, _: &Context, ui: &mut Ui) {
+    pub fn emulator_toolbar(&mut self, ctx: &Context, ui: &mut Ui) {
         let text_onoff;
         match self.emu_running {
             true => text_onoff = RichText::new("⏼on/off").color(Color32::WHITE),
@@ -32,6 +31,7 @@ impl TitoApp {
                 self.stop_emulation();
             } else {
                 self.emu_running = true;
+                let _ = self.tx_ctrl.send(CtrlMSG::EnableBreakpoints(self.config.memview_breakpoints_enabled));
                 let _ = self.tx_ctrl.send(CtrlMSG::PlaybackStart);
             }
         }
@@ -56,6 +56,11 @@ impl TitoApp {
                     .clicked()
                 {
                     let _ = self.tx_ctrl.send(CtrlMSG::PlaybackTick);
+                    if self.config.memview_follow_pc {
+                        self.memoryview.jump_to_pc();
+                    }
+                    // Repaint because we touched memory viewer
+                    ctx.request_repaint()
                 }
             })
         });
@@ -96,7 +101,7 @@ impl TitoApp {
                     self.dev_legacyio.gui_panel(ctx, ui);
                     ui.separator();
                 });
-            egui::CentralPanel::default().show(ctx, |ui| {
+            egui::CentralPanel::default().show(ctx, |_ui| {
                 // Display
                 if self.emugui_display {
                     egui::TopBottomPanel::top("display")
@@ -109,7 +114,7 @@ impl TitoApp {
                 egui::CentralPanel::default()
                     .frame(Frame::none())
                     .show(ctx, |ui| {
-                        self.memoryview.ui(ui);
+                        self.memoryview.ui(ui, &mut self.config, &self.tx_ctrl);
                     });
             });
         });
@@ -131,7 +136,7 @@ impl TitoApp {
             .column(Column::initial(reg_name_width))
             .column(Column::exact(reg_val_width))
             .body(|mut body| {
-                let pc_str = match self.mem_adr_base {
+                let pc_str = match self.config.memview_addr_base {
                     Radix::Bin => format!("{pc:#b}"),
                     Radix::Dec => format!("{pc}"),
                     Radix::Hex => format!("{pc:#x}"),

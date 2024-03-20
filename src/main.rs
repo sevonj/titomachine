@@ -25,6 +25,7 @@ use std::{env::current_dir, path::PathBuf, sync::mpsc, thread};
 use egui::{Context, Vec2, ViewportBuilder};
 use egui_extras::install_image_loaders;
 
+pub mod config;
 pub mod editor;
 pub mod emulator;
 pub mod gui;
@@ -34,14 +35,16 @@ use editor::Editor;
 use emulator::emu_debug::{CtrlMSG, DebugRegs, ReplyMSG};
 use gui::{
     gui_editor::file_actions::FileStatus,
-    gui_emulator::gui_devices::{display::GUIDevDisplay, legacy_io::GUIDevLegacyIO, GUIDevice},
-    Radix, GuiMode,
+    gui_emulator::gui_devices::{display::GUIDevDisplay, GUIDevice, legacy_io::GUIDevLegacyIO},
+    GuiMode, Radix,
 };
+use crate::config::Config;
 
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 // TODO: Cleanup
 pub struct TitoApp {
+    config: Config,
     // File, Status
     workdir: PathBuf,
     #[serde(skip)]
@@ -73,15 +76,12 @@ pub struct TitoApp {
     emu_achieved_speed: f32,
     #[serde(skip)]
     emu_regs: DebugRegs,
-    memoryview: MemoryView,
+    #[serde(skip)] memoryview: MemoryView,
 
     // GUI settings
     #[serde(skip)]
     guimode: GuiMode,
     emugui_display: bool,
-    emugui_follow_pc: bool,
-    mem_adr_base: Radix,
-    mem_val_base: Radix,
     regs_base: Radix,
 }
 
@@ -115,6 +115,7 @@ impl Default for TitoApp {
             );
         });
         TitoApp {
+            config: Config::default(),
             workdir: current_dir().unwrap(),
             filestatus: FileStatus::default(),
             editor: Editor::default(),
@@ -138,9 +139,6 @@ impl Default for TitoApp {
             // GUI
             guimode: GuiMode::Editor,
             emugui_display: false,
-            emugui_follow_pc: true,
-            mem_adr_base: Radix::Dec,
-            mem_val_base: Radix::Dec,
             regs_base: Radix::Dec,
         }
     }
@@ -186,7 +184,6 @@ impl TitoApp {
                     ReplyMSG::Mem(vec) => {
                         self.memoryview.set_view_cache(self.memoryview.get_view_cache_start(), vec)
                     }
-                    ReplyMSG::MemSize(s) => (), // TODO: Remove
                     ReplyMSG::SegmentOffsets(start_code, start_data, start_stack) => {
                         self.memoryview.start_code = start_code;
                         self.memoryview.start_data = start_data;
@@ -223,10 +220,6 @@ impl TitoApp {
 }
 
 impl eframe::App for TitoApp {
-    fn save(&mut self, storage: &mut dyn eframe::Storage) {
-        eframe::set_value(storage, eframe::APP_KEY, self);
-    }
-
     fn update(&mut self, ctx: &Context, _frame: &mut eframe::Frame) {
         install_image_loaders(ctx);
 
@@ -239,6 +232,10 @@ impl eframe::App for TitoApp {
         self.msg_handler();
         self.send_settings();
         self.gui_main(ctx);
+    }
+
+    fn save(&mut self, storage: &mut dyn eframe::Storage) {
+        eframe::set_value(storage, eframe::APP_KEY, self);
     }
 }
 
