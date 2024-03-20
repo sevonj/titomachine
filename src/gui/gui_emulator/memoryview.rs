@@ -7,11 +7,14 @@
 
 use std::{default::Default, ops::Range};
 use std::collections::{HashMap, HashSet};
+use std::sync::mpsc::Sender;
 use egui::{CentralPanel, Color32, Frame, Image, include_image, RichText, ScrollArea, Sense, SidePanel, Slider, TopBottomPanel, Ui, scroll_area::ScrollBarVisibility};
 use egui_extras::{Column, TableBody, TableBuilder, TableRow};
 use libttktk::disassembler::disassemble_instruction;
 use num_traits::ToPrimitive;
-use crate::gui::{Radix, View};
+use crate::config::Config;
+use crate::emulator::emu_debug::CtrlMSG;
+use crate::gui::{Radix, EmulatorPanel};
 use crate::gui::gui_emulator::{COL_TEXT, COL_TEXT_HI, FONT_TBL, FONT_TBLH};
 
 
@@ -22,9 +25,10 @@ const COLOR_SEGMENT_DATA: Color32 = Color32::from_rgb(046, 137, 133);
 const COLOR_SEGMENT_STACK: Color32 = Color32::from_rgb(159, 075, 150);
 const COLOR_BREAKPOINT: Color32 = Color32::from_rgb(239, 80, 57);
 const COLOR_BREAKPOINT_OPTION: Color32 = Color32::from_rgb(228, 122, 119);
+const COLOR_BREAKPOINT_DISABLED: Color32 = Color32::from_additive_luminance(0x1f);
 
 /// Which segment does an address belong to.
-enum Segment {
+enum MemorySegment {
     None,
     Code,
     Data,
@@ -32,51 +36,41 @@ enum Segment {
 }
 
 /// MemoryView is the UI component responsible for the memory viewer panel.
-#[derive(serde::Deserialize, serde::Serialize)]
 pub(crate) struct MemoryView {
     /// First address to cache
-    #[serde(skip)] view_cache_start: usize,
+    view_cache_start: usize,
     /// Number of addresses to cache
-    #[serde(skip)] view_cache_size: usize,
+    view_cache_size: usize,
     /// Currently cached addresses
-    #[serde(skip)] view_cache: HashMap<usize, i32>,
+    view_cache: HashMap<usize, i32>,
 
     /// Multiple symbols may exist for an address, because of _consts_
-    #[serde(skip)] symbol_table: HashMap<usize, Vec<String>>,
+    symbol_table: HashMap<usize, Vec<String>>,
     /// Comment for an address.
-    #[serde(skip)] comment_table: HashMap<usize, String>,
-    ///
-    #[serde(skip)] breakpoints: HashSet<usize>,
+    comment_table: HashMap<usize, String>,
+    /// Set of addresses that contains a breakpoint.
+    breakpoints: HashSet<usize>,
 
     /// Is the emulated machine both turned on and not paused
-    #[serde(skip)] pub is_playing: bool,
+    pub is_playing: bool,
 
     /// Memory view displays where PC, SP, and FP point to
-    #[serde(skip)] pub cpu_pc: usize,
+    pub cpu_pc: usize,
     /// Memory view displays where PC, SP, and FP point to
-    #[serde(skip)] pub cpu_sp: usize,
+    pub cpu_sp: usize,
     /// Memory view displays where PC, SP, and FP point to
-    #[serde(skip)] pub cpu_fp: usize,
+    pub cpu_fp: usize,
 
     /// Code segment start address
-    #[serde(skip)] pub start_code: usize,
+    pub start_code: usize,
     /// Data segment start address
-    #[serde(skip)] pub start_data: usize,
+    pub start_data: usize,
     /// Stack start address
-    #[serde(skip)] pub start_stack: usize,
+    pub start_stack: usize,
 
-    /// Toggle visibility.
-    visible: bool,
-    /// Memory view follows PC register while playing
-    pub follow_pc: bool,
-
-    /// Which base to show address in
-    view_addr_base: Radix,
-    /// Which base to show value in
-    view_value_base: Radix,
 
     // Done: Display Symbols
-    // Todo: Load symbol table
+    // DONE: Load symbol table
     // Todo: Comments
     // Done: Mouse scroll
     // Todo: Breakpoints
@@ -105,10 +99,6 @@ impl MemoryView {
             start_code: MEM_SIZE,
             start_data: MEM_SIZE,
             start_stack: MEM_SIZE,
-            visible: true,
-            follow_pc: true,
-            view_addr_base: Radix::Dec,
-            view_value_base: Radix::Dec,
         }
     }
 
@@ -143,6 +133,7 @@ impl MemoryView {
         }
     }
 
+    /// Give memoryview a copy of B91 symbol table.
     pub fn set_symbol_table(&mut self, table: HashMap<String, i32>) {
         self.symbol_table.clear();
         for (name, value) in table {
@@ -162,21 +153,31 @@ impl MemoryView {
         }
     }
 
+    /// Load comment table from B91 once it supports it.
     pub fn set_comment_table(&mut self, table: HashMap<usize, String>) {
         self.comment_table = table;
     }
 
-    fn get_segment_from_address(&self, address: usize) -> Segment {
-        if address >= MEM_SIZE {
-            Segment::None
-        } else if address >= self.start_stack {
-            Segment::Stack
-        } else if address >= self.start_data {
-            Segment::Data
-        } else if address >= self.start_code {
-            Segment::Code
+    /// Scroll view to PC location
+    pub fn jump_to_pc(&mut self) {
+        if self.cpu_pc > 4 {
+            self.view_cache_start = self.cpu_pc - 4;
         } else {
-            Segment::None
+            self.view_cache_start = 0
+        }
+    }
+
+    fn get_segment_from_address(&self, address: usize) -> MemorySegment {
+        if address >= MEM_SIZE {
+            MemorySegment::None
+        } else if address >= self.start_stack {
+            MemorySegment::Stack
+        } else if address >= self.start_data {
+            MemorySegment::Data
+        } else if address >= self.start_code {
+            MemorySegment::Code
+        } else {
+            MemorySegment::None
         }
     }
 
@@ -188,7 +189,13 @@ impl MemoryView {
     }
 
     /// Add an address-entry-displaying row to the memory view table.
-    fn add_table_row(&mut self, body: &mut TableBody, address: usize) {
+    fn add_table_row(
+        &mut self,
+        config: &mut Config,
+        sender: &Sender<CtrlMSG>,
+        body: &mut TableBody,
+        address: usize,
+    ) {
         // Out of bounds
         if address >= MEM_SIZE {
             return;
@@ -204,8 +211,8 @@ impl MemoryView {
             Some(value) => {
                 let value = value.to_owned();
                 body.row(20.0, |mut row| {
-                    self.add_table_address(&mut row, address, font_color);
-                    self.add_table_value(&mut row, value, font_color);
+                    self.add_table_address(config, sender, &mut row, address, font_color);
+                    self.add_table_value(config, &mut row, value, font_color);
                     self.add_table_disassembly(&mut row, value, font_color);
                     self.add_table_pointers(&mut row, address, font_color);
                 });
@@ -214,7 +221,7 @@ impl MemoryView {
             // Display placeholder
             None => {
                 body.row(20.0, |mut row| {
-                    self.add_table_address(&mut row, address, font_color);
+                    self.add_table_address(config, sender, &mut row, address, font_color);
                     self.add_table_label(&mut row, "Fetching...", font_color);
                     self.add_table_label(&mut row, "", font_color);
                     self.add_table_label(&mut row, "", font_color);
@@ -231,20 +238,25 @@ impl MemoryView {
     }
 
     /// Table Shortcut: Address column
-    fn add_table_address(&mut self, row: &mut TableRow, address: usize, font_color: Color32) {
-        let text = self.view_addr_base.format_addr(address);
+    fn add_table_address(
+        &mut self,
+        config: &Config,
+        sender: &Sender<CtrlMSG>,
+        row: &mut TableRow,
+        address: usize,
+        font_color: Color32) {
+        let text = config.memview_addr_base.format_addr(address);
         let color = match self.get_segment_from_address(address) {
-            Segment::None => COLOR_SEGMENT_NONE,
-            Segment::Code => COLOR_SEGMENT_CODE,
-            Segment::Data => COLOR_SEGMENT_DATA,
-            Segment::Stack => COLOR_SEGMENT_STACK
+            MemorySegment::None => COLOR_SEGMENT_NONE,
+            MemorySegment::Code => COLOR_SEGMENT_CODE,
+            MemorySegment::Data => COLOR_SEGMENT_DATA,
+            MemorySegment::Stack => COLOR_SEGMENT_STACK
         };
         row.col(|ui| {
             // Segment marker
             ui.add(Image::new(include_image!("../../assets/memview_segment_marker.png"))
                 .fit_to_original_size(1.0).tint(color)
             );
-
 
             // Address label
             let addr_label = ui.label(RichText::new(text)
@@ -254,12 +266,16 @@ impl MemoryView {
 
             // Breakpoints
             let bp_color = if self.breakpoints.contains(&address) {
-                COLOR_BREAKPOINT
+                match config.memview_breakpoints_enabled {
+                    true => COLOR_BREAKPOINT,
+                    false => COLOR_BREAKPOINT_DISABLED
+                }
             } else if addr_label.hovered() {
                 COLOR_BREAKPOINT_OPTION
             } else {
                 Color32::TRANSPARENT
             };
+
             let bpmark = ui.add(Image::new(include_image!("../../assets/memview_breakpoint.png"))
                 .fit_to_original_size(1.0).tint(bp_color)
                 .sense(Sense { click: true, drag: false, focusable: false })
@@ -268,17 +284,19 @@ impl MemoryView {
             match self.breakpoints.contains(&address) {
                 false => if addr_label.clicked() {
                     self.breakpoints.insert(address);
+                    sender.send(CtrlMSG::InsertBreakpoint(address)).unwrap()
                 }
                 true => if bpmark.clicked() || addr_label.clicked() {
                     self.breakpoints.remove(&address);
+                    sender.send(CtrlMSG::RemoveBreakpoint(address)).unwrap()
                 }
             }
         });
     }
 
     /// Table Shortcut: Value column
-    fn add_table_value(&self, row: &mut TableRow, value: i32, font_color: Color32) {
-        let text = self.view_value_base.format_i32(value.to_owned());
+    fn add_table_value(&self, config: &mut Config, row: &mut TableRow, value: i32, font_color: Color32) {
+        let text = config.memview_value_base.format_i32(value.to_owned());
         row.col(|ui| {
             ui.label(RichText::new(text).font(FONT_TBL.clone()).color(font_color));
         });
@@ -326,49 +344,55 @@ impl MemoryView {
             ui.heading(RichText::new(title).font(FONT_TBLH.clone()));
         });
     }
-
-    fn scroll_to_pc(&mut self) {
-        if self.cpu_pc > 4 {
-            self.view_cache_start = self.cpu_pc - 4;
-        } else {
-            self.view_cache_start = 0
-        }
-    }
 }
 
-impl View for MemoryView {
-    fn ui(&mut self, ui: &mut Ui) {
+impl EmulatorPanel for MemoryView {
+    fn ui(&mut self, ui: &mut Ui, config: &mut Config, sender: &Sender<CtrlMSG>) {
         // Memview titlebar
         TopBottomPanel::top("memview_titlebar")
             .resizable(false)
             .show_inside(ui, |ui| {
                 ui.horizontal(|ui| {
-                    let collapse_text = if self.visible { "v" } else { ">" };
-                    if ui.selectable_label(self.visible, collapse_text).clicked() {
-                        self.visible = !self.visible
-                    }
-                    ui.label(RichText::new("Memory Explorer").strong());
-                    if !self.visible {
+                    match config.memview_visible {
+                        true => if ui.selectable_label(config.memview_visible, "⏷ Memory Explorer").clicked() {
+                            config.memview_visible = false
+                        }
+                        false => if ui.selectable_label(config.memview_visible, "⏵ Memory Explorer").clicked() {
+                            config.memview_visible = true
+                        }
+                    };
+                    if !config.memview_visible {
                         return;
                     }
                     ui.menu_button("Options", |ui| {
-                        ui.checkbox(&mut self.follow_pc, "Follow Program Counter");
                         ui.label("Display address as");
-                        ui.radio_value(&mut self.view_addr_base, Radix::Bin, "Binary");
-                        ui.radio_value(&mut self.view_addr_base, Radix::Dec, "Decimal");
-                        ui.radio_value(&mut self.view_addr_base, Radix::Hex, "Hex");
+                        ui.radio_value(&mut config.memview_addr_base, Radix::Bin, "Binary");
+                        ui.radio_value(&mut config.memview_addr_base, Radix::Dec, "Decimal");
+                        ui.radio_value(&mut config.memview_addr_base, Radix::Hex, "Hex");
                         ui.label("Display value as");
-                        ui.radio_value(&mut self.view_value_base, Radix::Bin, "Binary");
-                        ui.radio_value(&mut self.view_value_base, Radix::Dec, "Decimal");
-                        ui.radio_value(&mut self.view_value_base, Radix::Hex, "Hex");
+                        ui.radio_value(&mut config.memview_value_base, Radix::Bin, "Binary");
+                        ui.radio_value(&mut config.memview_value_base, Radix::Dec, "Decimal");
+                        ui.radio_value(&mut config.memview_value_base, Radix::Hex, "Hex");
                     });
-                    if ui.button("Find PC").clicked() {
-                        self.scroll_to_pc();
+                    ui.menu_button("Breakpoints", |ui| {
+                        if ui.checkbox(&mut config.memview_breakpoints_enabled, "Enabled").clicked() {
+                            let _ = sender.send(CtrlMSG::EnableBreakpoints(config.memview_breakpoints_enabled));
+                        }
+                        if ui.button("Clear all").clicked() {
+                            self.breakpoints.clear();
+                            let _ = sender.send(CtrlMSG::ClearBreakpoints);
+                        }
+                    });
+
+                    ui.checkbox(&mut config.memview_follow_pc, "Follow PC");
+
+                    if ui.button("Go to PC").clicked() {
+                        self.jump_to_pc();
                     }
                 });
             });
 
-        if !self.visible {
+        if !config.memview_visible {
             return;
         }
 
@@ -399,12 +423,12 @@ impl View for MemoryView {
                 self.view_cache_size = rows_to_display;
 
                 // Mouse scroll
-                let mut scroll = -ui.input(|i| i.raw_scroll_delta).y.to_isize().unwrap().clamp(-1, 1);
+                let scroll = -ui.input(|i| i.raw_scroll_delta).y.to_isize().unwrap().clamp(-1, 1);
                 self.view_cache_start = self.view_cache_start.saturating_add_signed(scroll);
 
                 // Follow PC
-                if self.follow_pc && self.is_playing {
-                    self.scroll_to_pc();
+                if config.memview_follow_pc && self.is_playing {
+                    self.jump_to_pc();
                 }
 
                 // The purpose of this non-interactive ScrollArea is to hide overflow.
@@ -426,11 +450,11 @@ impl View for MemoryView {
                                 self.add_table_heading(&mut header, "Addr");
                                 self.add_table_heading(&mut header, "Value");
                                 self.add_table_heading(&mut header, "Disassembly");
-                                self.add_table_heading(&mut header, "Pointers");
+                                self.add_table_heading(&mut header, "");
                             })
                             .body(|mut body| {
                                 for off in 0..=rows_to_display {
-                                    self.add_table_row(&mut body, self.view_cache_start + off);
+                                    self.add_table_row(config, sender, &mut body, self.view_cache_start + off);
                                 }
                             });
                     });

@@ -4,7 +4,7 @@ use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
 use std::str::FromStr;
-use libttktk::b91::{B91, B91ParseError};
+use libttktk::b91::B91;
 use libttktk::compiler::compile;
 
 const DEFAULT_OS: &str = include_str!("../programs/default/default_os.k91");

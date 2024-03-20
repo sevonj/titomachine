@@ -19,10 +19,18 @@ pub struct Config {
     pub memview_addr_base: Radix,
     /// Which base to show value in
     pub memview_value_base: Radix,
+    /// Breakpoint settings belong to Memory Viewer
+    pub memview_breakpoints_enabled: bool
 }
 
 impl Default for Config {
     fn default() -> Self {
-        todo!()
+        Config{
+            memview_visible: false,
+            memview_follow_pc: false,
+            memview_addr_base: Default::default(),
+            memview_value_base: Default::default(),
+            memview_breakpoints_enabled: false,
+        }
     }
 }
