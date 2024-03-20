@@ -112,10 +112,13 @@ impl MemoryView {
         }
     }
 
+    /// Reset needs to be called when loading a new program. Otherwise, old stuff like breakpoints
+    /// may linger in the memory view despite being removed from the emulator.
     pub fn reset(&mut self) {
         self.view_cache_start = 0;
         self.symbol_table.clear();
         self.comment_table.clear();
+        self.breakpoints.clear();
         self.start_code = MEM_SIZE;
         self.start_data = MEM_SIZE;
         self.start_stack = MEM_SIZE;
@@ -133,7 +136,7 @@ impl MemoryView {
     /// Update memoryview's cached addresses. range_start tells the first address.
     /// Use get_view_cache_range() to know which addresses memoryview wants.
     pub fn set_view_cache(&mut self, range_start: usize, values: Vec<i32>) {
-        self.view_cache.clear();
+        //self.view_cache.clear();
         for (offset, value) in values.iter().enumerate() {
             let address = range_start + offset;
             self.view_cache.insert(address, value.to_owned());
@@ -238,44 +241,38 @@ impl MemoryView {
         };
         row.col(|ui| {
             // Segment marker
-            let _segmark = ui.add(Image::new(include_image!("../../assets/memview_segment_marker.png"))
+            ui.add(Image::new(include_image!("../../assets/memview_segment_marker.png"))
                 .fit_to_original_size(1.0).tint(color)
-                .sense(Sense { click: true, drag: false, focusable: false })
             );
 
-            // Breakpoints
-            /*
-            match self.breakpoints.contains(&address) {
-                false => {
-                    // Draw _add breakpoint_ hint
-                    if segmark.hovered() {
-                        ui.add(Image::new(include_image!("../../assets/memview_breakpoint.png"))
-                            .fit_to_original_size(1.0).tint(COLOR_BREAKPOINT_OPTION)
-                        );
-                    }
-                    // Add breakpoint
-                    if segmark.clicked() {
-                        self.breakpoints.insert(address);
-                    }
-                }
-                true => if self.breakpoints.contains(&address) {
-                    // Draw breakpoint
-                    let bpmark = ui.add(Image::new(include_image!("../../assets/memview_breakpoint.png"))
-                        .fit_to_original_size(1.0).tint(COLOR_BREAKPOINT)
-                        .sense(Sense { click: true, drag: false, focusable: false })
-                    );
-                    // Remove breakpoint
-                    if bpmark.clicked() || segmark.clicked() {
-                        self.breakpoints.remove(&address);
-                    };
-                }
-            } */
 
             // Address label
-            ui.label(RichText::new(text)
+            let addr_label = ui.label(RichText::new(text)
                 .font(FONT_TBL.clone())
                 .color(font_color)
             );
+
+            // Breakpoints
+            let bp_color = if self.breakpoints.contains(&address) {
+                COLOR_BREAKPOINT
+            } else if addr_label.hovered() {
+                COLOR_BREAKPOINT_OPTION
+            } else {
+                Color32::TRANSPARENT
+            };
+            let bpmark = ui.add(Image::new(include_image!("../../assets/memview_breakpoint.png"))
+                .fit_to_original_size(1.0).tint(bp_color)
+                .sense(Sense { click: true, drag: false, focusable: false })
+            );
+
+            match self.breakpoints.contains(&address) {
+                false => if addr_label.clicked() {
+                    self.breakpoints.insert(address);
+                }
+                true => if bpmark.clicked() || addr_label.clicked() {
+                    self.breakpoints.remove(&address);
+                }
+            }
         });
     }
 
@@ -301,9 +298,6 @@ impl MemoryView {
         let mut text = String::new();
         let symbols = self.symbol_table.get(&address);
 
-        if self.cpu_pc == address || self.cpu_sp == address || self.cpu_fp == address || symbols.is_some() {
-            text += "<-- ";
-        }
         if self.cpu_pc == address { text += "PC "; }
         if self.cpu_sp == address { text += "SP "; }
         if self.cpu_fp == address { text += "FP "; }
@@ -314,7 +308,16 @@ impl MemoryView {
             }
         }
 
-        row.col(|ui| { ui.label(RichText::new(text).font(FONT_TBL.clone()).color(font_color)); });
+        row.col(|ui| {
+            if self.cpu_pc == address || self.cpu_sp == address || self.cpu_fp == address || symbols.is_some() {
+                // TODO: Make overlap
+                ui.add(Image::new(include_image!("../../assets/memview_pointer_arrow.png"))
+                    .fit_to_original_size(1.0)
+                    .tint(Color32::from_rgba_unmultiplied(255, 255, 255, 2))
+                );
+            }
+            ui.label(RichText::new(text).font(FONT_TBL.clone()).color(font_color));
+        });
     }
 
     /// Table Shortcut: Header column
@@ -340,9 +343,11 @@ impl View for MemoryView {
             .resizable(false)
             .show_inside(ui, |ui| {
                 ui.horizontal(|ui| {
-                    if ui.selectable_label(self.visible, "Memory Explorer").clicked() {
+                    let collapse_text = if self.visible { "v" } else { ">" };
+                    if ui.selectable_label(self.visible, collapse_text).clicked() {
                         self.visible = !self.visible
                     }
+                    ui.label(RichText::new("Memory Explorer").strong());
                     if !self.visible {
                         return;
                     }
@@ -394,7 +399,7 @@ impl View for MemoryView {
                 self.view_cache_size = rows_to_display;
 
                 // Mouse scroll
-                let scroll = -ui.input(|i| i.raw_scroll_delta).y.to_isize().unwrap().clamp(-2, 2);
+                let mut scroll = -ui.input(|i| i.raw_scroll_delta).y.to_isize().unwrap().clamp(-1, 1);
                 self.view_cache_start = self.view_cache_start.saturating_add_signed(scroll);
 
                 // Follow PC

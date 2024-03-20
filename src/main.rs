@@ -34,8 +34,8 @@ use editor::Editor;
 use emulator::emu_debug::{CtrlMSG, DebugRegs, ReplyMSG};
 use gui::{
     gui_editor::file_actions::FileStatus,
-    gui_emulator::gui_devices::{display::GUIDevDisplay, legacy_io::GUIDevLegacyIO, GUIDevice},
-    Radix, GuiMode,
+    gui_emulator::gui_devices::{display::GUIDevDisplay, GUIDevice, legacy_io::GUIDevLegacyIO},
+    GuiMode, Radix,
 };
 
 #[derive(serde::Deserialize, serde::Serialize)]
