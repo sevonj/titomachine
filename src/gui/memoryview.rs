@@ -5,6 +5,7 @@
 //! This module houses the Memory Explorer GUI
 //!
 
+use egui::Button;
 use std::{default::Default, ops::Range};
 use std::collections::{HashMap, HashSet};
 use std::sync::mpsc::Sender;
@@ -15,7 +16,7 @@ use num_traits::ToPrimitive;
 use crate::config::Config;
 use crate::emulator::emu_debug::CtrlMSG;
 use crate::gui::{Radix, EmulatorPanel};
-use crate::gui::gui_emulator::{COL_TEXT, COL_TEXT_HI, FONT_TBL, FONT_TBLH};
+use crate::gui::{COL_TEXT, COL_TEXT_HI, FONT_TBL, FONT_TBLH};
 
 
 const MEM_SIZE: usize = 0x2000;
@@ -254,7 +255,7 @@ impl MemoryView {
         };
         row.col(|ui| {
             // Segment marker
-            ui.add(Image::new(include_image!("../../assets/memview_segment_marker.png"))
+            ui.add(Image::new(include_image!("../assets/memview_segment_marker.png"))
                 .fit_to_original_size(1.0).tint(color)
             );
 
@@ -276,7 +277,7 @@ impl MemoryView {
                 Color32::TRANSPARENT
             };
 
-            let bpmark = ui.add(Image::new(include_image!("../../assets/memview_breakpoint.png"))
+            let bpmark = ui.add(Image::new(include_image!("../assets/memview_breakpoint.png"))
                 .fit_to_original_size(1.0).tint(bp_color)
                 .sense(Sense { click: true, drag: false, focusable: false })
             );
@@ -329,7 +330,7 @@ impl MemoryView {
         row.col(|ui| {
             if self.cpu_pc == address || self.cpu_sp == address || self.cpu_fp == address || symbols.is_some() {
                 // TODO: Make overlap
-                ui.add(Image::new(include_image!("../../assets/memview_pointer_arrow.png"))
+                ui.add(Image::new(include_image!("../assets/memview_pointer_arrow.png"))
                     .fit_to_original_size(1.0)
                     .tint(Color32::from_rgba_unmultiplied(255, 255, 255, 2))
                 );
@@ -353,14 +354,10 @@ impl EmulatorPanel for MemoryView {
             .resizable(false)
             .show_inside(ui, |ui| {
                 ui.horizontal(|ui| {
-                    match config.memview_visible {
-                        true => if ui.selectable_label(config.memview_visible, "⏷ Memory Explorer").clicked() {
-                            config.memview_visible = false
-                        }
-                        false => if ui.selectable_label(config.memview_visible, "⏵ Memory Explorer").clicked() {
-                            config.memview_visible = true
-                        }
-                    };
+                    let toggle_text = if config.memview_visible { "⏷ Memory Explorer" } else { "⏵ Memory Explorer" };
+                    if ui.add(Button::new(toggle_text).frame(false)).clicked(){
+                        config.memview_visible = !config.memview_visible;
+                    }
                     if !config.memview_visible {
                         return;
                     }

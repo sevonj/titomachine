@@ -5,9 +5,8 @@
 //! This module houses the Graphics Display Panel
 //!
 
-use std::default::Default;
 use std::sync::mpsc::{Receiver, Sender};
-use egui::{TopBottomPanel, Ui, Layout};
+use egui::{TopBottomPanel, Ui, Layout, Button};
 use egui_extras::RetainedImage;
 use image::{ImageBuffer, Rgba};
 use num_traits::clamp;
@@ -47,7 +46,7 @@ impl GraphicsView {
 }
 
 impl EmulatorPanel for GraphicsView {
-    fn ui(&mut self, ui: &mut Ui, config: &mut Config, sender: &Sender<CtrlMSG>) {
+    fn ui(&mut self, ui: &mut Ui, config: &mut Config, _sender: &Sender<CtrlMSG>) {
         self.update();
 
         // Graphics titlebar
@@ -55,14 +54,10 @@ impl EmulatorPanel for GraphicsView {
             .resizable(false)
             .show_inside(ui, |ui| {
                 ui.horizontal(|ui| {
-                    match config.display_visible {
-                        true => if ui.selectable_label(config.display_visible, "⏷ Graphics").clicked() {
-                            config.display_visible = false
-                        }
-                        false => if ui.selectable_label(config.display_visible, "⏵ Graphics").clicked() {
-                            config.display_visible = true
-                        }
-                    };
+                    let toggle_text = if config.display_visible { "⏷ Graphics" } else { "⏵ Graphics" };
+                    if ui.add(Button::new(toggle_text).frame(false)).clicked(){
+                        config.display_visible = !config.display_visible;
+                    }
                     if !config.display_visible {
                         return;
                     }/*

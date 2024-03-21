@@ -5,19 +5,15 @@
 //! This module contains the CPU View Panel
 //!
 
-use std::{default::Default, ops::Range};
-use std::collections::{HashMap, HashSet};
 use std::sync::mpsc::Sender;
-use egui::{CentralPanel, Color32, Frame, Image, include_image, RichText, ScrollArea, Sense, SidePanel, Slider, TopBottomPanel, Ui, scroll_area::ScrollBarVisibility, TextBuffer};
-use egui_extras::{Column, TableBody, TableBuilder, TableRow};
-use libttktk::disassembler::disassemble_instruction;
-use num_traits::ToPrimitive;
+use egui::{Button, RichText, TopBottomPanel, Ui};
+use egui_extras::{Column, TableBody, TableBuilder};
 use crate::config::Config;
 use crate::emulator::emu_debug::CtrlMSG;
 use crate::gui::{Radix, EmulatorPanel};
-use crate::gui::gui_emulator::{COL_TEXT, COL_TEXT_HI, FONT_TBL, FONT_TBLH};
+use crate::gui::FONT_TBL;
 
-/// CPUView is the UI component responsible for the memory viewer panel.
+/// CPUView is the GUI panel for registers.
 pub(crate) struct CPUView {
     pub cpu_halt: bool,
     pub cpu_cu_pc: i32,
@@ -101,65 +97,58 @@ impl CPUView {
             });
         });
     }
-
-    /// Table Shortcut: Header column
-    fn add_table_heading(&self, header: &mut TableRow, title: &str) {
-        header.col(|ui| {
-            ui.heading(RichText::new(title).font(FONT_TBLH.clone()));
-        });
-    }
 }
 
 impl EmulatorPanel for CPUView {
-    fn ui(&mut self, ui: &mut Ui, config: &mut Config, sender: &Sender<CtrlMSG>) {
+    fn ui(&mut self, ui: &mut Ui, config: &mut Config, _sender: &Sender<CtrlMSG>) {
 
-        // Memview titlebar
-
-        ui.horizontal(|ui| {
-            match config.cpuview_visible {
-                true => if ui.selectable_label(config.cpuview_visible, "⏷ CPU").clicked() {
-                    config.cpuview_visible = false
-                }
-                false => if ui.selectable_label(config.cpuview_visible, "⏵ CPU").clicked() {
-                    config.cpuview_visible = true
-                }
-            };
-            if !config.cpuview_visible {
-                return;
-            }
-            ui.menu_button("Show as", |ui| {
-                if ui.radio_value(&mut config.cpuview_regs_base, Radix::Bin, "Binary").clicked() { ui.close_menu(); };
-                if ui.radio_value(&mut config.cpuview_regs_base, Radix::Dec, "Decimal").clicked() { ui.close_menu(); };
-                if ui.radio_value(&mut config.cpuview_regs_base, Radix::Hex, "Hex").clicked() { ui.close_menu(); };
+        // CPUView titlebar
+        TopBottomPanel::top("cpuview_titlebar")
+            .resizable(false)
+            .show_inside(ui, |ui| {
+                ui.horizontal(|ui| {
+                    let toggle_text = if config.cpuview_visible { "⏷ CPU" } else { "⏵ CPU" };
+                    if ui.add(Button::new(toggle_text).frame(false)).clicked(){
+                        config.cpuview_visible = !config.cpuview_visible;
+                    }
+                    if !config.cpuview_visible {
+                        return;
+                    }
+                    ui.menu_button("Options", |ui| {
+                        ui.label("Display registers as");
+                        if ui.radio_value(&mut config.cpuview_regs_base, Radix::Bin, "Binary").clicked() { ui.close_menu(); };
+                        if ui.radio_value(&mut config.cpuview_regs_base, Radix::Dec, "Decimal").clicked() { ui.close_menu(); };
+                        if ui.radio_value(&mut config.cpuview_regs_base, Radix::Hex, "Hex").clicked() { ui.close_menu(); };
+                    });
+                });
             });
-        });
-
-        ui.separator();
 
         if !config.cpuview_visible {
             return;
         }
 
-        // Memview main panel
-        TableBuilder::new(ui)
+        // CPUView main panel
+        TopBottomPanel::top("cpuview_main")
             .resizable(false)
-            .striped(true)
-            .vscroll(false)
-            .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
-            .column(Column::auto().at_least(106.0))
-            .body(|mut body| {
-                self.add_row_pc(&mut body, config);
-                self.add_row_gpr(&mut body, config, "R0", self.cpu_gpr_r0);
-                self.add_row_gpr(&mut body, config, "R1", self.cpu_gpr_r1);
-                self.add_row_gpr(&mut body, config, "R2", self.cpu_gpr_r2);
-                self.add_row_gpr(&mut body, config, "R3", self.cpu_gpr_r3);
-                self.add_row_gpr(&mut body, config, "R4", self.cpu_gpr_r4);
-                self.add_row_gpr(&mut body, config, "R5", self.cpu_gpr_r5);
-                self.add_row_gpr(&mut body, config, "SP", self.cpu_gpr_sp);
-                self.add_row_gpr(&mut body, config, "FP", self.cpu_gpr_fp);
-                self.add_row_sr(&mut body);
+            .show_inside(ui, |ui| {
+                TableBuilder::new(ui)
+                    .resizable(false)
+                    .striped(true)
+                    .vscroll(false)
+                    .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
+                    .column(Column::auto().at_least(106.0))
+                    .body(|mut body| {
+                        self.add_row_pc(&mut body, config);
+                        self.add_row_gpr(&mut body, config, "R0", self.cpu_gpr_r0);
+                        self.add_row_gpr(&mut body, config, "R1", self.cpu_gpr_r1);
+                        self.add_row_gpr(&mut body, config, "R2", self.cpu_gpr_r2);
+                        self.add_row_gpr(&mut body, config, "R3", self.cpu_gpr_r3);
+                        self.add_row_gpr(&mut body, config, "R4", self.cpu_gpr_r4);
+                        self.add_row_gpr(&mut body, config, "R5", self.cpu_gpr_r5);
+                        self.add_row_gpr(&mut body, config, "SP", self.cpu_gpr_sp);
+                        self.add_row_gpr(&mut body, config, "FP", self.cpu_gpr_fp);
+                        self.add_row_sr(&mut body);
+                    });
             });
-
-        ui.separator();
     }
 }
