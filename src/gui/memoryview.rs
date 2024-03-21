@@ -47,8 +47,6 @@ pub(crate) struct MemoryView {
 
     /// Multiple symbols may exist for an address, because of _consts_
     symbol_table: HashMap<usize, Vec<String>>,
-    /// Comment for an address.
-    comment_table: HashMap<usize, String>,
     /// Set of addresses that contains a breakpoint.
     breakpoints: HashSet<usize>,
 
@@ -68,20 +66,6 @@ pub(crate) struct MemoryView {
     pub start_data: usize,
     /// Stack start address
     pub start_stack: usize,
-
-
-    // Done: Display Symbols
-    // DONE: Load symbol table
-    // Todo: Comments
-    // Done: Mouse scroll
-    // Todo: Breakpoints
-    // Done: Adjust to screen size
-    // Done: Hide overflow
-    // Done: Toggle follow PC
-    // Done: Only follow PC if playing
-    // Done: Set addr radix
-    // Done: Set value radix
-    // Done: remember radix
 }
 
 impl MemoryView {
@@ -91,7 +75,6 @@ impl MemoryView {
             view_cache_size: 32,
             view_cache: HashMap::new(),
             symbol_table: HashMap::new(),
-            comment_table: HashMap::new(),
             breakpoints: HashSet::new(),
             is_playing: false,
             cpu_pc: 0,
@@ -108,7 +91,6 @@ impl MemoryView {
     pub fn reset(&mut self) {
         self.view_cache_start = 0;
         self.symbol_table.clear();
-        self.comment_table.clear();
         self.breakpoints.clear();
         self.start_code = MEM_SIZE;
         self.start_data = MEM_SIZE;
@@ -154,11 +136,6 @@ impl MemoryView {
         }
     }
 
-    /// Load comment table from B91 once it supports it.
-    pub fn set_comment_table(&mut self, table: HashMap<usize, String>) {
-        self.comment_table = table;
-    }
-
     /// Scroll view to PC location
     pub fn jump_to_pc(&mut self) {
         if self.cpu_pc > 4 {
@@ -168,6 +145,7 @@ impl MemoryView {
         }
     }
 
+    /// Which segment does an address belong?
     fn get_segment_from_address(&self, address: usize) -> MemorySegment {
         if address >= MEM_SIZE {
             MemorySegment::None

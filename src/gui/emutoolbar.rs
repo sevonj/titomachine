@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: MPL-2.0
 
-//!
+//! This provides emulator portion of the toolbar.
 //!
 
 use eframe::epaint::Color32;
