@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["FreqMagnitude"],"fn":["main"],"mod":["config","editor","emulator","gui"],"struct":["TitoApp"]};

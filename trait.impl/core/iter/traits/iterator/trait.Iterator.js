@@ -1,0 +1,3 @@
+(function() {var implementors = {
+"titomachine":[["impl&lt;T: <a class=\"trait\" href=\"titomachine/emulator/devices/dev_psg/trait.AudioChannel.html\" title=\"trait titomachine::emulator::devices::dev_psg::AudioChannel\">AudioChannel</a>&gt; <a class=\"trait\" href=\"https://doc.rust-lang.org/1.76.0/core/iter/traits/iterator/trait.Iterator.html\" title=\"trait core::iter::traits::iterator::Iterator\">Iterator</a> for <a class=\"struct\" href=\"titomachine/emulator/devices/dev_psg/struct.AudioSource.html\" title=\"struct titomachine::emulator::devices::dev_psg::AudioSource\">AudioSource</a>&lt;T&gt;"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

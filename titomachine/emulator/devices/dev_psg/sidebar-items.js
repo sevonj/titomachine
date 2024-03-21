@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["SAMPLE_RATE"],"mod":["envelope","noise_channel","note_table","pulse_channel","ramp_channel"],"struct":["AudioSource","DevPSG"],"trait":["AudioChannel"]};
