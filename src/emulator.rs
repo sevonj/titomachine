@@ -224,13 +224,11 @@ impl Emu {
     fn playpause(&mut self, p: bool) {
         self.t_last_update = None;
         self.playing = p;
+        self.bus.set_pause(p);
         if p {
-            self.bus.turn_on();
             // Perform one tick ignoring breakpoints, in case we're stopped on one.
             self.tick_ignore_breakpoints();
             thread::sleep(Duration::from_secs_f32(1. / self.tick_rate));
-        } else {
-            self.bus.turn_off()
         }
     }
 
