@@ -2,21 +2,18 @@
 //
 // SPDX-License-Identifier: MPL-2.0
 
-//! This module houses the Memory Explorer GUI
+//! This module houses the Graphics Display Panel
 //!
 
-use std::{default::Default, ops::Range};
-use std::collections::{HashMap, HashSet};
+use std::default::Default;
 use std::sync::mpsc::{Receiver, Sender};
-use egui::{CentralPanel, Color32, Frame, Image, include_image, RichText, ScrollArea, Sense, SidePanel, Slider, TopBottomPanel, Ui, scroll_area::ScrollBarVisibility, Layout};
-use egui_extras::{Column, RetainedImage, TableBody, TableBuilder, TableRow};
+use egui::{TopBottomPanel, Ui, Layout};
+use egui_extras::RetainedImage;
 use image::{ImageBuffer, Rgba};
-use libttktk::disassembler::disassemble_instruction;
-use num_traits::{clamp, ToPrimitive};
+use num_traits::clamp;
 use crate::config::Config;
 use crate::emulator::emu_debug::CtrlMSG;
-use crate::gui::{Radix, EmulatorPanel};
-use crate::gui::gui_emulator::{COL_TEXT, COL_TEXT_HI, FONT_TBL, FONT_TBLH};
+use crate::gui::EmulatorPanel;
 
 
 pub(crate) struct GraphicsView {
