@@ -6,6 +6,7 @@ use crate::{emulator::emu_debug::CtrlMSG, TitoApp, gui::EmulatorPanel};
 pub(crate) mod gui_devices;
 pub(crate) mod memoryview;
 pub(crate) mod cpuview;
+pub(crate) mod graphicsview;
 
 use eframe::emath::format_with_decimals_in_range;
 use egui::{Button, Color32, Context, FontId, Frame, RichText, Ui};
@@ -71,7 +72,7 @@ impl TitoApp {
         if ui.button("Reset").clicked() {
             let _ = self.tx_ctrl.send(CtrlMSG::Reset());
             self.dev_legacyio.reset();
-            self.dev_display.reset();
+            self.graphicsview.clear();
         }
 
         ui.separator();
@@ -111,7 +112,7 @@ impl TitoApp {
 
             // Main Panel
             egui::CentralPanel::default().show(ctx, |ui| {
-                self.dev_display.gui_panel(ctx, ui);
+                self.graphicsview.ui(ui, &mut self.config, &self.tx_ctrl);
                 self.memoryview.ui(ui, &mut self.config, &self.tx_ctrl);
             });
         });

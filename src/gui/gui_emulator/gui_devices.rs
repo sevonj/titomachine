@@ -1,4 +1,3 @@
-pub(crate) mod display;
 pub(crate) mod legacy_io;
 use egui::{Context, Ui};
 

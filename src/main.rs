@@ -35,11 +35,12 @@ use editor::Editor;
 use emulator::emu_debug::{CtrlMSG, DebugRegs, ReplyMSG};
 use gui::{
     gui_editor::file_actions::FileStatus,
-    gui_emulator::gui_devices::{display::GUIDevDisplay, GUIDevice, legacy_io::GUIDevLegacyIO},
-    GuiMode, Radix,
+    gui_emulator::gui_devices::{GUIDevice, legacy_io::GUIDevLegacyIO},
+    GuiMode,
 };
 use crate::config::Config;
 use crate::gui::gui_emulator::cpuview::CPUView;
+use crate::gui::gui_emulator::graphicsview::GraphicsView;
 
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
@@ -52,7 +53,7 @@ pub struct TitoApp {
 
     // Devices
     #[serde(skip)] dev_legacyio: GUIDevLegacyIO,
-    #[serde(skip)] dev_display: GUIDevDisplay,
+    //#[serde(skip)] dev_display: GUIDevDisplay,
 
     // Emulator
     #[serde(skip)] tx_ctrl: mpsc::Sender<CtrlMSG>,
@@ -65,6 +66,7 @@ pub struct TitoApp {
 
     #[serde(skip)] emu_turbo: bool,
     #[serde(skip)] emu_achieved_speed: f32,
+    #[serde(skip)] graphicsview: GraphicsView,
     #[serde(skip)] memoryview: MemoryView,
     #[serde(skip)] cpuview: CPUView,
 
@@ -90,7 +92,7 @@ impl Default for TitoApp {
         let (tx_devdisplay, rx_devdisplay) = mpsc::channel();
 
         let dev_legacyio = GUIDevLegacyIO::new(rx_devcrt, tx_devkbd, rx_devkbdreq);
-        let dev_display = GUIDevDisplay::new(rx_devdisplay);
+        //let dev_display = GUIDevDisplay::new(rx_devdisplay);
 
         thread::spawn(move || {
             emulator::run(
@@ -110,13 +112,14 @@ impl Default for TitoApp {
             tx_ctrl: tx_control,
             rx_reply,
             dev_legacyio,
-            dev_display,
+            //dev_display,
 
             emu_running: false,
             emu_halted: false,
             emu_playing: false,
             emu_achieved_speed: 0.,
             emu_turbo: false,
+            graphicsview: GraphicsView::new(rx_devdisplay),
             memoryview: MemoryView::new(),
             cpuview: CPUView::new(),
 
@@ -207,7 +210,7 @@ impl TitoApp {
 
     fn update_devices(&mut self) {
         self.dev_legacyio.update();
-        self.dev_display.update();
+        //self.dev_display.update();
     }
 }
 
