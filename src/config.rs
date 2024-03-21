@@ -37,6 +37,7 @@ pub struct Config {
     pub display_visible: bool,
 
     // --- CPU State
+    pub cpuview_visible: bool,
     pub cpuview_regs_base: Radix,
 
 }
@@ -57,6 +58,7 @@ impl Default for Config {
 
             display_visible: false,
 
+            cpuview_visible: false,
             cpuview_regs_base: Default::default(),
         }
     }

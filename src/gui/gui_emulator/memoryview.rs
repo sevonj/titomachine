@@ -365,27 +365,26 @@ impl EmulatorPanel for MemoryView {
                         return;
                     }
                     ui.menu_button("Options", |ui| {
+                        if ui.checkbox(&mut config.memview_follow_pc, "Follow PC").clicked() { ui.close_menu(); };
                         ui.label("Display address as");
-                        ui.radio_value(&mut config.memview_addr_base, Radix::Bin, "Binary");
-                        ui.radio_value(&mut config.memview_addr_base, Radix::Dec, "Decimal");
-                        ui.radio_value(&mut config.memview_addr_base, Radix::Hex, "Hex");
+                        if ui.radio_value(&mut config.memview_addr_base, Radix::Bin, "Binary").clicked() { ui.close_menu(); };
+                        if ui.radio_value(&mut config.memview_addr_base, Radix::Dec, "Decimal").clicked() { ui.close_menu(); };
+                        if ui.radio_value(&mut config.memview_addr_base, Radix::Hex, "Hex").clicked() { ui.close_menu(); };
                         ui.label("Display value as");
-                        ui.radio_value(&mut config.memview_value_base, Radix::Bin, "Binary");
-                        ui.radio_value(&mut config.memview_value_base, Radix::Dec, "Decimal");
-                        ui.radio_value(&mut config.memview_value_base, Radix::Hex, "Hex");
-                    });
-                    ui.menu_button("Breakpoints", |ui| {
+                        if ui.radio_value(&mut config.memview_value_base, Radix::Bin, "Binary").clicked() { ui.close_menu(); };
+                        if ui.radio_value(&mut config.memview_value_base, Radix::Dec, "Decimal").clicked() { ui.close_menu(); };
+                        if ui.radio_value(&mut config.memview_value_base, Radix::Hex, "Hex").clicked() { ui.close_menu(); };
+                        ui.label("Breakpoints");
                         if ui.checkbox(&mut config.memview_breakpoints_enabled, "Enabled").clicked() {
                             let _ = sender.send(CtrlMSG::EnableBreakpoints(config.memview_breakpoints_enabled));
+                            ui.close_menu();
                         }
                         if ui.button("Clear all").clicked() {
                             self.breakpoints.clear();
                             let _ = sender.send(CtrlMSG::ClearBreakpoints);
+                            ui.close_menu();
                         }
                     });
-
-                    ui.checkbox(&mut config.memview_follow_pc, "Follow PC");
-
                     if ui.button("Go to PC").clicked() {
                         self.jump_to_pc();
                     }
@@ -403,17 +402,15 @@ impl EmulatorPanel for MemoryView {
             .frame(Frame::none())
             .show_separator_line(false)
             .show_inside(ui, |ui| {
-                ui.vertical(|ui| {
-                    // Space accounts for table header row
-                    ui.add_space(20.);
-                    ui.spacing_mut().slider_width = ui.available_height();
-                    ui.add(Slider::new(&mut self.view_cache_start, 0x1fff..=0)
-                        .vertical()
-                        .smart_aim(false)
-                        .show_value(false)
-                        .handle_shape(egui::style::HandleShape::Rect { aspect_ratio: 1.6 })
-                    );
-                });
+                // Space accounts for table header row
+                ui.add_space(20.);
+                ui.spacing_mut().slider_width = ui.available_height();
+                ui.add(Slider::new(&mut self.view_cache_start, 0x1fff..=0)
+                    .vertical()
+                    .smart_aim(false)
+                    .show_value(false)
+                    .handle_shape(egui::style::HandleShape::Rect { aspect_ratio: 1.6 })
+                );
             });
 
         // Memview main panel
@@ -427,7 +424,7 @@ impl EmulatorPanel for MemoryView {
                 self.view_cache_start = self.view_cache_start.saturating_add_signed(scroll);
 
                 // Follow PC
-                if config.memview_follow_pc && self.is_playing {
+                if config.memview_follow_pc & &self.is_playing {
                     self.jump_to_pc();
                 }
 
@@ -436,26 +433,30 @@ impl EmulatorPanel for MemoryView {
                     .enable_scrolling(false)
                     .scroll_bar_visibility(ScrollBarVisibility::AlwaysHidden)
                     .show(ui, |ui| {
-                        // The actual memory View Table
-                        TableBuilder::new(ui)
-                            .resizable(false)
-                            .striped(true)
-                            .vscroll(false)
-                            .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
-                            .column(Column::auto()) // Address
-                            .column(Column::auto().at_least(78.0)) // Value
-                            .column(Column::exact(144.0)) // Disassembly
-                            .column(Column::remainder())// Pointers
-                            .header(20.0, |mut header| {
-                                self.add_table_heading(&mut header, "Addr");
-                                self.add_table_heading(&mut header, "Value");
-                                self.add_table_heading(&mut header, "Disassembly");
-                                self.add_table_heading(&mut header, "");
-                            })
-                            .body(|mut body| {
-                                for off in 0..=rows_to_display {
-                                    self.add_table_row(config, sender, &mut body, self.view_cache_start + off);
-                                }
+                        ScrollArea::horizontal()
+                            .show(ui, |ui| {
+
+                                // The actual memory View Table
+                                TableBuilder::new(ui)
+                                    .resizable(false)
+                                    .striped(true)
+                                    .vscroll(false)
+                                    .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
+                                    .column(Column::auto()) // Address
+                                    .column(Column::auto().at_least(78.0)) // Value
+                                    .column(Column::exact(144.0)) // Disassembly
+                                    .column(Column::remainder())// Pointers
+                                    .header(20.0, |mut header| {
+                                        self.add_table_heading(&mut header, "Addr");
+                                        self.add_table_heading(&mut header, "Value");
+                                        self.add_table_heading(&mut header, "Disassembly");
+                                        self.add_table_heading(&mut header, "");
+                                    })
+                                    .body(|mut body| {
+                                        for off in 0..=rows_to_display {
+                                            self.add_table_row(config, sender, &mut body, self.view_cache_start + off);
+                                        }
+                                    });
                             });
                     });
             });

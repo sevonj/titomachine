@@ -39,6 +39,7 @@ use gui::{
     GuiMode, Radix,
 };
 use crate::config::Config;
+use crate::gui::gui_emulator::cpuview::CPUView;
 
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
@@ -64,8 +65,8 @@ pub struct TitoApp {
 
     #[serde(skip)] emu_turbo: bool,
     #[serde(skip)] emu_achieved_speed: f32,
-    #[serde(skip)] emu_regs: DebugRegs,
     #[serde(skip)] memoryview: MemoryView,
+    #[serde(skip)] cpuview: CPUView,
 
     // GUI settings
     #[serde(skip)] guimode: GuiMode,
@@ -116,8 +117,8 @@ impl Default for TitoApp {
             emu_playing: false,
             emu_achieved_speed: 0.,
             emu_turbo: false,
-            emu_regs: DebugRegs::default(),
             memoryview: MemoryView::new(),
+            cpuview: CPUView::new(),
 
             // GUI
             guimode: GuiMode::Editor,
@@ -148,10 +149,12 @@ impl TitoApp {
         loop {
             if let Ok(msg) = self.rx_reply.try_recv() {
                 match msg {
+                    // Todo: Regs message could be merged into State
                     // Emulator State
                     ReplyMSG::State(st) => {
                         self.emu_running = st.running;
                         self.emu_halted = st.halted;
+                        self.cpuview.cpu_halt = st.halted;
                         self.emu_playing = st.playing;
                         self.emu_achieved_speed = st.speed_percent;
                         self.memoryview.is_playing = st.running && st.playing && !st.halted;
@@ -160,7 +163,17 @@ impl TitoApp {
                         self.memoryview.cpu_pc = regs.pc as usize;
                         self.memoryview.cpu_sp = regs.gpr[6] as usize;
                         self.memoryview.cpu_fp = regs.gpr[7] as usize;
-                        self.emu_regs = regs;
+
+                        self.cpuview.cpu_cu_pc = regs.pc;
+                        self.cpuview.cpu_gpr_r0 = regs.gpr[0];
+                        self.cpuview.cpu_gpr_r1 = regs.gpr[1];
+                        self.cpuview.cpu_gpr_r2 = regs.gpr[2];
+                        self.cpuview.cpu_gpr_r3 = regs.gpr[3];
+                        self.cpuview.cpu_gpr_r4 = regs.gpr[4];
+                        self.cpuview.cpu_gpr_r5 = regs.gpr[5];
+                        self.cpuview.cpu_gpr_sp = regs.gpr[6];
+                        self.cpuview.cpu_gpr_fp = regs.gpr[7];
+                        self.cpuview.cpu_cu_sr = regs.sr;
                     }
                     ReplyMSG::Mem(vec) => {
                         self.memoryview.set_view_cache(self.memoryview.get_view_cache_start(), vec)
@@ -183,11 +196,9 @@ impl TitoApp {
             FreqMagnitude::KHz => self.config.emu_speed * 1000.,
             FreqMagnitude::MHz => self.config.emu_speed * 1000000.,
         };
-        match self.tx_ctrl.send(CtrlMSG::SetRate(speed)) {
-            Ok(_) => (),
-            Err(_) => todo!(),
-        }
+        let _ = self.tx_ctrl.send(CtrlMSG::SetRate(speed));
     }
+
     fn stop_emulation(&mut self) {
         self.emu_running = false;
         self.dev_legacyio.clear_kbd();
