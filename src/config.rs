@@ -37,8 +37,11 @@ pub struct Config {
     pub display_visible: bool,
 
     // --- CPU State
+    pub cpuview_visible: bool,
     pub cpuview_regs_base: Radix,
 
+    // --- Legacy Terminal
+    pub legacyterm_visible: bool,
 }
 
 impl Default for Config {
@@ -57,7 +60,10 @@ impl Default for Config {
 
             display_visible: false,
 
+            cpuview_visible: false,
             cpuview_regs_base: Default::default(),
+
+            legacyterm_visible: false,
         }
     }
 }

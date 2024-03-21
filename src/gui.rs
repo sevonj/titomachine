@@ -1,11 +1,17 @@
 use std::sync::mpsc::Sender;
+use eframe::emath::format_with_decimals_in_range;
+use eframe::epaint::FontId;
 use crate::{emulator::emu_debug::CtrlMSG, TitoApp};
 use serde;
 
 pub mod gui_editor;
-pub mod gui_emulator;
+pub(crate) mod memoryview;
+pub(crate) mod cpuview;
+pub(crate) mod graphicsview;
+pub(crate) mod legacytermview;
+mod emutoolbar;
 
-use egui::{Align, Button, Color32, DragValue, Layout, Modifiers, OpenUrl, RichText};
+use egui::{Align, Button, Color32, Context, DragValue, Frame, Layout, Modifiers, OpenUrl, RichText, TopBottomPanel, Ui};
 use crate::config::Config;
 
 #[derive(PartialEq)]
@@ -44,7 +50,10 @@ impl Radix {
 const URL_GITHUB: &str = "https://github.com/sevonj/titomachine/";
 const URL_GUIDE: &str = "https://sevonj.github.io/titouserdoc/";
 const URL_OLDREF: &str = "https://www.cs.helsinki.fi/group/titokone/ttk91_ref_fi.html";
-
+const FONT_TBL: FontId = FontId::monospace(12.0);
+const FONT_TBLH: FontId = FontId::proportional(12.5);
+const COL_TEXT: Color32 = Color32::DARK_GRAY;
+const COL_TEXT_HI: Color32 = Color32::WHITE;
 pub const SHORTCUT_NEW: egui::KeyboardShortcut =
     egui::KeyboardShortcut::new(Modifiers::COMMAND, egui::Key::N);
 pub const SHORTCUT_OPEN: egui::KeyboardShortcut =
@@ -104,7 +113,7 @@ impl TitoApp {
                         ui.separator();
                         // Context toolbar
                         match self.guimode == GuiMode::Emulator {
-                            true => self.emulator_toolbar(ctx, ui),
+                            true => self.emulator_toolbar(ui),
                             false => self.editor_toolbar(ctx, ui),
                         }
                     });
@@ -332,6 +341,48 @@ impl TitoApp {
                 }
             }
         }
+    }
+    pub fn emulator_panel(&mut self, ctx: &Context, _: &mut Ui) {
+        // Refresh cached regs and memory
+        let _ = self.tx_ctrl.send(CtrlMSG::GetState);
+        let _ = self.tx_ctrl.send(CtrlMSG::GetMem(self.memoryview.get_view_cache_range()));
+
+        egui::CentralPanel::default().show(ctx, |_| {
+
+            // Status Panel
+            egui::SidePanel::right("register_panel")
+                .frame(Frame::none())
+                .resizable(false)
+                // Limit max width when base isn't binary, because auto shrink doesn't work properly
+                // when separators and some other things are present.
+                .max_width(if self.config.cpuview_regs_base == Radix::Bin { 500.0 } else { 120.0 })
+                .show(ctx, |ui| {
+                    TopBottomPanel::top("status")
+                        .resizable(false)
+                        .show_inside(ui, |ui| {
+                            ui.label("Achieved speed:");
+                            ui.label(format_with_decimals_in_range(self.emu_achieved_speed as f64, 1..=1) + "%");
+                        });
+                    self.cpuview.ui(ui, &mut self.config, &self.tx_ctrl);
+                });
+
+            // IO Panel
+            egui::SidePanel::right("io_panel")
+                .frame(Frame::none())
+                .resizable(false)
+                .max_width(128.0)
+                .show(ctx, |ui| {
+                    self.legacytermview.ui(ui, &mut self.config, &self.tx_ctrl);
+                });
+
+            // Main Panel
+            egui::CentralPanel::default()
+                .frame(Frame::none())
+                .show(ctx, |ui| {
+                    self.graphicsview.ui(ui, &mut self.config, &self.tx_ctrl);
+                    self.memoryview.ui(ui, &mut self.config, &self.tx_ctrl);
+                });
+        });
     }
 }
 

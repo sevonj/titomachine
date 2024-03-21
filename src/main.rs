@@ -20,8 +20,8 @@
 ///
 extern crate num_derive;
 
-use crate::gui::gui_emulator::memoryview::MemoryView;
-use std::{env::current_dir, path::PathBuf, sync::mpsc, thread};
+use crate::gui::memoryview::MemoryView;
+use std::{sync::mpsc, thread};
 use egui::{Context, Vec2, ViewportBuilder};
 use egui_extras::install_image_loaders;
 
@@ -32,13 +32,13 @@ pub mod gui;
 
 use editor::Editor;
 
-use emulator::emu_debug::{CtrlMSG, DebugRegs, ReplyMSG};
-use gui::{
-    gui_editor::file_actions::FileStatus,
-    gui_emulator::gui_devices::{display::GUIDevDisplay, GUIDevice, legacy_io::GUIDevLegacyIO},
-    GuiMode, Radix,
-};
+use emulator::emu_debug::{CtrlMSG, ReplyMSG};
+use gui::gui_editor::file_actions::FileStatus;
+use gui::GuiMode;
 use crate::config::Config;
+use crate::gui::cpuview::CPUView;
+use crate::gui::graphicsview::GraphicsView;
+use crate::gui::legacytermview::LegacyTermView;
 
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
@@ -47,13 +47,9 @@ pub struct TitoApp {
     config: Config,
 
     #[serde(skip)] filestatus: FileStatus,
-    #[serde(skip)] editor: Editor,
 
-    // Devices
-    #[serde(skip)] dev_legacyio: GUIDevLegacyIO,
-    #[serde(skip)] dev_display: GUIDevDisplay,
 
-    // Emulator
+    // Emulator communication
     #[serde(skip)] tx_ctrl: mpsc::Sender<CtrlMSG>,
     #[serde(skip)] rx_reply: mpsc::Receiver<ReplyMSG>,
 
@@ -61,15 +57,18 @@ pub struct TitoApp {
     #[serde(skip)] emu_running: bool,
     #[serde(skip)] emu_halted: bool,
     #[serde(skip)] emu_playing: bool,
-
     #[serde(skip)] emu_turbo: bool,
     #[serde(skip)] emu_achieved_speed: f32,
-    #[serde(skip)] emu_regs: DebugRegs,
+
+    // GUI Panels
+    #[serde(skip)] editor: Editor,
+    #[serde(skip)] graphicsview: GraphicsView,
     #[serde(skip)] memoryview: MemoryView,
+    #[serde(skip)] cpuview: CPUView,
+    #[serde(skip)] legacytermview: LegacyTermView,
 
     // GUI settings
     #[serde(skip)] guimode: GuiMode,
-
 }
 
 #[derive(serde::Deserialize, serde::Serialize, PartialEq)]
@@ -88,9 +87,6 @@ impl Default for TitoApp {
         let (tx_devkbdreq, rx_devkbdreq) = mpsc::channel();
         let (tx_devdisplay, rx_devdisplay) = mpsc::channel();
 
-        let dev_legacyio = GUIDevLegacyIO::new(rx_devcrt, tx_devkbd, rx_devkbdreq);
-        let dev_display = GUIDevDisplay::new(rx_devdisplay);
-
         thread::spawn(move || {
             emulator::run(
                 tx_reply,
@@ -103,23 +99,24 @@ impl Default for TitoApp {
         });
         TitoApp {
             config: Config::default(),
+
             filestatus: FileStatus::default(),
-            editor: Editor::default(),
-            // Emulator
+
             tx_ctrl: tx_control,
             rx_reply,
-            dev_legacyio,
-            dev_display,
 
             emu_running: false,
             emu_halted: false,
             emu_playing: false,
             emu_achieved_speed: 0.,
             emu_turbo: false,
-            emu_regs: DebugRegs::default(),
-            memoryview: MemoryView::new(),
 
-            // GUI
+            editor: Editor::default(),
+            graphicsview: GraphicsView::new(rx_devdisplay),
+            memoryview: MemoryView::new(),
+            cpuview: CPUView::new(),
+            legacytermview: LegacyTermView::new(rx_devcrt, tx_devkbd, rx_devkbdreq),
+
             guimode: GuiMode::Editor,
         }
     }
@@ -148,10 +145,12 @@ impl TitoApp {
         loop {
             if let Ok(msg) = self.rx_reply.try_recv() {
                 match msg {
+                    // Todo: Regs message could be merged into State
                     // Emulator State
                     ReplyMSG::State(st) => {
                         self.emu_running = st.running;
                         self.emu_halted = st.halted;
+                        self.cpuview.cpu_halt = st.halted;
                         self.emu_playing = st.playing;
                         self.emu_achieved_speed = st.speed_percent;
                         self.memoryview.is_playing = st.running && st.playing && !st.halted;
@@ -160,7 +159,17 @@ impl TitoApp {
                         self.memoryview.cpu_pc = regs.pc as usize;
                         self.memoryview.cpu_sp = regs.gpr[6] as usize;
                         self.memoryview.cpu_fp = regs.gpr[7] as usize;
-                        self.emu_regs = regs;
+
+                        self.cpuview.cpu_cu_pc = regs.pc;
+                        self.cpuview.cpu_gpr_r0 = regs.gpr[0];
+                        self.cpuview.cpu_gpr_r1 = regs.gpr[1];
+                        self.cpuview.cpu_gpr_r2 = regs.gpr[2];
+                        self.cpuview.cpu_gpr_r3 = regs.gpr[3];
+                        self.cpuview.cpu_gpr_r4 = regs.gpr[4];
+                        self.cpuview.cpu_gpr_r5 = regs.gpr[5];
+                        self.cpuview.cpu_gpr_sp = regs.gpr[6];
+                        self.cpuview.cpu_gpr_fp = regs.gpr[7];
+                        self.cpuview.cpu_cu_sr = regs.sr;
                     }
                     ReplyMSG::Mem(vec) => {
                         self.memoryview.set_view_cache(self.memoryview.get_view_cache_start(), vec)
@@ -183,29 +192,19 @@ impl TitoApp {
             FreqMagnitude::KHz => self.config.emu_speed * 1000.,
             FreqMagnitude::MHz => self.config.emu_speed * 1000000.,
         };
-        match self.tx_ctrl.send(CtrlMSG::SetRate(speed)) {
-            Ok(_) => (),
-            Err(_) => todo!(),
-        }
-    }
-    fn stop_emulation(&mut self) {
-        self.emu_running = false;
-        self.dev_legacyio.clear_kbd();
-        let _ = self.tx_ctrl.send(CtrlMSG::PlaybackStop);
+        let _ = self.tx_ctrl.send(CtrlMSG::SetRate(speed));
     }
 
-    fn update_devices(&mut self) {
-        self.dev_legacyio.update();
-        self.dev_display.update();
+    fn stop_emulation(&mut self) {
+        self.emu_running = false;
+        self.legacytermview.unjam_input_wait();
+        let _ = self.tx_ctrl.send(CtrlMSG::PlaybackStop);
     }
 }
 
 impl eframe::App for TitoApp {
     fn update(&mut self, ctx: &Context, _frame: &mut eframe::Frame) {
         install_image_loaders(ctx);
-
-        // 60fps gui update when emulator is running
-        self.update_devices();
 
         if self.emu_running && self.emu_playing {
             ctx.request_repaint_after(std::time::Duration::from_secs(1 / 60))
