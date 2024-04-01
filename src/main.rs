@@ -48,7 +48,6 @@ pub struct TitoApp {
 
     #[serde(skip)] filestatus: FileStatus,
 
-
     // Emulator communication
     #[serde(skip)] tx_ctrl: mpsc::Sender<CtrlMSG>,
     #[serde(skip)] rx_reply: mpsc::Receiver<ReplyMSG>,
@@ -70,6 +69,7 @@ pub struct TitoApp {
 
     // GUI settings
     #[serde(skip)] guimode: GuiMode,
+    #[serde(skip)] about_window_open: bool,
 }
 
 #[derive(serde::Deserialize, serde::Serialize, PartialEq)]
@@ -120,6 +120,7 @@ impl Default for TitoApp {
             legacytermview: LegacyTermView::new(rx_devcrt, tx_devkbd, rx_devkbdreq),
 
             guimode: GuiMode::Editor,
+            about_window_open: false,
         }
     }
 }
@@ -201,6 +202,14 @@ impl TitoApp {
         self.emu_running = false;
         self.legacytermview.unjam_input_wait();
         let _ = self.tx_ctrl.send(CtrlMSG::PlaybackStop);
+    }
+
+    /// Checks whatever conditions that may lock gui.
+    fn is_gui_enabled(&self) -> bool {
+        if self.about_window_open {
+            return false;
+        }
+        return true;
     }
 }
 
