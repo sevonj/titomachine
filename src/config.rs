@@ -19,7 +19,7 @@ pub struct Config {
     pub workdir: PathBuf,
 
     // --- Emulator
-    pub emu_cpuspeedmul: FreqMagnitude,
+    pub emu_speed_mag: FreqMagnitude,
     pub emu_speed: f32,
 
     // --- Memory Explorer
@@ -50,7 +50,7 @@ impl Default for Config {
             workdir: current_dir().unwrap(),
 
             emu_speed: 10.,
-            emu_cpuspeedmul: FreqMagnitude::Hz,
+            emu_speed_mag: FreqMagnitude::Hz,
 
             memview_visible: true,
             memview_follow_pc: true,
