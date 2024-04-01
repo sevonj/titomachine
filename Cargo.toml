@@ -2,6 +2,7 @@
 name = "titomachine"
 version = "0.2.1"
 edition = "2021"
+repository = "https://github.com/sevonj/titomachine"
 
 
 [dependencies]

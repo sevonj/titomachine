@@ -11,9 +11,11 @@ pub(crate) mod graphicsview;
 pub(crate) mod legacytermview;
 mod emutoolbar;
 mod emubsod;
+mod about_window;
 
 use egui::{Align, Button, CentralPanel, Color32, Context, DragValue, Frame, Layout, Modifiers, OpenUrl, RichText, TopBottomPanel, Ui};
 use crate::config::Config;
+use crate::gui::about_window::about_window;
 use crate::gui::emubsod::EmuBSODView;
 
 #[derive(PartialEq)]
@@ -49,7 +51,6 @@ impl Radix {
     }
 }
 
-const URL_GITHUB: &str = "https://github.com/sevonj/titomachine/";
 const URL_GUIDE: &str = "https://sevonj.github.io/titouserdoc/";
 const URL_OLDREF: &str = "https://www.cs.helsinki.fi/group/titokone/ttk91_ref_fi.html";
 const FONT_TBL: FontId = FontId::monospace(12.0);
@@ -92,6 +93,8 @@ pub const SHORTCUT_DEBUG_GUI: egui::KeyboardShortcut =
 
 impl TitoApp {
     pub fn gui_main(&mut self, ctx: &Context) {
+        about_window(ctx, &mut self.about_window_open);
+
         CentralPanel::default().show(ctx, |ui| {
             self.consume_shortcuts(ctx, ui);
 
@@ -99,6 +102,7 @@ impl TitoApp {
             TopBottomPanel::top("toolbar")
                 .exact_height(32.0)
                 .show(ctx, |ui| {
+                    ui.set_enabled(self.is_gui_enabled());
                     ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
                         ui.add(
                             egui::Image::new(egui::include_image!("assets/32bit.png"))
@@ -120,10 +124,12 @@ impl TitoApp {
                         }
                     });
                 });
+
             // Bottom bar
             TopBottomPanel::bottom("bottombar")
                 .exact_height(24.0)
                 .show(ctx, |ui| {
+                    ui.set_enabled(self.is_gui_enabled());
                     ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
                         // Filename
                         ui.label(&self.filestatus.displayname);
@@ -148,7 +154,9 @@ impl TitoApp {
                     });
                 });
 
+            // Main content
             CentralPanel::default().show(ctx, |ui| {
+                ui.set_enabled(self.is_gui_enabled());
                 if self.guimode == GuiMode::Emulator {
                     self.emulator_panel(ctx, ui);
                 } else {
@@ -262,6 +270,10 @@ impl TitoApp {
         });
 
         ui.menu_button("Help", |ui| {
+            if ui.button("About TiTo").clicked() {
+                self.about_window_open = true;
+                ui.close_menu()
+            }
             if ui.button("↗User Guide").clicked() {
                 ui.output_mut(|o| o.open_url = Some(OpenUrl {
                     url: URL_GUIDE.into(),
@@ -271,12 +283,6 @@ impl TitoApp {
             if ui.button("↗Old TTK-91 Reference").clicked() {
                 ui.output_mut(|o| o.open_url = Some(OpenUrl {
                     url: URL_OLDREF.into(),
-                    new_tab: false,
-                }));
-            }
-            if ui.button("↗Github").clicked() {
-                ui.output_mut(|o| o.open_url = Some(OpenUrl {
-                    url: URL_GITHUB.into(),
                     new_tab: false,
                 }));
             }
@@ -364,6 +370,7 @@ impl TitoApp {
                 // when separators and some other things are present.
                 .max_width(if self.config.cpuview_regs_base == Radix::Bin { 500.0 } else { 120.0 })
                 .show(ctx, |ui| {
+                    ui.set_enabled(self.is_gui_enabled());
                     TopBottomPanel::top("status")
                         .resizable(false)
                         .show_inside(ui, |ui| {
@@ -379,6 +386,7 @@ impl TitoApp {
                 .resizable(false)
                 .max_width(128.0)
                 .show(ctx, |ui| {
+                    ui.set_enabled(self.is_gui_enabled());
                     self.legacytermview.ui(ui, &mut self.config, &self.tx_ctrl);
                 });
 
@@ -386,6 +394,7 @@ impl TitoApp {
             CentralPanel::default()
                 .frame(Frame::none())
                 .show(ctx, |ui| {
+                    ui.set_enabled(self.is_gui_enabled());
                     self.graphicsview.ui(ui, &mut self.config, &self.tx_ctrl);
                     self.memoryview.ui(ui, &mut self.config, &self.tx_ctrl);
                 });

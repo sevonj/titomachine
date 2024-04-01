@@ -22,6 +22,7 @@ impl TitoApp {
             .min_height(16.)
             .max_height(ui.available_height() - 64.) // For some reason the top slice becomes invisible.
             .show(ctx, |ui| {
+                ui.set_enabled(self.is_gui_enabled());
                 ui.label(
                     RichText::new("Compiler output:")
                         .font(FONT_COMPILER)
@@ -52,6 +53,7 @@ impl TitoApp {
                     });
             });
         egui::CentralPanel::default().show(ctx, |ui| {
+            ui.set_enabled(self.is_gui_enabled());
             let rowheight = 14;
             let rowcount = (ui.available_height() as i32 + self.editor.linecnt) / rowheight + 2;
             egui::ScrollArea::vertical().show(ui, |ui| {
