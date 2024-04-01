@@ -10,9 +10,11 @@ pub(crate) mod cpuview;
 pub(crate) mod graphicsview;
 pub(crate) mod legacytermview;
 mod emutoolbar;
+mod emubsod;
 
-use egui::{Align, Button, Color32, Context, DragValue, Frame, Layout, Modifiers, OpenUrl, RichText, TopBottomPanel, Ui};
+use egui::{Align, Button, CentralPanel, Color32, Context, DragValue, Frame, Layout, Modifiers, OpenUrl, RichText, TopBottomPanel, Ui};
 use crate::config::Config;
+use crate::gui::emubsod::EmuBSODView;
 
 #[derive(PartialEq)]
 pub enum GuiMode {
@@ -37,7 +39,7 @@ impl Radix {
         }
     }
 
-    /// Same as above, but expects usize and only adds 16 bits worth of leading zeros.
+    /// Same as above, but expects usize and doesn't add leading zeros.
     pub fn format_addr(&self, value: usize) -> String {
         match self {
             Radix::Bin => format!("{value:#b}"),
@@ -89,12 +91,12 @@ pub const SHORTCUT_DEBUG_GUI: egui::KeyboardShortcut =
     egui::KeyboardShortcut::new(Modifiers::COMMAND.plus(Modifiers::ALT), egui::Key::D);
 
 impl TitoApp {
-    pub fn gui_main(&mut self, ctx: &egui::Context) {
-        egui::CentralPanel::default().show(ctx, |ui| {
+    pub fn gui_main(&mut self, ctx: &Context) {
+        CentralPanel::default().show(ctx, |ui| {
             self.consume_shortcuts(ctx, ui);
 
             // Toolbar
-            egui::TopBottomPanel::top("toolbar")
+            TopBottomPanel::top("toolbar")
                 .exact_height(32.0)
                 .show(ctx, |ui| {
                     ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
@@ -119,7 +121,7 @@ impl TitoApp {
                     });
                 });
             // Bottom bar
-            egui::TopBottomPanel::bottom("bottombar")
+            TopBottomPanel::bottom("bottombar")
                 .exact_height(24.0)
                 .show(ctx, |ui| {
                     ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
@@ -146,7 +148,7 @@ impl TitoApp {
                     });
                 });
 
-            egui::CentralPanel::default().show(ctx, |ui| {
+            CentralPanel::default().show(ctx, |ui| {
                 if self.guimode == GuiMode::Emulator {
                     self.emulator_panel(ctx, ui);
                 } else {
@@ -220,7 +222,7 @@ impl TitoApp {
                         .speed(0.1)
                         .clamp_range(1..=9999),
                 );
-                match self.config.emu_cpuspeedmul {
+                match self.config.emu_speed_mag {
                     crate::FreqMagnitude::Hz => ui.label("Hz"),
                     crate::FreqMagnitude::KHz => ui.label("KHz"),
                     crate::FreqMagnitude::MHz => ui.label("MHz"),
@@ -228,19 +230,19 @@ impl TitoApp {
             });
             ui.with_layout(Layout::left_to_right(Align::TOP), |ui| {
                 if ui
-                    .radio_value(&mut self.config.emu_cpuspeedmul, crate::FreqMagnitude::Hz, "Hz")
+                    .radio_value(&mut self.config.emu_speed_mag, crate::FreqMagnitude::Hz, "Hz")
                     .clicked()
                 {
                     self.send_settings();
                 }
                 if ui
-                    .radio_value(&mut self.config.emu_cpuspeedmul, crate::FreqMagnitude::KHz, "KHz")
+                    .radio_value(&mut self.config.emu_speed_mag, crate::FreqMagnitude::KHz, "KHz")
                     .clicked()
                 {
                     self.send_settings();
                 }
                 if ui
-                    .radio_value(&mut self.config.emu_cpuspeedmul, crate::FreqMagnitude::MHz, "MHz")
+                    .radio_value(&mut self.config.emu_speed_mag, crate::FreqMagnitude::MHz, "MHz")
                     .clicked()
                 {
                     self.send_settings();
@@ -343,12 +345,17 @@ impl TitoApp {
         }
     }
     pub fn emulator_panel(&mut self, ctx: &Context, _: &mut Ui) {
+        // BSOD
+        if self.emu_thread_crashed {
+            EmuBSODView::new().show(ctx);
+            return;
+        }
+
         // Refresh cached regs and memory
         let _ = self.tx_ctrl.send(CtrlMSG::GetState);
         let _ = self.tx_ctrl.send(CtrlMSG::GetMem(self.memoryview.get_view_cache_range()));
 
-        egui::CentralPanel::default().show(ctx, |_| {
-
+        CentralPanel::default().show(ctx, |_| {
             // Status Panel
             egui::SidePanel::right("register_panel")
                 .frame(Frame::none())
@@ -376,7 +383,7 @@ impl TitoApp {
                 });
 
             // Main Panel
-            egui::CentralPanel::default()
+            CentralPanel::default()
                 .frame(Frame::none())
                 .show(ctx, |ui| {
                     self.graphicsview.ui(ui, &mut self.config, &self.tx_ctrl);

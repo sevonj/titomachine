@@ -59,6 +59,7 @@ pub struct TitoApp {
     #[serde(skip)] emu_playing: bool,
     #[serde(skip)] emu_turbo: bool,
     #[serde(skip)] emu_achieved_speed: f32,
+    #[serde(skip)] emu_thread_crashed: bool,
 
     // GUI Panels
     #[serde(skip)] editor: Editor,
@@ -110,6 +111,7 @@ impl Default for TitoApp {
             emu_playing: false,
             emu_achieved_speed: 0.,
             emu_turbo: false,
+            emu_thread_crashed: false,
 
             editor: Editor::default(),
             graphicsview: GraphicsView::new(rx_devdisplay),
@@ -187,12 +189,12 @@ impl TitoApp {
     }
 
     fn send_settings(&mut self) {
-        let speed = match self.config.emu_cpuspeedmul {
+        let speed = match self.config.emu_speed_mag {
             FreqMagnitude::Hz => self.config.emu_speed,
             FreqMagnitude::KHz => self.config.emu_speed * 1000.,
             FreqMagnitude::MHz => self.config.emu_speed * 1000000.,
         };
-        let _ = self.tx_ctrl.send(CtrlMSG::SetRate(speed));
+        self.emu_thread_crashed = self.tx_ctrl.send(CtrlMSG::SetRate(speed)).is_err();
     }
 
     fn stop_emulation(&mut self) {
