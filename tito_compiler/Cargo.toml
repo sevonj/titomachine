@@ -1,0 +1,10 @@
+[package]
+name = "tito_compiler"
+version = "0.2.1"
+edition = "2021"
+repository = "https://github.com/sevonj/titomachine"
+authors = ["sevonj"]
+
+[dependencies]
+num-traits = "0.2"
+

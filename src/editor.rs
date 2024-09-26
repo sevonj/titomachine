@@ -4,20 +4,27 @@ use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
 use std::str::FromStr;
-use libttktk::b91::B91;
-use libttktk::compiler::compile;
+
+use tito_compiler::compiler::compile;
+use tito_core::b91::B91;
 
 const DEFAULT_OS: &str = include_str!("../programs/default/default_os.k91");
 const DEFAULT_PROGRAM: &str = include_str!("../programs/default/default_program.k91");
 
 #[derive(serde::Deserialize, serde::Serialize)]
 pub(crate) struct Editor {
-    #[serde(skip)] pub(crate) source_path: Option<String>,
-    #[serde(skip)] pub(crate) source_code: String,
-    #[serde(skip)] pub(crate) compiler_output: String,
-    #[serde(skip)] pub(crate) line_no: String,
-    #[serde(skip)] pub(crate) linecnt: i32,
-    #[serde(skip)] pub(crate) default_os: Option<B91>,
+    #[serde(skip)]
+    pub(crate) source_path: Option<String>,
+    #[serde(skip)]
+    pub(crate) source_code: String,
+    #[serde(skip)]
+    pub(crate) compiler_output: String,
+    #[serde(skip)]
+    pub(crate) line_no: String,
+    #[serde(skip)]
+    pub(crate) linecnt: i32,
+    #[serde(skip)]
+    pub(crate) default_os: Option<B91>,
     pub(crate) compile_default_os: bool,
 }
 
@@ -54,7 +61,9 @@ impl Editor {
         }
         match B91::from_str(result.unwrap().as_str()) {
             Ok(b91) => Ok(b91),
-            Err(e) => Err(format!("Compiler succeeded, but parser failed! Please file an issue. {e}"))
+            Err(e) => Err(format!(
+                "Compiler succeeded, but parser failed! Please file an issue. {e}"
+            )),
         }
     }
 
@@ -110,7 +119,8 @@ mod test {
     /// Compile different values in all bases
     #[test]
     fn test_compiler_variables() {
-        let vec = editor_compile(include_str!("../programs/tests/test_compiler_variables.k91").into());
+        let vec =
+            editor_compile(include_str!("../programs/tests/test_compiler_variables.k91").into());
         for i in 0..=3 {
             let expected = 52;
             assert_eq!(vec[i], expected)
@@ -124,7 +134,9 @@ mod test {
     #[test]
     fn test_compiler_disassembler() {
         compile_disass_compile(include_str!("../programs/tests/test_compiler_opcodes.k91").into());
-        compile_disass_compile(include_str!("../programs/tests/test_compiler_addressing.k91").into());
+        compile_disass_compile(
+            include_str!("../programs/tests/test_compiler_addressing.k91").into(),
+        );
     }
 
     /// This function tests the compiler and the disassmbler against each other.
@@ -166,7 +178,7 @@ mod test {
     fn editor_compile(source: String) -> Vec<i32> {
         let compiled = match compile(source) {
             Ok(res) => res,
-            Err(e) => panic!("{}", e)
+            Err(e) => panic!("{}", e),
         };
         let mut vec: Vec<i32> = Vec::new();
         let mut lines = compiled.lines();

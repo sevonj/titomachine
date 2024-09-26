@@ -3,9 +3,10 @@
  *
  */
 
+use tito_core::b91::B91;
+
 use super::Emu;
 use std::ops::Range;
-use libttktk::b91::B91;
 
 pub enum CtrlMSG {
     PlaybackStart,
@@ -81,7 +82,7 @@ impl Emu {
                     // Loader
                     CtrlMSG::Reset() => self.reset(),
                     CtrlMSG::LoadB91(b91) => self.load_b91(b91),
-                    CtrlMSG::ClearMem => self.clearmem(),
+                    CtrlMSG::ClearMem => (),
                     // Settings
                     CtrlMSG::SetRate(rate) => self.tick_rate = rate,
                     CtrlMSG::SetTurbo(t) => self.turbo = t,
@@ -90,8 +91,12 @@ impl Emu {
                     CtrlMSG::GetMem(range) => self.debug_sendmem(range),
                     CtrlMSG::EnableBreakpoints(enable) => self.breakpoints_enabled = enable,
                     CtrlMSG::ClearBreakpoints => self.breakpoints.clear(),
-                    CtrlMSG::InsertBreakpoint(addr) => { self.breakpoints.insert(addr); }
-                    CtrlMSG::RemoveBreakpoint(addr) => { self.breakpoints.remove(&addr); }
+                    CtrlMSG::InsertBreakpoint(addr) => {
+                        self.breakpoints.insert(addr);
+                    }
+                    CtrlMSG::RemoveBreakpoint(addr) => {
+                        self.breakpoints.remove(&addr);
+                    }
                 }
             } else {
                 break;
@@ -104,7 +109,7 @@ impl Emu {
         match self.tx.send(ReplyMSG::State(EmuState {
             playing: self.playing,
             running: self.running,
-            halted: self.cpu.halt,
+            halted: false, //self.cpu.halt,
             speed_percent,
         })) {
             Ok(_) => (),
@@ -116,7 +121,7 @@ impl Emu {
     pub fn debug_sendmem(&mut self, range: Range<u32>) {
         let mut retvec: Vec<i32> = Vec::with_capacity(range.len());
         for i in range.clone() {
-            if let Ok(val) = self.bus.read(i) {
+            if let Ok(val) = self.machine.debug_read_mem(i) {
                 retvec.push(val);
             } else {
                 break;
@@ -126,18 +131,18 @@ impl Emu {
     }
 
     fn debug_sendregs(&mut self) {
-        let cu = self.cpu.debug_get_cu();
-        let mmu = self.cpu.debug_get_mmu();
+        //let cu = self.cpu.debug_get_cu();
+        //let mmu //self.cpu.debug_get_mmu();
         match self.tx.send(ReplyMSG::Regs(DebugRegs {
-            pc: cu[0],
-            ir: cu[1],
-            tr: cu[2],
-            sr: cu[3],
-            gpr: self.cpu.debug_get_gprs(),
-            base: mmu[0],
-            limit: mmu[1],
-            mar: mmu[2],
-            mbr: mmu[3],
+            pc: self.machine.debug_get_cpu_pc(), //cu[0],
+            ir: 0,                               //cu[1],
+            tr: 0,                               //cu[2],
+            sr: 0,                               //cu[3],
+            gpr: self.machine.debug_get_gprs(),
+            base: 0,
+            limit: 0,
+            mar: 0,
+            mbr: 0,
         })) {
             Ok(_) => (),
             Err(_) => todo!(),

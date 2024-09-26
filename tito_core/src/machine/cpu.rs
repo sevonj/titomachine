@@ -7,28 +7,20 @@ mod svc;
 
 //                                      GELOZUMI SPD
 //pub const SR_EXCEPTION_MASK: i32 = 0b_00011111_10000000_00000000_00000000;
-pub const SR_G: i32 = 1 << 31;
-// Comp Greater
-pub const SR_E: i32 = 1 << 30;
-// Comp Equal
+
+pub const SR_G: i32 = 1 << 31; // Comp Greater
+pub const SR_E: i32 = 1 << 30; // Comp Equal
 pub const SR_L: i32 = 1 << 29; // Comp Less
 
-pub const SR_O: i32 = 1 << 28;
-// Overflow
-pub const SR_Z: i32 = 1 << 27;
-// Zero division
-pub const SR_U: i32 = 1 << 26;
-// Unknown instruction
-pub const SR_M: i32 = 1 << 25;
-// Forbidden mem address
+pub const SR_O: i32 = 1 << 28; // Overflow
+pub const SR_Z: i32 = 1 << 27; // Zero division
+pub const SR_U: i32 = 1 << 26; // Unknown instruction
+pub const SR_M: i32 = 1 << 25; // Forbidden mem address
 #[allow(dead_code)]
-pub const SR_I: i32 = 1 << 24;
-// Device Interrupt      // unused?
+pub const SR_I: i32 = 1 << 24; // Device Interrupt      // unused?
 #[allow(dead_code)]
-pub const SR_S: i32 = 1 << 23;
-// SVC
-pub const SR_P: i32 = 1 << 22;
-// Privileged mode       // unused?
+pub const SR_S: i32 = 1 << 23; // SVC
+pub const SR_P: i32 = 1 << 22; // Privileged mode       // unused?
 pub const SR_D: i32 = 1 << 21; // Disable Interrupts    // unused?
 
 pub enum GPR {
@@ -43,30 +35,34 @@ pub enum GPR {
 }
 
 pub struct CPU {
-    pub halt: bool,
     /// Halt
-    pub burn: bool,
-    /// Catch fire: CPU is disabled permanently.
+    pub(crate) halt: bool,
+    /// ... and Catch fire. CPU is disabled permanently.
+    pub(crate) burn: bool,
 
-    cu_pc: i32,
-    // Program Counter
-    cu_ir: i32,
-    // Instruction Register
-    cu_tr: i32,
-    // Temporary Regiter
-    cu_sr: i32,
-    // State Register
-    gpr: [i32; 8],
-    // General Purpose Registers R0..R7
-    mmu_base: u32,
-    //
-    mmu_limit: u32,
-    //
-    mmu_mar: u32,
-    // Mem Address Reg -- unimplemented
-    mmu_mbr: i32,
-    // Mem Buffer Reg -- unimplemented
-    ivt: [i32; 16], // Interrupt Vector Table. See comment at exception_check()
+    /// Program Counter
+    pub(crate) cu_pc: i32,
+    /// Instruction Register
+    pub(crate) cu_ir: i32,
+    /// Temporary Register
+    pub(crate) cu_tr: i32,
+    /// State Register
+    pub(crate) cu_sr: i32,
+
+    /// General Purpose Registers R0..R7
+    pub(crate) gpr: [i32; 8],
+
+    ///
+    pub(crate) mmu_base: u32,
+    ///
+    pub(crate) mmu_limit: u32,
+    /// Memory Address Register -- unimplemented
+    pub(crate) mmu_mar: u32,
+    /// Memory Buffer Register -- unimplemented
+    pub(crate) mmu_mbr: i32,
+
+    /// Interrupt Vector Table. See comment at exception_check()
+    pub(crate) ivt: [i32; 16],
 }
 
 impl CPU {
@@ -86,6 +82,7 @@ impl CPU {
             ivt: [0; 16],
         }
     }
+
     pub fn init(&mut self) {
         self.cu_pc = 0;
         self.cu_ir = 0;
@@ -135,9 +132,8 @@ impl CPU {
         }
         self.halt = false;
 
-
         /*
-        
+
         // idk how this is supposed to work.
         // I assume it goes to tr.
         match self.cu_tr {
@@ -172,7 +168,11 @@ impl CPU {
         // We will ignore errors, because this is part of interrupt handling itself.
         let _ = self.memwrite(bus, self.gpr[GPR::SP as usize] + 1, self.cu_sr);
         let _ = self.memwrite(bus, self.gpr[GPR::SP as usize] + 2, self.cu_pc);
-        let _ = self.memwrite(bus, self.gpr[GPR::SP as usize] + 3, self.gpr[GPR::FP as usize]);
+        let _ = self.memwrite(
+            bus,
+            self.gpr[GPR::SP as usize] + 3,
+            self.gpr[GPR::FP as usize],
+        );
         self.gpr[GPR::SP as usize] += 3;
         // Set state flags
         self.cu_sr |= SR_P;

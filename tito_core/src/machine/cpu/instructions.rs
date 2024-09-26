@@ -1,7 +1,13 @@
+// SPDX-FileCopyrightText: 2024 sevonj
+// SPDX-License-Identifier: MPL-2.0
+
+//! CPU Instructions
+//!
+
 use super::CPU;
 #[allow(unused_imports)] // Some of these flags are unused.
 use super::{GPR, SR_D, SR_E, SR_G, SR_I, SR_L, SR_M, SR_O, SR_P, SR_S, SR_U, SR_Z};
-use crate::emulator::Bus;
+use crate::machine::Bus;
 
 const NOP: u16 = 0x00;
 const STORE: u16 = 0x01;
@@ -56,7 +62,7 @@ impl CPU {
 
         match self.fetch_second_operand(bus, mode, ri, addr) {
             Ok(val) => self.cu_tr = val,
-            Err(_) => return
+            Err(_) => return,
         }
 
         match opcode {
@@ -67,8 +73,8 @@ impl CPU {
             LOAD => self.gpr[rj as usize] = self.cu_tr,
             IN => match bus.read_port(self.cu_tr) {
                 Ok(val) => self.gpr[rj as usize] = val,
-                Err(_) => return
-            }
+                Err(_) => return,
+            },
             OUT => {
                 let _ = bus.write_port(self.cu_tr, self.gpr[rj as usize]);
             }
@@ -192,11 +198,14 @@ impl CPU {
             }
             // Subroutine instructions
             CALL => {
-                if let Err(_) = self.memwrite(bus, self.gpr[GPR::SP as usize] + 1, self.cu_pc)
-                {
+                if let Err(_) = self.memwrite(bus, self.gpr[GPR::SP as usize] + 1, self.cu_pc) {
                     return;
                 };
-                if let Err(_) = self.memwrite(bus, self.gpr[GPR::SP as usize] + 2, self.gpr[GPR::FP as usize]) {
+                if let Err(_) = self.memwrite(
+                    bus,
+                    self.gpr[GPR::SP as usize] + 2,
+                    self.gpr[GPR::FP as usize],
+                ) {
                     return;
                 };
                 self.gpr[GPR::SP as usize] += 2;
@@ -207,11 +216,11 @@ impl CPU {
                 self.gpr[GPR::SP as usize] = self.gpr[GPR::FP as usize] - 2 - self.cu_tr;
                 match self.memread(bus, self.gpr[GPR::FP as usize] - 1) {
                     Ok(val) => self.cu_pc = val,
-                    Err(_) => return
+                    Err(_) => return,
                 }
                 match self.memread(bus, self.gpr[GPR::FP as usize]) {
                     Ok(val) => self.gpr[GPR::FP as usize] = val,
-                    Err(_) => return
+                    Err(_) => return,
                 }
             }
             // Stack instructions
@@ -222,7 +231,7 @@ impl CPU {
             POP => {
                 match self.memread(bus, self.gpr[GPR::SP as usize]) {
                     Ok(val) => self.gpr[ri as usize] = val,
-                    Err(_) => return
+                    Err(_) => return,
                 }
                 self.gpr[GPR::SP as usize] -= 1;
             }
@@ -247,7 +256,7 @@ impl CPU {
                     }
                     match self.memread(bus, addr) {
                         Ok(val) => self.gpr[i as usize] = val,
-                        Err(_) => return
+                        Err(_) => return,
                     }
                     self.gpr[GPR::SP as usize] -= 1;
                 }
@@ -256,15 +265,15 @@ impl CPU {
                 // Pop FP, PC, SR
                 match self.memread(bus, self.gpr[GPR::SP as usize]) {
                     Ok(val) => self.gpr[GPR::FP as usize] = val,
-                    Err(_) => return
+                    Err(_) => return,
                 }
                 match self.memread(bus, self.gpr[GPR::SP as usize] - 1) {
                     Ok(val) => self.cu_pc = val,
-                    Err(_) => return
+                    Err(_) => return,
                 }
                 match self.memread(bus, self.gpr[GPR::SP as usize] - 2) {
                     Ok(val) => self.cu_sr = val,
-                    Err(_) => return
+                    Err(_) => return,
                 }
                 self.gpr[GPR::SP as usize] -= 3;
                 // Pop params
@@ -289,7 +298,6 @@ impl CPU {
         ri: i32,
         addr: i32,
     ) -> Result<i32, ()> {
-
         // Value of second register.
         let ri_val = match ri {
             // R0, zero regardless

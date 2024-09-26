@@ -4,9 +4,13 @@ version = "0.2.1"
 edition = "2021"
 repository = "https://github.com/sevonj/titomachine"
 
+[workspace]
+members = ["tito_core", "tito_cli"]
 
 [dependencies]
-# TTK-91 ToolKit
+tito_core = { path = "tito_core" }
+tito_compiler = { path = "tito_compiler" }
+# To be phased out
 ttktk = { git = "https://github.com/sevonj/ttktk.git", tag = "v0.3.1" }
 num-traits = "0.2"
 num-derive = "0.4"
@@ -22,6 +26,7 @@ rfd = "0.14" # see gtk3 if fails to build https://docs.rs/rfd/latest/rfd/
 serde = { version = "1", features = ["derive"] }
 chrono = "0.4"
 rodio = "0.17"
+
 
 [build-dependencies]
 

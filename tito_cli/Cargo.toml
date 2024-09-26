@@ -1,0 +1,12 @@
+[package]
+name = "tito-cli"
+version = "0.2.1"
+edition = "2021"
+repository = "https://github.com/sevonj/titomachine"
+authors = ["sevonj"]
+
+[dependencies]
+tito_core = { path = "../tito_core" }
+ttktk = { git = "https://github.com/sevonj/ttktk.git", tag = "v0.3.1" }
+
+clap = { version = "4.5.16", features = ["derive"] } # CLI argument library

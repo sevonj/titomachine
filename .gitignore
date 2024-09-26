@@ -1,5 +1,6 @@
 /target
 /build
+.idea/
 *.b91
 perf.data
 perf.data.old

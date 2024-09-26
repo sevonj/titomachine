@@ -6,22 +6,23 @@
 //! If you're writing a new device, it must implement the Device trait, and at least one of the IO traits.
 
 use self::{
-    dev_crt::DevCRT, dev_display_classic::DevDisplayClassic, dev_kbd::DevKBD, // dev_pic::DevPIC,
-    dev_psg::DevPSG, dev_ram::DevRAM, dev_rtc::DevRTC,
+    dev_crt::DevCRT,
+    dev_display_classic::DevDisplayClassic,
+    dev_kbd::DevKBD,
+    // dev_pic::DevPIC,
+    dev_ram::DevRAM,
+    dev_rtc::DevRTC,
 };
 
-mod dev_crt;
-mod dev_display_classic;
-mod dev_kbd;
-mod dev_midi;
-mod dev_pad;
+pub mod dev_crt;
+pub mod dev_display_classic;
+pub mod dev_kbd;
 // mod dev_pic;
-mod dev_psg;
-mod dev_ram;
-mod dev_rtc;
+pub mod dev_ram;
+pub mod dev_rtc;
 
 /// All devices should implement this trait.
-pub(crate) trait Device {
+pub trait Device {
     /// Completely reset the state of the device.
     fn reset(&mut self);
     /// Turns this device on.
@@ -33,7 +34,7 @@ pub(crate) trait Device {
 }
 
 /// Memory Mapped IO: Any device that occupies memory addresses shall implement this trait.
-pub(crate) trait MMIO: Device {
+pub trait MMIO: Device {
     /// MMIO read. In implementation, address is **relative to device offset**, not global. So your first addr is always 0x0.
     fn read(&mut self, addr: usize) -> Result<i32, ()>;
     /// MMIO write. In implementation, address is **relative to device offset**, not global. So your first addr is always 0x0.
@@ -41,7 +42,7 @@ pub(crate) trait MMIO: Device {
 }
 
 /// Port Mapped IO: Any device that occupies ports shall implement this trait.
-pub(crate) trait PMIO: Device {
+pub trait PMIO: Device {
     /// PMIO read. In implementation, port index is **relative to device offset**, not global. So your first port is always 0x0.
     fn read_port(&mut self, port: u8) -> Result<i32, ()>;
     /// PMIO write. In implementation, port index is **relative to device offset**, not global. So your first port is always 0x0.
@@ -51,13 +52,12 @@ pub(crate) trait PMIO: Device {
 /// The Bus struct is the parent of all devices, and maps IO calls to them.
 /// Essentially it determines the hardware configuration of the machine.
 pub struct Bus {
-    pub(crate) crt: DevCRT,
-    pub(crate) display: DevDisplayClassic,
-    pub(crate) kbd: DevKBD,
-    // pub(crate) pic: DevPIC,
-    pub(crate) psg: DevPSG,
-    pub(crate) ram: DevRAM,
-    pub(crate) rtc: DevRTC,
+    pub crt: DevCRT,
+    pub display: DevDisplayClassic,
+    pub kbd: DevKBD,
+    // pub pic: DevPIC,
+    pub ram: DevRAM,
+    pub rtc: DevRTC,
 }
 
 impl Bus {
@@ -67,30 +67,27 @@ impl Bus {
             display: DevDisplayClassic::default(),
             kbd: DevKBD::default(),
             // pic: DevPIC::default(),
-            psg: DevPSG::default(),
             ram: DevRAM::default(),
             rtc: DevRTC::default(),
         }
     }
     /// MMIO access
-    pub(crate) fn read(&mut self, addr: u32) -> Result<i32, ()> {
+    pub fn read(&mut self, addr: u32) -> Result<i32, ()> {
         let addr = addr as usize;
         match addr {
             0x0000..=0x1fff => self.ram.read(addr),
             0x2000..=0x6aff => self.display.read(addr - 0x2000),
-            0x6b00..=0x6bff => self.psg.read(addr - 0x6b00),
             _ => {
                 println!("mem read fault: 0x{:x}", addr);
                 Err(())
             }
         }
     }
-    pub(crate) fn write(&mut self, addr: u32, value: i32) -> Result<(), ()> {
+    pub fn write(&mut self, addr: u32, value: i32) -> Result<(), ()> {
         let addr = addr as usize;
         match addr {
             0x0000..=0x1fff => self.ram.write(addr, value),
             0x2000..=0x6aff => self.display.write(addr - 0x2000, value),
-            0x6b00..=0x6bff => self.psg.write(addr - 0x6b00, value),
             _ => {
                 println!("mem write fault: 0x{:x}", addr);
                 Err(())
@@ -98,7 +95,7 @@ impl Bus {
         }
     }
     /// PMIO access
-    pub(crate) fn read_port(&mut self, port: i32) -> Result<i32, ()> {
+    pub fn read_port(&mut self, port: i32) -> Result<i32, ()> {
         let port = port as usize;
         match port {
             0 => self.crt.read_port(0),
@@ -115,7 +112,7 @@ impl Bus {
             }
         }
     }
-    pub(crate) fn write_port(&mut self, port: i32, value: i32) -> Result<(), ()> {
+    pub fn write_port(&mut self, port: i32, value: i32) -> Result<(), ()> {
         let port = port as usize;
         match port {
             0 => self.crt.write_port(0, value),
@@ -133,45 +130,47 @@ impl Bus {
         }
     }
 
+    /*
+     *
+     *  TODO: What the this was the plan with all these:
+     *
+     */
+
     /// Clear all state
-    pub(crate) fn reset(&mut self) {
+    pub fn reset(&mut self) {
         self.crt.reset();
         self.display.reset();
         self.kbd.reset();
         //self.pic.reset();
-        self.psg.reset();
         self.ram.reset();
         self.rtc.reset();
     }
 
     /// Turn the device on. May affect state, not suitable for "pausing" the device.
-    pub(crate) fn turn_on(&mut self) {
+    pub fn turn_on(&mut self) {
         self.crt.on();
         self.display.on();
         self.kbd.on();
         //self.pic.on();
-        self.psg.on();
         self.ram.on();
         self.rtc.on();
     }
 
     /// Turn the device off. May affect state, not suitable for "pausing" the device.
-    pub(crate) fn turn_off(&mut self) {
+    pub fn turn_off(&mut self) {
         self.crt.off();
         self.display.off();
         self.kbd.off();
         //self.pic.off();
-        self.psg.off();
         self.ram.off();
         self.rtc.off();
     }
 
-    pub(crate) fn set_pause(&mut self, paused: bool){
+    pub fn set_pause(&mut self, paused: bool) {
         self.crt.set_pause(paused);
         self.display.set_pause(paused);
         self.kbd.set_pause(paused);
         //self.pic.set_pause(paused);
-        self.psg.set_pause(paused);
         self.ram.set_pause(paused);
         self.rtc.set_pause(paused);
     }

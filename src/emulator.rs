@@ -24,7 +24,7 @@ use std::collections::HashSet;
 ///         devices.rs contains the Bus struct, which is passed to the CPU.
 ///         Every device besides is within the Bus instance.
 ///         Devices directory contains every device.
-///     
+///
 ///     emu_debug:
 ///         Communicates with the gui.
 ///
@@ -39,22 +39,16 @@ use std::sync::mpsc::{Receiver, Sender};
 use std::thread;
 use std::time::{Duration, Instant};
 
-mod devices;
 pub mod emu_debug;
 mod perfmon;
-#[cfg(test)]
-mod tests;
 
 use image::Rgba;
-use libttktk::b91::B91;
-use crate::emulator::cpu::GPR;
+use tito_core::b91::B91;
+use tito_core::machine::Machine;
 
-use self::cpu::CPU;
-use self::devices::{Bus, Device};
 use self::emu_debug::{CtrlMSG, ReplyMSG};
 use self::perfmon::PerfMonitor;
-
-mod cpu;
+use tito_core::machine::devices::Device;
 
 // There has to be a cleaner way to pass the channels.
 pub fn run(
@@ -72,8 +66,9 @@ pub fn run(
 }
 
 pub struct Emu {
-    bus: Bus,
-    cpu: CPU,
+    //bus: Bus,
+    //cpu: CPU,
+    machine: Machine,
     tx: Sender<ReplyMSG>,
     rx: Receiver<CtrlMSG>,
     loaded_prog: Option<B91>,
@@ -103,8 +98,9 @@ impl Emu {
         tx_devdisplay: Sender<Vec<Rgba<u8>>>,
     ) -> Self {
         let mut emu = Emu {
-            bus: Bus::new(),
-            cpu: CPU::new(),
+            //bus: Bus::new(),
+            //cpu: CPU::new(),
+            machine: Machine::new(),
             tx,
             rx,
             loaded_prog: None,
@@ -123,16 +119,15 @@ impl Emu {
             breakpoints_enabled: false,
             breakpoints: HashSet::new(),
         };
-        emu.bus.crt.connect(tx_devcrt);
-        emu.bus.kbd.connect(rx_devkbd, tx_devkbdreq);
-        emu.bus.display.connect(tx_devdisplay);
+        //emu.bus.crt.connect(tx_devcrt);
+        //emu.bus.kbd.connect(rx_devkbd, tx_devkbdreq);
+        //emu.bus.display.connect(tx_devdisplay);
         emu
     }
 
     pub fn update(&mut self) {
         self.timekeeper();
         self.check_mail();
-        self.dev_update_slow();
 
         let cyclecount = self.tick_rate as u32 / 60 + 1;
         if self.playing {
@@ -188,28 +183,11 @@ impl Emu {
         // self.bus.pic.update_timer(self.t_delta);
     }
 
-    /// Fast update: every cpu tick
-    fn dev_update(&mut self) {
-        // Interrupts
-        // if self.bus.pic.is_firing() {
-        //     self.cpu.exception_irq(&mut self.bus);
-        // }
-    }
-
-    /// Slow update: every frame or so
-    fn dev_update_slow(&mut self) {
-        self.bus.display.send();
-        // if self.bus.display.interrupt {
-        //     self.bus.pic.flag |= 0b_0100;
-        // }
-    }
-
     fn start(&mut self) {
-        self.reload();
-        self.cpu.init();
+        self.reload_program();
+        self.machine.reset_soft();
         self.running = true;
         self.t_last_update = None;
-        self.bus.turn_on();
     }
 
     fn stop(&mut self) {
@@ -217,14 +195,14 @@ impl Emu {
         self.running = false;
         self.playing = false;
         // Send framebuffer to avoid incomplete picture
-        self.bus.display.send();
-        self.bus.turn_off();
+        //self.bus.display.send();
+        //self.bus.turn_off();
     }
 
     fn playpause(&mut self, p: bool) {
         self.t_last_update = None;
         self.playing = p;
-        self.bus.set_pause(p);
+        //self.bus.set_pause(p);
         if p {
             // Perform one tick ignoring breakpoints, in case we're stopped on one.
             self.tick_ignore_breakpoints();
@@ -235,15 +213,20 @@ impl Emu {
     fn load_b91(&mut self, b91: B91) {
         self.stop();
 
-        self.start_code = b91.code_segment.start;
-        self.start_data = b91.data_segment.start;
-        self.start_stack = b91.data_segment.end + 1;
-        let _ = self.tx.send(ReplyMSG::SegmentOffsets(self.start_code, self.start_data, self.start_stack));
+        self.start_code = b91.code_segment.start as usize;
+        self.start_data = b91.data_segment.start as usize;
+        self.start_stack = (b91.data_segment.end + 1) as usize;
+        let _ = self.tx.send(ReplyMSG::SegmentOffsets(
+            self.start_code,
+            self.start_data,
+            self.start_stack,
+        ));
 
         // Load code segment
         let mut mem_off = b91.code_segment.start;
         for instruction in &b91.code_segment.content {
-            self.bus.write(mem_off as u32, *instruction)
+            self.machine
+                .debug_write_mem(mem_off as u32, *instruction)
                 .map_err(|err| println!("load_b91 writing code segment failed!\n{:?}", err))
                 .ok();
             mem_off += 1;
@@ -252,65 +235,47 @@ impl Emu {
         // Load data segment
         let mut mem_off = b91.data_segment.start;
         for variable in &b91.data_segment.content {
-            self.bus.write(mem_off as u32, *variable)
+            self.machine
+                .debug_write_mem(mem_off as u32, *variable)
                 .map_err(|err| println!("load_b91 writing data segment failed!\n{:?}", err))
                 .ok();
             mem_off += 1;
         }
 
         // CPU registers
-        self.cpu.init();
-        self.cpu.debug_set_cu_pc(b91.code_segment.start as i32);
-        self.cpu.debug_set_gpr(GPR::FP, b91.code_segment.end as i32);
-        self.cpu.debug_set_gpr(GPR::SP, b91.data_segment.end as i32);
-
-        // CPU Interrupt Vector Table
-        for i in 0..=15 {
-            if let Some(value) = b91.symbol_table.get(format!("__IVT_ENTRY_{i}__").as_str()) {
-                self.cpu.debug_set_ivt(i, (*value).into())
-            }
-        }
+        self.machine.reset_soft();
+        self.machine.debug_set_cpu_pc(b91.code_segment.start as i32);
+        self.machine.debug_set_cpu_fp(b91.code_segment.end as i32);
+        self.machine.debug_set_cpu_sp(b91.data_segment.end as i32);
 
         self.loaded_prog = Some(b91);
     }
     fn reset(&mut self) {
         self.stop();
-        self.bus.reset();
-        self.cpu = CPU::new();
-        self.reload();
+        self.machine.reset();
+        self.reload_program();
     }
-    fn reload(&mut self) {
+    fn reload_program(&mut self) {
         self.stop();
-        self.load_b91(self.loaded_prog.clone().unwrap());
+        self.machine.load_b91(self.loaded_prog.clone().unwrap());
     }
 
-    fn clearmem(&mut self) {
-        self.stop();
-        self.bus.ram.reset();
-        self.bus.display.reset();
-    }
-
-    /// Advance the emulator by one instruction.
+    /// Advance the machine by one instruction.
     fn tick(&mut self) {
-        self.dev_update();
-        if self.cpu.halt {
-            return;
-        }
         if self.breakpoints_enabled {
-            if self.breakpoints.contains(&(self.cpu.debug_get_cu_pc() as usize)) {
+            if self
+                .breakpoints
+                .contains(&(self.machine.debug_get_cpu_pc() as usize))
+            {
                 self.playpause(false);
                 return;
             }
         }
-        self.cpu.tick(&mut self.bus);
+        self.machine.tick();
     }
 
-    /// Advance the emulator by one instruction. Ignore breakpoints,
+    /// Advance the machine by one instruction. Ignore breakpoints.
     fn tick_ignore_breakpoints(&mut self) {
-        self.dev_update();
-        if self.cpu.halt {
-            return;
-        }
-        self.cpu.tick(&mut self.bus);
+        self.machine.tick();
     }
 }

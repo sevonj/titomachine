@@ -1,10 +1,12 @@
+// SPDX-FileCopyrightText: 2024 sevonj
+// SPDX-License-Identifier: MPL-2.0
+
+//! cpu/svc.rs
+//!
+//! These are the old faux SVC functions.
+//! Possibly re-add them as an option?
+
 /*
-///
-/// cpu/svc.rs
-/// 
-/// These are the old faux SVC functions.
-/// Possibly re-add them as an option?
-/// 
 
 use chrono::{Datelike, Local, Timelike};
 use num_traits::FromPrimitive;
