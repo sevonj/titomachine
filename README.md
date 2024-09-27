@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/sevonj/titomachine/actions/workflows/main.yml/badge.svg)](https://github.com/sevonj/titomachine/actions/workflows/main.yml)  
 
-My programs were too much for [Titokone](https://www.cs.helsinki.fi/group/titokone/), so I made my own.
+My programs were too much for [Titokone](https://github.com/titokone/titokone), so I made my own.
 
 > [!WARNING]  
 > This application is work in progress, and he codebase is currently undergoing major renovation.  
