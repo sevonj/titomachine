@@ -5,7 +5,7 @@
 My programs were too much for [Titokone](https://github.com/titokone/titokone), so I made my own.
 
 > [!WARNING]  
-> This application is work in progress, and he codebase is currently undergoing major renovation.  
+> This application is work in progress, and he codebase is currently ~~undergoing major renovation~~ left to rot.  
 > The latest release build is heavily outdated.
 
 ![image](doc/screenshot.png)
