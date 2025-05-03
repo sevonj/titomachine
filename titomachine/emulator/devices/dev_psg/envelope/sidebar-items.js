@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["FLAG_FALLING","FLAG_FREQ","FLAG_GATE","FLAG_LOOP","FLAG_LOOP_MIRROR","FLAG_PW","FLAG_VOL"],"struct":["Envelope"]};

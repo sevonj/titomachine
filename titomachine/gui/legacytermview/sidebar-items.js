@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["COLOR_INPUTHIGHLIGHT","CRT_CLEAR_TEXT"],"struct":["LegacyTermView"]};

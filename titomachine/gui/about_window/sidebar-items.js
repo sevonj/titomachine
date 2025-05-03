@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["VERSION","WINDOW_SIZE"],"fn":["about_window"]};
